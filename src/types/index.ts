@@ -350,16 +350,32 @@ export interface Invoice {
   total_amount: number;
   amount_paid: number;
   amount_due: number;
+  tds_amount: number;
+  credited: number;
+  retention_amount: number;
+  retention_held: number;
+  retention_released_at?: string;
+  last_payment_date?: string;
   notes?: string;
   fee_stage_id?: string;
   change_order_id?: string;
   items?: InvoiceLineItem[];
 }
 
+export interface CreditNote {
+  id: string;
+  invoice_id: string;
+  number?: string;
+  amount: number;
+  reason: string;
+  issued_at: string;
+}
+
 export interface Payment {
   id: string;
   invoice_id: string;
   amount: number;
+  tds_amount: number;
   payment_date: string;
   mode: PaymentMode;
   reference?: string;
