@@ -14,8 +14,10 @@ import * as financeActions from "@/app/actions/finance";
 import * as fileActions from "@/app/actions/files";
 import * as commsActions from "@/app/actions/comms";
 import * as settingsActions from "@/app/actions/settings";
+import * as feeActions from "@/app/actions/fees";
+import * as coActions from "@/app/actions/change-orders";
 import type {
-  BOQLineItem, BOQVersion, Client, Expense, Invoice, Message, Project, ProjectMilestone, ProjectRoom,
+  BOQLineItem, BOQVersion, ChangeOrder, Client, Expense, FeeStage, Invoice, Message, Project, ProjectMilestone, ProjectRoom,
   ProjectStatus, ProjectUpdate, Snag, SnagComment, SnagStatus, Task, ItemLibraryItem, StudioSettings,
 } from "@/types";
 
@@ -35,6 +37,19 @@ export interface AppActions {
   addRoomToProject: (projectId: string, room: Omit<ProjectRoom, "id" | "project_id">) => Promise<ActionResult>;
   addMilestoneToProject: (projectId: string, milestone: Omit<ProjectMilestone, "id" | "project_id">) => Promise<ActionResult>;
   toggleMilestone: (projectId: string, milestoneId: string) => Promise<ActionResult>;
+
+  // Fee & Change Order Actions
+  setFeeTerms: (projectId: string, terms: Partial<Project>) => Promise<ActionResult>;
+  applyFeeTemplate: (projectId: string, templateId: string) => Promise<ActionResult>;
+  addFeeStage: (stage: Partial<FeeStage>) => Promise<ActionResult>;
+  updateFeeStage: (stageId: string, updates: Partial<FeeStage>) => Promise<ActionResult>;
+  deleteFeeStage: (stageId: string) => Promise<ActionResult>;
+  completeFeeStage: (stageId: string) => Promise<ActionResult>;
+  reopenFeeStage: (stageId: string) => Promise<ActionResult>;
+  createChangeOrder: (co: Partial<ChangeOrder>) => Promise<ActionResult>;
+  updateChangeOrder: (id: string, updates: Partial<ChangeOrder>) => Promise<ActionResult>;
+  submitChangeOrder: (id: string) => Promise<ActionResult>;
+  decideChangeOrder: (id: string, approve: boolean, signer: string, note?: string) => Promise<ActionResult>;
 
   // BOQ Actions
   addBOQVersion: (boq: BOQVersion) => Promise<ActionResult>;
@@ -101,6 +116,19 @@ export const createAppStore = (snapshot: WorkspaceSnapshot) =>
     addRoomToProject: (projectId, room) => run(projectActions.addRoom({ ...room, project_id: projectId })),
     addMilestoneToProject: (projectId, m) => run(projectActions.addMilestone({ ...m, project_id: projectId })),
     toggleMilestone: (_projectId, milestoneId) => run(projectActions.toggleMilestone({ id: milestoneId })),
+
+    // Fee & Change Order Actions
+    setFeeTerms: (projectId, terms) => run(feeActions.setFeeTerms({ ...terms, id: projectId })),
+    applyFeeTemplate: (projectId, templateId) => run(feeActions.applyFeeTemplate({ project_id: projectId, template_id: templateId })),
+    addFeeStage: (stage) => run(feeActions.addFeeStage(stage)),
+    updateFeeStage: (stageId, updates) => run(feeActions.updateFeeStage({ ...updates, id: stageId })),
+    deleteFeeStage: (stageId) => run(feeActions.deleteFeeStage({ id: stageId })),
+    completeFeeStage: (stageId) => run(feeActions.completeFeeStage({ id: stageId })),
+    reopenFeeStage: (stageId) => run(feeActions.reopenFeeStage({ id: stageId })),
+    createChangeOrder: (co) => run(coActions.createChangeOrder(co)),
+    updateChangeOrder: (id, updates) => run(coActions.updateChangeOrder({ ...updates, id })),
+    submitChangeOrder: (id) => run(coActions.submitChangeOrder({ id })),
+    decideChangeOrder: (id, approve, signer, note) => run(coActions.decideChangeOrder({ id, approve, signer, note })),
 
     // BOQ Actions
     addBOQVersion: (boq) =>

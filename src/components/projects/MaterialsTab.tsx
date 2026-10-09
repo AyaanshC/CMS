@@ -56,7 +56,7 @@ export default function MaterialsTab({ materials }: { materials: MaterialOption[
           </div>
           <h3 className="text-lg font-semibold text-foreground mb-1">No Materials Selected</h3>
           <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
-            You haven't added any material options or moodboard items for this project yet.
+            You haven&apos;t added any material options or moodboard items for this project yet.
           </p>
           <Button className="gap-2">
             <Plus className="w-4 h-4" /> Add from Library

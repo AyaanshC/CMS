@@ -14,7 +14,7 @@ import {
 import { useAppStore } from "@/lib/store";
 import { formatCurrency, getStatusColor, formatShortDate, isOverdue, cn } from "@/lib/utils";
 import Link from "next/link";
-import { PROJECT_STAGES, PROJECT_STAGE_LABELS, ProjectStatus } from "@/types";
+import { PROJECT_STAGES, PROJECT_STAGE_LABELS, ProjectStatus, type Project } from "@/types";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 
 type View = "kanban" | "list";
@@ -41,7 +41,7 @@ const STAGE_HEADER_COLORS: Record<ProjectStatus, string> = {
   closed: "bg-green-50 text-green-700",
 };
 
-function ProjectCard({ project }: { project: any }) {
+function ProjectCard({ project }: { project: Project }) {
   const overdue = project.estimated_end_date && isOverdue(project.estimated_end_date);
   return (
     <Link href={`/projects/${project.id}`}>
@@ -86,7 +86,7 @@ export default function ProjectsPage() {
   const projectsByStage = PROJECT_STAGES.reduce((acc, stage) => {
     acc[stage] = filtered.filter((p) => p.status === stage);
     return acc;
-  }, {} as Record<ProjectStatus, any>);
+  }, {} as Record<ProjectStatus, Project[]>);
 
   const activeStages = PROJECT_STAGES.filter((s) => s !== "closed" && projectsByStage[s].length > 0 || s !== "closed");
 
@@ -140,7 +140,7 @@ export default function ProjectsPage() {
                   </span>
                 </div>
                 <div>
-                  {projectsByStage[stage].map((project: any) => (
+                  {projectsByStage[stage].map((project) => (
                     <ProjectCard key={project.id} project={project} />
                   ))}
                   {projectsByStage[stage].length === 0 && (

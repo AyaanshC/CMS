@@ -35,11 +35,13 @@ export default function ProjectHeader({
   openSnags,
   totalInvoiced,
   totalPaid,
+  onSelectTab,
 }: {
   project: Project;
   openSnags: number;
   totalInvoiced: number;
   totalPaid: number;
+  onSelectTab?: (tab: string) => void;
 }) {
   const { advanceProjectStage } = useAppStore();
   const [stageConfirmModalOpen, setStageConfirmModalOpen] = useState(false);
@@ -70,6 +72,15 @@ export default function ProjectHeader({
                   {PROJECT_STAGE_LABELS[project.status]}
                 </Badge>
                 <span className="text-sm text-muted-foreground">{project.reference_number}</span>
+                {!project.fee_basis && (
+                  <Badge
+                    variant="outline"
+                    className="border-amber-400 bg-amber-50 text-amber-800 text-[11px] cursor-pointer hover:bg-amber-100"
+                    onClick={() => onSelectTab?.("fees")}
+                  >
+                    Set up fees
+                  </Badge>
+                )}
                 {openSnags > 0 && (
                   <Badge variant="destructive" className="gap-1 text-[11px]">
                     <AlertTriangle className="w-3 h-3" />

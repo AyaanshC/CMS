@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  clientInput, invoiceInput, lineItemInput, messageInput, paymentInput, projectInput, taskInput,
+  changeOrderInput, clientInput, feeStageUpdate, feeTermsInput, invoiceInput, lineItemInput, messageInput,
+  paymentInput, projectInput, taskInput,
 } from "./schemas";
 
 const P = "a1000000-0000-4000-8000-000000000001";
@@ -45,5 +46,22 @@ describe("schemas", () => {
 
   it("checks project dates are ordered", () => {
     expect(projectInput.safeParse({ client_id: P, name: "X", start_date: "2026-10-10", estimated_end_date: "2026-10-01" }).success).toBe(false);
+  });
+});
+
+describe("phase 1 schemas", () => {
+  it("requires rate and cost for percent-of-cost fees", () => {
+    expect(feeTermsInput.safeParse({ id: P, fee_basis: "percent_of_cost", fee_rate: 8 }).success).toBe(false);
+    expect(feeTermsInput.safeParse({ id: P, fee_basis: "percent_of_cost", fee_rate: 8, estimated_construction_cost: 1e7 }).success).toBe(true);
+  });
+  it("requires an amount for lump-sum fees", () => {
+    expect(feeTermsInput.safeParse({ id: P, fee_basis: "lump_sum" }).success).toBe(false);
+  });
+  it("bounds stage percentages", () => {
+    expect(feeStageUpdate.safeParse({ id: P, percent: 0 }).success).toBe(false);
+    expect(feeStageUpdate.safeParse({ id: P, percent: 101 }).success).toBe(false);
+  });
+  it("rejects a fee on a design-error change order", () => {
+    expect(changeOrderInput.safeParse({ project_id: P, title: "x", reason: "design_error", fee_impact: 10 }).success).toBe(false);
   });
 });

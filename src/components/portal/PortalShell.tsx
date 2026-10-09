@@ -37,6 +37,7 @@ export function PortalShell({
   const NAV_ITEMS = [
     { href: `/portal/${slug}`, label: "Overview", icon: Home },
     { href: `/portal/${slug}/boq`, label: "BOQ & Estimates", icon: FileText },
+    { href: `/portal/${slug}/changes`, label: "Change Orders", icon: FileText },
     { href: `/portal/${slug}/snags`, label: "Snag List", icon: CheckSquare },
     { href: `/portal/${slug}/files`, label: "Files & Designs", icon: Folder },
     { href: `/portal/${slug}/messages`, label: "Messages", icon: MessageSquare },

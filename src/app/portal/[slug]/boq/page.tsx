@@ -4,17 +4,13 @@ import { useState } from "react";
 import { use, Suspense } from "react";
 import { useAppStore } from "@/lib/store";
 import { formatCurrency, formatDate, cn } from "@/lib/utils";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { ApprovalPanel } from "@/components/approvals/ApprovalPanel";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  CheckCircle2, XCircle, FileText, Download, ChevronDown, ChevronRight,
-  ShieldCheck, AlertCircle, Building2, Check
+  XCircle, FileText, Download, ChevronDown, ChevronRight,
+  ShieldCheck, AlertCircle,
 } from "lucide-react";
 
 export default function PortalBOQPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -41,16 +37,6 @@ function PortalBOQContent({ params }: { params: Promise<{ slug: string }> }) {
     sec_3: true,
   });
 
-  // Approval Modal State
-  const [showApproveModal, setShowApproveModal] = useState(false);
-  const [signerName, setSignerName] = useState(client?.full_name || "");
-  const [approvalNote, setApprovalNote] = useState("");
-  const [agreedTerms, setAgreedTerms] = useState(false);
-
-  // Rejection Modal State
-  const [showRejectModal, setShowRejectModal] = useState(false);
-  const [rejectionReason, setRejectionReason] = useState("");
-
   if (!project) {
     return <div className="p-8 text-center text-muted-foreground">Project not found.</div>;
   }
@@ -69,18 +55,6 @@ function PortalBOQContent({ params }: { params: Promise<{ slug: string }> }) {
 
   const toggleSection = (secId: string) => {
     setExpandedSections((prev) => ({ ...prev, [secId]: !prev[secId] }));
-  };
-
-  const handleApprove = () => {
-    if (!agreedTerms) return;
-    approveBOQVersion(activeBOQ.id, signerName || client?.full_name || "Client", approvalNote);
-    setShowApproveModal(false);
-  };
-
-  const handleReject = () => {
-    if (!rejectionReason.trim()) return;
-    rejectBOQVersion(activeBOQ.id, client?.full_name || "Client", rejectionReason);
-    setShowRejectModal(false);
   };
 
   const handlePrint = () => {
@@ -108,27 +82,6 @@ function PortalBOQContent({ params }: { params: Promise<{ slug: string }> }) {
             <Download className="w-4 h-4" />
             Print / Save PDF
           </Button>
-
-          {activeBOQ.status === "submitted" && (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowRejectModal(true)}
-                className="text-red-600 border-red-200 hover:bg-red-50"
-              >
-                Request Changes
-              </Button>
-              <Button
-                size="sm"
-                onClick={() => setShowApproveModal(true)}
-                className="gradient-primary border-0 gap-1.5 text-white"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                Approve BOQ
-              </Button>
-            </>
-          )}
         </div>
       </div>
 
@@ -149,26 +102,13 @@ function PortalBOQContent({ params }: { params: Promise<{ slug: string }> }) {
           </CardContent>
         </Card>
       ) : activeBOQ.status === "submitted" ? (
-        <Card className="border-indigo-200 bg-indigo-50/70 shadow-sm">
-          <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <AlertCircle className="w-6 h-6 text-indigo-600 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-semibold text-indigo-900">Awaiting Your Approval</p>
-                <p className="text-xs text-indigo-700">
-                  Please review the items and pricing below and confirm your approval to proceed with execution.
-                </p>
-              </div>
-            </div>
-            <Button
-              size="sm"
-              onClick={() => setShowApproveModal(true)}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white border-0 self-start sm:self-auto"
-            >
-              Review & Sign
-            </Button>
-          </CardContent>
-        </Card>
+        <ApprovalPanel
+          title="Approve this estimate"
+          confirmText="I confirm that I have reviewed the items, quantities and rates in this estimate and approve them for site execution."
+          defaultSigner={client?.full_name ?? ""}
+          onApprove={(signer, note) => approveBOQVersion(activeBOQ.id, signer, note)}
+          onReject={(signer, reason) => rejectBOQVersion(activeBOQ.id, signer, reason)}
+        />
       ) : activeBOQ.status === "rejected" ? (
         <Card className="border-red-200 bg-red-50/70 shadow-sm">
           <CardContent className="p-4 flex items-center gap-3">
@@ -284,116 +224,6 @@ function PortalBOQContent({ params }: { params: Promise<{ slug: string }> }) {
           );
         })}
       </div>
-
-      {/* Approve BOQ Modal */}
-      <Dialog open={showApproveModal} onOpenChange={setShowApproveModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ShieldCheck className="w-5 h-5 text-emerald-600" />
-              Approve BOQ v{activeBOQ.version_number}
-            </DialogTitle>
-            <DialogDescription>
-              By approving, you authorize {studioSettings.name} to begin material procurement and carpentry according to these specifications.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div className="p-3 bg-slate-50 rounded-lg border border-border text-xs space-y-1">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Value (Inc. GST):</span>
-                <span className="font-bold text-foreground">{formatCurrency(activeBOQ.grand_total)}</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-foreground block mb-1">Your Full Name (Digital Signature)</label>
-              <Input
-                value={signerName}
-                onChange={(e) => setSignerName(e.target.value)}
-                placeholder="Full Name"
-              />
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-foreground block mb-1">Any Notes / Approval Remarks (Optional)</label>
-              <Textarea
-                value={approvalNote}
-                onChange={(e) => setApprovalNote(e.target.value)}
-                placeholder="e.g. Approved as per final layout discussion on Saturday."
-                rows={2}
-              />
-            </div>
-
-            <label className="flex items-start gap-2 cursor-pointer pt-1">
-              <input
-                type="checkbox"
-                checked={agreedTerms}
-                onChange={(e) => setAgreedTerms(e.target.checked)}
-                className="mt-0.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-              />
-              <span className="text-xs text-muted-foreground leading-snug">
-                I confirm that I have reviewed the items, quantities, and rates in this estimate and approve them for site execution.
-              </span>
-            </label>
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setShowApproveModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              disabled={!agreedTerms || !signerName.trim()}
-              onClick={handleApprove}
-              className="gradient-primary border-0 text-white gap-1.5"
-            >
-              <Check className="w-4 h-4" /> Confirm Approval
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Request Changes Modal */}
-      <Dialog open={showRejectModal} onOpenChange={setShowRejectModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-600">
-              <AlertCircle className="w-5 h-5 text-red-600" />
-              Request BOQ Changes
-            </DialogTitle>
-            <DialogDescription>
-              Let the design team know what needs adjustments or alternatives before you approve.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-2">
-            <div>
-              <label className="text-xs font-semibold text-foreground block mb-1">
-                Requested Adjustments & Feedback *
-              </label>
-              <Textarea
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                placeholder="e.g., Please change the master bedroom wardrobe veneer to laminate option, and review kitchen pull-out hardware."
-                rows={4}
-              />
-            </div>
-          </div>
-
-          <DialogFooter className="gap-2 sm:gap-0">
-            <Button variant="outline" onClick={() => setShowRejectModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={!rejectionReason.trim()}
-              onClick={handleReject}
-            >
-              Submit Feedback
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

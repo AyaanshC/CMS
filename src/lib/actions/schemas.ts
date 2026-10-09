@@ -210,3 +210,61 @@ export const settingsInput = z.object({
 export const staffInviteInput = z.object({ full_name: text(120), email: z.email(), title: optText(80), roles: z.array(appRole).min(1) });
 export const staffRolesInput = z.object({ user_id: id, roles: z.array(appRole).min(1) });
 export const portalInviteInput = z.object({ client_id: id, full_name: text(120), email: z.email() });
+
+// Phase 1 ---------------------------------------------------------------------------
+export const feeTermsInput = z
+  .object({
+    id,
+    engagement_type: z.enum(["design_only", "design_and_execution"]).optional(),
+    discipline: z.enum(["architecture", "interiors", "both"]).optional(),
+    fee_basis: z.enum(["percent_of_cost", "lump_sum", "per_sqft", "hourly"]),
+    fee_rate: money.optional().nullable(),
+    fee_amount: money.optional().nullable(),
+    estimated_construction_cost: money.optional().nullable(),
+  })
+  .refine((t) => t.fee_basis !== "percent_of_cost" || (t.fee_rate != null && t.estimated_construction_cost != null), {
+    message: "Enter the fee % and estimated construction cost", path: ["fee_rate"],
+  })
+  .refine((t) => t.fee_basis !== "per_sqft" || t.fee_rate != null, { message: "Enter the rate per sqft", path: ["fee_rate"] })
+  .refine((t) => t.fee_basis !== "lump_sum" || t.fee_amount != null, { message: "Enter the lump-sum fee", path: ["fee_amount"] })
+  .refine((t) => t.fee_basis !== "hourly" || t.fee_rate != null, { message: "Enter the hourly rate", path: ["fee_rate"] });
+
+const checklist = z.array(z.object({ label: text(200), done: z.boolean() })).max(20);
+export const feeStageUpdate = z.object({
+  id,
+  name: text(120).optional(),
+  percent: z.coerce.number().gt(0).max(100).optional(),
+  percent_complete: z.coerce.number().int().min(0).max(100).optional(),
+  status: z.enum(["not_started", "in_progress"]).optional(),
+  planned_start: optDate,
+  planned_end: optDate,
+  checklist: checklist.optional(),
+});
+export const feeStageCreate = z.object({
+  project_id: id,
+  kind: z.enum(["design_fee", "execution"]),
+  name: text(120),
+  percent: z.coerce.number().gt(0).max(100),
+  sort_order: z.coerce.number().int().default(99),
+  checklist: checklist.default([]),
+});
+export const applyTemplateInput = z.object({ project_id: id, template_id: id });
+
+export const changeOrderInput = z
+  .object({
+    project_id: id,
+    title: text(150),
+    description: optText(2000),
+    reason: z.enum(["client_request", "site_condition", "regulatory", "design_error"]),
+    fee_impact: money.default(0),
+    cost_impact: z.coerce.number().finite().default(0),
+    schedule_impact_days: z.coerce.number().int().min(-365).max(365).default(0),
+  })
+  .refine((c) => c.reason !== "design_error" || c.fee_impact === 0, { message: "A design error cannot be charged to the client", path: ["fee_impact"] });
+export const changeOrderUpdate = z.object({
+  id, title: text(150).optional(), description: optText(2000), fee_impact: money.optional(),
+  cost_impact: z.coerce.number().finite().optional(), schedule_impact_days: z.coerce.number().int().optional(),
+});
+export const changeOrderDecision = z.object({
+  id, approve: z.boolean(), signer: z.string().trim().max(120).default(""), note: z.string().trim().max(1000).optional().nullable(),
+});

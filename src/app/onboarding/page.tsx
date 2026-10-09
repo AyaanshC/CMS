@@ -134,7 +134,7 @@ export default function OnboardingPage() {
               <div>
                 <h2 className="text-xl font-bold text-foreground">Tell us about you & your home</h2>
                 <p className="text-xs text-muted-foreground mt-1">
-                  We'll customize your interior design consultation based on these details.
+                  We&apos;ll customize your interior design consultation based on these details.
                 </p>
               </div>
 

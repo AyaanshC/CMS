@@ -145,7 +145,7 @@ export default function AddClientModal({ open, onClose }: AddClientModalProps) {
             
             <div className="space-y-2">
               <Label htmlFor="source" className="text-xs font-semibold">Lead Source <span className="text-muted-foreground font-normal ml-1">(Optional)</span></Label>
-              <Select onValueChange={(v: any) => setForm({ ...form, source: v || "" })}>
+              <Select onValueChange={(v) => setForm({ ...form, source: (v ?? "") as ClientSource })}>
                 <SelectTrigger className="w-full bg-slate-50/50 focus:bg-white">
                   <SelectValue placeholder="How did they hear about you?" />
                 </SelectTrigger>

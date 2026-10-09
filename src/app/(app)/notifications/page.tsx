@@ -147,7 +147,7 @@ export default function NotificationsPage() {
               <div className="py-16 text-center text-muted-foreground">
                 <Bell className="w-10 h-10 opacity-30 mx-auto mb-2" />
                 <p className="text-sm font-semibold text-foreground">No notifications in this filter</p>
-                <p className="text-xs mt-0.5">You're all caught up!</p>
+                <p className="text-xs mt-0.5">You&apos;re all caught up!</p>
               </div>
             )}
           </CardContent>
