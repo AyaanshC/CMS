@@ -8,22 +8,47 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { NotEnoughData } from "@/components/metrics/NotEnoughData";
 import { checklistDone, feeValue, percentTotal } from "@/lib/finance/fees";
+import { projectProfitability } from "@/lib/finance/profitability";
 import { hasAnyRole } from "@/lib/permissions";
 import { useAppStore } from "@/lib/store";
 import { formatCurrency } from "@/lib/utils";
 import { ENGAGEMENT_LABELS, FEE_BASIS_LABELS, type FeeStage, type FeeStageKind, type Project } from "@/types";
 import { FeeSetupDialog } from "./FeeSetupDialog";
+import { ProfitabilityCard } from "./ProfitabilityCard";
 
 export default function FeesTab({ project }: { project: Project }) {
-  const { me, feeStages, feeTemplates, applyFeeTemplate, updateFeeStage, completeFeeStage, reopenFeeStage } = useAppStore();
+  const {
+    me,
+    feeStages,
+    feeTemplates,
+    changeOrders,
+    invoices,
+    projectCosts,
+    expenses,
+    applyFeeTemplate,
+    updateFeeStage,
+    completeFeeStage,
+    reopenFeeStage,
+  } = useAppStore();
   const [setupOpen, setSetupOpen] = useState(false);
   const stages = feeStages.filter((s) => s.project_id === project.id);
   const canEditTerms = hasAnyRole(me, ["owner", "director"]);
+  const canSeeFinance = hasAnyRole(me, ["owner", "director", "project_manager", "finance"]);
+  const useActual = hasAnyRole(me, ["owner", "finance"]);
+  const profit = projectProfitability({
+    stages,
+    changeOrders: changeOrders.filter((c) => c.project_id === project.id),
+    invoices: invoices.filter((i) => i.project_id === project.id),
+    costs: projectCosts.filter((c) => c.project_id === project.id),
+    expenses: expenses.filter((e) => e.project_id === project.id),
+    useActual,
+  });
   const kinds: FeeStageKind[] = project.engagement_type === "design_and_execution" ? ["design_fee", "execution"] : ["design_fee"];
   const fee = feeValue(project);
 
   return (
     <div className="space-y-4">
+      {canSeeFinance && <ProfitabilityCard profit={profit} />}
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-sm">Fee terms</CardTitle>

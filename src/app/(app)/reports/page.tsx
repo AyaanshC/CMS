@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { TopBar } from "@/components/layout/AppSidebar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,11 +21,17 @@ import {
 } from "@/lib/metrics/kpis";
 import { NotEnoughData } from "@/components/metrics/NotEnoughData";
 import { MetricInfo } from "@/components/metrics/MetricInfo";
+import { RiskTable } from "@/components/dashboard/RiskTable";
+import { portfolioRows } from "@/lib/metrics/portfolio";
+import { hasAnyRole } from "@/lib/permissions";
 
 const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4"];
 
 export default function ReportsPage() {
-  const { projects, invoices, payments, expenses, snags, boqs, studioSettings } = useAppStore();
+  const store = useAppStore();
+  const { me, projects, invoices, payments, expenses, snags, boqs, studioSettings } = store;
+  const isOwnerOrFinance = hasAnyRole(me, ["owner", "finance"]);
+  const [useActual, setUseActual] = useState(false);
   const today = localToday();
 
   const liveInvoices = invoices.filter((i) => i.status !== "draft" && i.status !== "cancelled");
@@ -213,68 +220,24 @@ export default function ReportsPage() {
               </CardContent>
             </Card>
 
-            {/* Per-Project Cash Position Table */}
-            <Card className="shadow-sm">
-              <CardHeader className="pb-2">
-                <div className="flex items-center gap-1.5">
-                  <CardTitle className="text-base font-bold">Project cash position</CardTitle>
-                  <MetricInfo formula="Payments collected minus project expenses recorded for each project" />
+            {/* Project profitability and risk */}
+            <div className="space-y-2">
+              {isOwnerOrFinance && (
+                <div className="flex items-center justify-end gap-2 text-xs">
+                  <label htmlFor="toggle-actual" className="text-muted-foreground font-medium cursor-pointer">
+                    Show actual cost
+                  </label>
+                  <input
+                    id="toggle-actual"
+                    type="checkbox"
+                    checked={useActual}
+                    onChange={(e) => setUseActual(e.target.checked)}
+                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                  />
                 </div>
-                <CardDescription className="text-xs">
-                  Realized cash position based on current milestone billings and site logs
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-slate-50/70 text-xs text-muted-foreground text-left">
-                        <th className="py-2.5 px-4">Project</th>
-                        <th className="py-2.5 px-4 text-right">Value (₹)</th>
-                        <th className="py-2.5 px-4 text-right">Collected (₹)</th>
-                        <th className="py-2.5 px-4 text-right">Expenses (₹)</th>
-                        <th className="py-2.5 px-4 text-right">Cash position</th>
-                        <th className="py-2.5 px-4 text-center">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {projects.map((proj) => {
-                        const projInvoices = invoices.filter((i) => i.project_id === proj.id);
-                        const collected = projInvoices.reduce((s, i) => s + i.amount_paid, 0);
-                        const projExpenses = expenses
-                          .filter((e) => e.project_id === proj.id)
-                          .reduce((s, e) => s + e.amount, 0);
-                        const margin = collected - projExpenses;
-
-                        return (
-                          <tr key={proj.id} className="hover:bg-slate-50/50">
-                            <td className="py-3 px-4 font-semibold text-foreground">
-                              {proj.name}
-                              <p className="text-xs font-normal text-muted-foreground">{proj.client_name}</p>
-                            </td>
-                            <td className="py-3 px-4 text-right">{formatCurrency(proj.total_budget || 0)}</td>
-                            <td className="py-3 px-4 text-right font-medium text-emerald-600">
-                              {formatCurrency(collected)}
-                            </td>
-                            <td className="py-3 px-4 text-right text-slate-700">
-                              {formatCurrency(projExpenses)}
-                            </td>
-                            <td className="py-3 px-4 text-right font-bold text-indigo-600">
-                              {formatCurrency(margin)}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              <Badge className={cn("text-[10px] border-0", getStatusColor(proj.status))}>
-                                {proj.status.replace("_", " ")}
-                              </Badge>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
+              )}
+              <RiskTable rows={portfolioRows(store, today, isOwnerOrFinance && useActual)} title="Project profitability and risk" />
+            </div>
           </TabsContent>
 
           {/* TAB 2: Project Delivery */}
