@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(7);
+select plan(8);
 
 create function pg_temp.act_as(uid uuid) returns void language plpgsql as $$
 begin perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true); end $$;
@@ -37,6 +37,9 @@ select pg_temp.act_as('00000000-0000-4000-8000-000000000006');   -- finance
 set local role authenticated;
 select lives_ok($$ select decide_expense((select id from expenses where description = 'Local purchase'), true, null) $$, 'finance approves');
 reset role;
+
+update purchase_orders set expected_delivery = current_date - 2 where id = 'f1000000-0000-4000-8000-000000000020';
+select ok(generate_procurement_alerts(current_date) >= 2, 'late delivery alerts procurement and PM');
 
 select * from finish();
 rollback;
