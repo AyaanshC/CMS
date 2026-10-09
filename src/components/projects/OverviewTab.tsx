@@ -13,7 +13,8 @@ import { formatDate, cn } from "@/lib/utils";
 import type { Project } from "@/types";
 
 export default function OverviewTab({ project }: { project: Project }) {
-  const { addRoomToProject, addMilestoneToProject, toggleMilestone } = useAppStore();
+  const { addRoomToProject, addMilestoneToProject, toggleMilestone, team } = useAppStore();
+  const assignedTeam = team.filter((m) => m.id === project.director_id || m.id === project.manager_id || project.team?.some((pt) => pt.profile_id === m.id));
 
   const [addRoomModalOpen, setAddRoomModalOpen] = useState(false);
   const [roomName, setRoomName] = useState("");
@@ -107,24 +108,23 @@ export default function OverviewTab({ project }: { project: Project }) {
             <CardTitle className="text-sm font-semibold">Assigned Team</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="flex items-center gap-3 py-1">
-              <Avatar className="w-9 h-9">
-                <AvatarFallback className="bg-indigo-100 text-indigo-700 text-xs font-bold">PS</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-xs font-semibold text-foreground">Priya Sharma</p>
-                <p className="text-[10px] text-muted-foreground">Principal Designer</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 py-1">
-              <Avatar className="w-9 h-9">
-                <AvatarFallback className="bg-emerald-100 text-emerald-700 text-xs font-bold">SS</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-xs font-semibold text-foreground">Suresh Site Team</p>
-                <p className="text-[10px] text-muted-foreground">Site Civil Supervisor</p>
-              </div>
-            </div>
+            {assignedTeam.length > 0 ? (
+              assignedTeam.map((m) => (
+                <div key={m.id} className="flex items-center gap-3 py-1">
+                  <Avatar className="w-9 h-9">
+                    <AvatarFallback className="bg-indigo-100 text-indigo-700 text-xs font-bold">
+                      {m.full_name.split(" ").map((n) => n[0]).join("")}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="text-xs font-semibold text-foreground">{m.full_name}</p>
+                    <p className="text-[10px] text-muted-foreground">{m.title || m.roles.join(", ")}</p>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-muted-foreground py-2">No team members assigned yet.</p>
+            )}
           </CardContent>
         </Card>
       </div>

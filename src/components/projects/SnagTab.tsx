@@ -18,7 +18,8 @@ import { AssigneeSelect } from "@/components/team/AssigneeSelect";
 import { PhotoInput } from "@/components/files/PhotoInput";
 
 export default function SnagTab({ projectId, snags, rooms }: { projectId: string; snags: Snag[]; rooms: ProjectRoom[] }) {
-  const { addSnag, updateSnagStatus, addSnagComment, studioSettings, projects } = useAppStore();
+  const { addSnag, updateSnagStatus, addSnagComment, studioSettings, projects, me, team } = useAppStore();
+  const leadDesigner = team.find(m => m.id === project?.director_id) ?? team.find(m => m.roles.includes("architect") || m.roles.includes("owner"));
   const project = projects.find(p => p.id === projectId);
 
   const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
@@ -86,8 +87,8 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
     e.preventDefault();
     if (!commentText.trim() || !selectedSnag) return;
     addSnagComment(selectedSnag.id, {
-      author_id: 'user-1',
-      author_name: 'Priya Sharma',
+      author_id: me.id,
+      author_name: me.full_name,
       content: commentText
     });
     setCommentText("");
@@ -497,7 +498,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
               </div>
               <div>
                 <span className="text-slate-500 block">Lead Designer:</span>
-                <span className="text-slate-700">Priya Sharma</span>
+                <span className="text-slate-700">{leadDesigner?.full_name || studioSettings.name}</span>
               </div>
             </div>
 
@@ -537,7 +538,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
               <div className="space-y-8">
                 <p className="text-slate-500">Design Studio Sign-off:</p>
                 <div className="border-t border-slate-300 pt-1 font-semibold">
-                  Priya Sharma, Principal Designer
+                  {leadDesigner?.full_name || studioSettings.name}, Principal Designer
                 </div>
               </div>
               <div className="space-y-8">
