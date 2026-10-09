@@ -6,11 +6,7 @@ import {
   LayoutDashboard,
   Users,
   FolderKanban,
-  FileSpreadsheet,
-  AlertTriangle,
-  MessageSquare,
   Receipt,
-  FolderOpen,
   CheckSquare,
   BarChart3,
   Settings,
@@ -21,8 +17,6 @@ import {
   Search,
 } from "lucide-react";
 import { cn, getInitials } from "@/lib/utils";
-import { MOCK_USER, MOCK_STUDIO, MOCK_NOTIFICATIONS } from "@/lib/mock-data";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -34,24 +28,30 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useAppStore } from "@/lib/store";
+import { hasAnyRole } from "@/lib/permissions";
+import { signOut } from "@/app/actions/auth";
+import type { AppRole } from "@/types";
 
-const NAV_ITEMS = [
+const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard; roles?: AppRole[] }[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/clients", label: "Clients", icon: Users },
+  { href: "/clients", label: "Clients", icon: Users, roles: ["owner", "director", "project_manager", "admin"] },
   { href: "/projects", label: "Projects", icon: FolderKanban },
-  { href: "/invoices", label: "Invoices", icon: Receipt },
+  { href: "/invoices", label: "Invoices", icon: Receipt, roles: ["owner", "director", "project_manager", "finance"] },
   { href: "/tasks", label: "My Tasks", icon: CheckSquare },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
+  { href: "/reports", label: "Reports", icon: BarChart3, roles: ["owner", "director", "finance"] },
 ];
 
-const BOTTOM_NAV = [
-  { href: "/settings", label: "Settings", icon: Settings },
+const BOTTOM_NAV: typeof NAV_ITEMS = [
+  { href: "/settings", label: "Settings", icon: Settings, roles: ["owner", "director", "project_manager", "procurement"] },
 ];
 
 export function AppSidebar() {
   const pathname = usePathname();
-  const unreadCount = MOCK_NOTIFICATIONS.filter((n) => !n.is_read).length;
+  const { me, studioSettings } = useAppStore();
+
+  const visibleNav = NAV_ITEMS.filter((i) => !i.roles || hasAnyRole(me, i.roles));
+  const visibleBottom = BOTTOM_NAV.filter((i) => !i.roles || hasAnyRole(me, i.roles));
 
   return (
     <aside className="flex flex-col w-60 min-h-screen bg-[hsl(var(--sidebar))] border-r border-[hsl(var(--sidebar-border))]">
@@ -61,7 +61,7 @@ export function AppSidebar() {
           <Building2 className="w-4 h-4 text-white" />
         </div>
         <div className="min-w-0">
-          <p className="text-white text-sm font-semibold truncate">{MOCK_STUDIO.name}</p>
+          <p className="text-white text-sm font-semibold truncate">{studioSettings.name}</p>
           <p className="text-[hsl(var(--sidebar-foreground))] text-xs truncate opacity-60">Studio CMS</p>
         </div>
       </div>
@@ -81,7 +81,7 @@ export function AppSidebar() {
           <p className="text-[10px] uppercase tracking-widest text-[hsl(var(--sidebar-foreground))] opacity-40 px-3 pt-2 pb-1">
             Main Menu
           </p>
-          {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+          {visibleNav.map(({ href, label, icon: Icon }) => {
             const isActive = pathname === href || pathname.startsWith(href + "/");
             return (
               <Link
@@ -104,7 +104,7 @@ export function AppSidebar() {
 
       {/* Bottom section */}
       <div className="border-t border-[hsl(var(--sidebar-border))] p-3 space-y-1">
-        {BOTTOM_NAV.map(({ href, label, icon: Icon }) => {
+        {visibleBottom.map(({ href, label, icon: Icon }) => {
           const isActive = pathname.startsWith(href);
           return (
             <Link
@@ -128,25 +128,28 @@ export function AppSidebar() {
           <DropdownMenuTrigger className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[hsl(var(--sidebar-accent))] transition-all group mt-1 text-left cursor-pointer border-0 bg-transparent outline-none">
             <Avatar className="w-7 h-7 flex-shrink-0">
               <AvatarFallback className="text-xs bg-[hsl(var(--sidebar-primary))] text-white">
-                {getInitials(MOCK_USER.full_name)}
+                {getInitials(me.full_name)}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0 text-left">
-              <p className="text-white text-sm font-medium truncate">{MOCK_USER.full_name}</p>
-              <p className="text-[hsl(var(--sidebar-foreground))] text-xs truncate opacity-60 capitalize">{MOCK_USER.role}</p>
+              <p className="text-white text-sm font-medium truncate">{me.full_name}</p>
+              <p className="text-[hsl(var(--sidebar-foreground))] text-xs truncate opacity-60 capitalize">
+                {me.title ?? me.roles.join(", ")}
+              </p>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-[hsl(var(--sidebar-foreground))] opacity-50 flex-shrink-0" />
           </DropdownMenuTrigger>
           <DropdownMenuContent side="top" align="start" className="w-52">
             <DropdownMenuLabel className="font-normal">
-              <p className="font-semibold text-sm">{MOCK_USER.full_name}</p>
-              <p className="text-xs text-muted-foreground">{MOCK_USER.email}</p>
+              <p className="font-semibold text-sm">{me.full_name}</p>
+              <p className="text-xs text-muted-foreground">{me.email}</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile Settings</DropdownMenuItem>
-            <DropdownMenuItem>Studio Settings</DropdownMenuItem>
+            <DropdownMenuItem>
+              <Link href="/settings" className="w-full cursor-pointer">Studio Settings</Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-destructive">
+            <DropdownMenuItem className="text-destructive cursor-pointer" onClick={() => signOut()}>
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
             </DropdownMenuItem>
@@ -158,7 +161,8 @@ export function AppSidebar() {
 }
 
 export function TopBar({ title, subtitle }: { title: string; subtitle?: string }) {
-  const unreadCount = MOCK_NOTIFICATIONS.filter((n) => !n.is_read).length;
+  const { notifications } = useAppStore();
+  const unreadCount = notifications.filter((n) => !n.is_read).length;
 
   return (
     <header className="flex items-center justify-between px-6 py-4 border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-10">
