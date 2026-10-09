@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(18);
 
 create function pg_temp.act_as(uid uuid) returns void language plpgsql as $$
 begin perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true); end $$;
@@ -78,6 +78,12 @@ set local role authenticated;
 select is(complete_fee_stage((select id from project_fee_stages where project_id = 'a1000000-0000-4000-8000-000000000003' and name = 'Advance')),
   null, 'no invoice when amount is zero');
 reset role;
+
+-- invoice_amount_frozen: changing the fee later does not touch the existing draft
+select pg_temp.act_as('00000000-0000-4000-8000-000000000001');
+update projects set estimated_construction_cost = 30000000 where id = 'a1000000-0000-4000-8000-000000000002';
+select is((select subtotal from invoices where fee_stage_id = (select id from project_fee_stages where project_id = 'a1000000-0000-4000-8000-000000000002' and name = 'Concept')),
+  90000.00::numeric, 'existing invoice unchanged after fee change');
 
 select * from finish();
 rollback;
