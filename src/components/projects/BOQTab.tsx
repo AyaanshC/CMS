@@ -47,36 +47,13 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
         <h3 className="font-semibold mb-1">No BOQ created yet</h3>
         <p className="text-sm text-muted-foreground mb-4">Start by creating your first Bill of Quantities version.</p>
         <Button 
-          onClick={() => {
-            const newBoq: BOQVersion = {
-              id: 'boq-' + Date.now(),
-              project_id: projectId,
-              version_number: 1,
-              version_label: 'Initial Draft Estimate',
-              status: 'draft',
-              grand_total: 450000,
-              gst_percent: 18,
-              discount_amount: 0,
-              designer_fee: 35000,
-              created_by: 'user-1',
-              created_at: new Date().toISOString(),
-              sections: [
-                {
-                  id: 'sec-1',
-                  boq_version_id: 'boq-' + Date.now(),
-                  room_name: 'Living Room',
-                  category: 'Civil & Ceiling',
-                  sort_order: 1,
-                  subtotal: 120000,
-                  items: [
-                    { id: 'item-1', section_id: 'sec-1', description: 'Gypsum false ceiling with cove', unit: 'sqft', quantity: 240, unit_rate: 95, total: 22800, sort_order: 1 },
-                    { id: 'item-2', section_id: 'sec-1', description: 'Wall care putty with primer (2 coats)', unit: 'sqft', quantity: 450, unit_rate: 25, total: 11250, sort_order: 2 }
-                  ]
-                }
-              ]
-            };
-            addBOQVersion(newBoq);
-            setSelectedVersionId(newBoq.id);
+          onClick={async () => {
+            const r = await addBOQVersion({
+              id: "", project_id: projectId, version_number: 1, version_label: "Initial estimate", status: "draft",
+              gst_percent: studioSettings.gst_rate, discount_amount: 0, designer_fee: 0, grand_total: 0, created_at: "",
+              sections: [{ id: "", boq_version_id: "", name: "General", category: "General", sort_order: 1, subtotal: 0, items: [] }],
+            });
+            if (r.ok && r.id) setSelectedVersionId(r.id);
           }}
           className="gradient-primary border-0"
         >
@@ -89,34 +66,33 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
   const handleSubmitForApproval = () => {
     updateBOQVersion(selectedBoq.id, {
       status: "submitted",
-      submitted_at: new Date().toISOString()
     });
   };
 
-  const handleCreateNewVersion = () => {
+  const handleCreateNewVersion = async () => {
     const nextVerNumber = Math.max(...boqVersions.map(v => v.version_number), 0) + 1;
     const clonedSections = (selectedBoq.sections || []).map(sec => ({
       ...sec,
-      id: 'sec-' + Math.random().toString(36).substring(7),
-      items: (sec.items || []).map(it => ({ ...it, id: 'item-' + Math.random().toString(36).substring(7) }))
+      id: "",
+      items: (sec.items || []).map(it => ({ ...it, id: "" }))
     }));
 
     const newVersion: BOQVersion = {
-      id: 'boq-' + Date.now(),
+      id: "",
       project_id: projectId,
       version_number: nextVerNumber,
-      version_label: `Revision v${nextVerNumber} (Post Client Review)`,
-      status: 'draft',
+      version_label: `Revision v${nextVerNumber}`,
+      status: "draft",
       grand_total: selectedBoq.grand_total,
       gst_percent: selectedBoq.gst_percent,
       discount_amount: selectedBoq.discount_amount,
       designer_fee: selectedBoq.designer_fee,
-      created_by: 'user-1',
-      created_at: new Date().toISOString(),
+      created_by: "",
+      created_at: "",
       sections: clonedSections,
     };
-    addBOQVersion(newVersion);
-    setSelectedVersionId(newVersion.id);
+    const r = await addBOQVersion(newVersion);
+    if (r.ok && r.id) setSelectedVersionId(r.id);
   };
 
   const handleAddItemSubmit = (e: React.FormEvent) => {
@@ -127,7 +103,6 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
       unit: newItemForm.unit,
       quantity: Number(newItemForm.quantity),
       unit_rate: Number(newItemForm.unit_rate),
-      total: Number(newItemForm.quantity) * Number(newItemForm.unit_rate),
       remarks: newItemForm.remarks,
       sort_order: 99
     });
@@ -182,6 +157,12 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
           )}
         </div>
       </div>
+
+      {selectedBoq.status !== "draft" && (
+        <div className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+          This version is locked. Create a new version to make changes.
+        </div>
+      )}
 
       {/* BOQ Summary Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -302,7 +283,7 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
             <p className="text-green-700 text-xs mt-0.5">Approved on {formatDate(selectedBoq.approved_at!)}</p>
             {selectedBoq.approval_note && (
               <p className="text-green-800 text-sm mt-2 p-2 bg-green-100/60 rounded italic border-l-2 border-green-400">
-                "{selectedBoq.approval_note}"
+                &ldquo;{selectedBoq.approval_note}&rdquo;
               </p>
             )}
           </div>

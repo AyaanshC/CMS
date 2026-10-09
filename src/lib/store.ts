@@ -7,6 +7,7 @@ import type { ActionResult } from "@/lib/actions/result";
 import type { WorkspaceSnapshot } from "@/lib/data/snapshot";
 import * as clientActions from "@/app/actions/clients";
 import * as projectActions from "@/app/actions/projects";
+import * as boqActions from "@/app/actions/boq";
 import type {
   BOQLineItem, BOQVersion, Client, Expense, Invoice, Message, Project, ProjectMilestone, ProjectRoom,
   ProjectStatus, ProjectUpdate, Snag, SnagComment, SnagStatus, Task, ItemLibraryItem, StudioSettings, ProjectFile,
@@ -25,12 +26,12 @@ export interface AppActions {
   toggleMilestone: (projectId: string, milestoneId: string) => Promise<ActionResult>;
 
   // BOQ Actions
-  addBOQVersion: (boq: BOQVersion) => Promise<ActionResult> | void;
-  updateBOQVersion: (versionId: string, updates: Partial<BOQVersion>) => Promise<ActionResult> | void;
-  approveBOQVersion: (versionId: string, clientName: string, note?: string) => Promise<ActionResult> | void;
-  rejectBOQVersion: (versionId: string, clientName: string, reason: string) => Promise<ActionResult> | void;
-  addLineItemToBOQ: (boqVersionId: string, sectionId: string, item: Omit<BOQLineItem, 'id' | 'section_id'>) => Promise<ActionResult> | void;
-  deleteLineItemFromBOQ: (boqVersionId: string, sectionId: string, itemId: string) => Promise<ActionResult> | void;
+  addBOQVersion: (boq: BOQVersion) => Promise<ActionResult>;
+  updateBOQVersion: (versionId: string, updates: Partial<BOQVersion>) => Promise<ActionResult>;
+  approveBOQVersion: (versionId: string, clientName: string, note?: string) => Promise<ActionResult>;
+  rejectBOQVersion: (versionId: string, clientName: string, reason: string) => Promise<ActionResult>;
+  addLineItemToBOQ: (boqVersionId: string, sectionId: string, item: Omit<BOQLineItem, "id" | "section_id" | "total">) => Promise<ActionResult>;
+  deleteLineItemFromBOQ: (boqVersionId: string, sectionId: string, itemId: string) => Promise<ActionResult>;
 
   // Snag Actions
   addSnag: (snag: Snag) => Promise<ActionResult> | void;
@@ -90,112 +91,24 @@ export const createAppStore = (snapshot: WorkspaceSnapshot) =>
     addMilestoneToProject: (projectId, m) => run(projectActions.addMilestone({ ...m, project_id: projectId })),
     toggleMilestone: (_projectId, milestoneId) => run(projectActions.toggleMilestone({ id: milestoneId })),
 
-  // BOQ Actions
-  addBOQVersion: (boq) => set((state) => ({ boqs: [boq, ...state.boqs] })),
-
-  updateBOQVersion: (versionId, updates) => set((state) => ({
-    boqs: state.boqs.map(b => b.id === versionId ? { ...b, ...updates } : b)
-  })),
-
-  approveBOQVersion: (versionId, clientName, note) => set((state) => {
-    const boq = state.boqs.find(b => b.id === versionId);
-    return {
-      boqs: state.boqs.map(b => b.id === versionId ? {
-        ...b,
-        status: 'approved',
-        approved_at: new Date().toISOString(),
-        approval_note: note || `Approved by ${clientName}`
-      } : b),
-      activityLogs: [{
-        id: 'act-' + Date.now(),
-        project_id: boq?.project_id,
-        title: `BOQ v${boq?.version_number} Approved`,
-        description: `Approved by ${clientName}. ${note ? `Note: "${note}"` : ''}`,
-        type: 'boq_approve',
-        created_at: new Date().toISOString()
-      }, ...state.activityLogs],
-      notifications: [{
-        id: 'notif-' + Date.now(),
-        user_id: 'user-1',
-        type: 'boq_approved',
-        title: `BOQ v${boq?.version_number} Approved!`,
-        body: `${clientName} has approved the BOQ version.`,
-        is_read: false,
-        created_at: new Date().toISOString()
-      }, ...state.notifications]
-    };
-  }),
-
-  rejectBOQVersion: (versionId, clientName, reason) => set((state) => {
-    const boq = state.boqs.find(b => b.id === versionId);
-    return {
-      boqs: state.boqs.map(b => b.id === versionId ? {
-        ...b,
-        status: 'rejected',
-        approval_note: `Rejected by ${clientName}: ${reason}`
-      } : b),
-      activityLogs: [{
-        id: 'act-' + Date.now(),
-        project_id: boq?.project_id,
-        title: `BOQ v${boq?.version_number} Rejected`,
-        description: `Rejected by ${clientName}. Reason: "${reason}"`,
-        type: 'note',
-        created_at: new Date().toISOString()
-      }, ...state.activityLogs],
-      notifications: [{
-        id: 'notif-' + Date.now(),
-        user_id: 'user-1',
-        type: 'boq_rejected',
-        title: `BOQ v${boq?.version_number} Revision Requested`,
-        body: `${clientName} rejected the BOQ: "${reason}"`,
-        is_read: false,
-        created_at: new Date().toISOString()
-      }, ...state.notifications]
-    };
-  }),
-
-  addLineItemToBOQ: (boqVersionId, sectionId, itemData) => set((state) => ({
-    boqs: state.boqs.map(b => {
-      if (b.id !== boqVersionId) return b;
-      const updatedSections = (b.sections || []).map(sec => {
-        if (sec.id !== sectionId) return sec;
-        const newItem: BOQLineItem = {
-          id: 'item-' + Date.now(),
-          section_id: sectionId,
-          description: itemData.description,
-          unit: itemData.unit,
-          quantity: itemData.quantity,
-          unit_rate: itemData.unit_rate,
-          total: itemData.quantity * itemData.unit_rate,
-          remarks: itemData.remarks,
-          sort_order: (sec.items?.length || 0) + 1
-        };
-        const items = [...(sec.items || []), newItem];
-        const subtotal = items.reduce((sum, it) => sum + it.total, 0);
-        return { ...sec, items, subtotal };
-      });
-      const grandSubtotal = updatedSections.reduce((sum, s) => sum + s.subtotal, 0);
-      const gst = (grandSubtotal * (b.gst_percent || 18)) / 100;
-      const grand_total = grandSubtotal + gst + (b.designer_fee || 0) - (b.discount_amount || 0);
-      return { ...b, sections: updatedSections, grand_total };
-    })
-  })),
-
-  deleteLineItemFromBOQ: (boqVersionId, sectionId, itemId) => set((state) => ({
-    boqs: state.boqs.map(b => {
-      if (b.id !== boqVersionId) return b;
-      const updatedSections = (b.sections || []).map(sec => {
-        if (sec.id !== sectionId) return sec;
-        const items = (sec.items || []).filter(i => i.id !== itemId);
-        const subtotal = items.reduce((sum, it) => sum + it.total, 0);
-        return { ...sec, items, subtotal };
-      });
-      const grandSubtotal = updatedSections.reduce((sum, s) => sum + s.subtotal, 0);
-      const gst = (grandSubtotal * (b.gst_percent || 18)) / 100;
-      const grand_total = grandSubtotal + gst + (b.designer_fee || 0) - (b.discount_amount || 0);
-      return { ...b, sections: updatedSections, grand_total };
-    })
-  })),
+    // BOQ Actions
+    addBOQVersion: (boq) =>
+      run(boqActions.createBoqVersion({
+        project_id: boq.project_id,
+        version_label: boq.version_label,
+        gst_percent: boq.gst_percent,
+        discount_amount: boq.discount_amount,
+        designer_fee: boq.designer_fee,
+        sections: boq.sections.map((s, i) => ({
+          name: s.room_name ?? s.name, room_id: s.room_id, category: s.category, sort_order: s.sort_order ?? i,
+          items: s.items.map((it, j) => ({ ...it, sort_order: it.sort_order ?? j })),
+        })),
+      })),
+    updateBOQVersion: (versionId, updates) => run(boqActions.updateBoqVersion({ ...updates, id: versionId })),
+    approveBOQVersion: (versionId, signer, note) => run(boqActions.decideBoq({ boq_id: versionId, approve: true, signer, note })),
+    rejectBOQVersion: (versionId, signer, reason) => run(boqActions.decideBoq({ boq_id: versionId, approve: false, signer, note: reason })),
+    addLineItemToBOQ: (_versionId, sectionId, item) => run(boqActions.addLineItem({ ...item, section_id: sectionId })),
+    deleteLineItemFromBOQ: (_versionId, _sectionId, itemId) => run(boqActions.deleteLineItem({ id: itemId })),
 
   // Snag Actions
   addSnag: (snag) => set((state) => ({ 
