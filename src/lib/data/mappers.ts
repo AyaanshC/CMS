@@ -285,6 +285,8 @@ export function mapActivity(r: Tables<"activity_logs">): ActivityLogItem {
   return { id: r.id, project_id: opt(r.project_id), client_id: opt(r.client_id), title: r.title, description: r.description, type: r.type, created_at: r.created_at };
 }
 
+import { DEFAULT_RISK_WEIGHTS } from "@/lib/metrics/risk";
+
 const EMPTY_BANK = { account_name: "", bank_name: "", account_number: "", ifsc_code: "", upi_id: "" };
 const DEFAULT_ALERTS = { whatsapp_digest: true, payment_reminders: true, snag_fix_alerts: true, boq_ack: true };
 
@@ -295,6 +297,8 @@ export function mapSettings(r: Tables<"firm_settings">): StudioSettings {
     invoice_prefix: r.invoice_prefix, terms_and_conditions: opt(r.terms_and_conditions),
     bank_details: { ...EMPTY_BANK, ...(r.bank_details as object) },
     alert_preferences: { ...DEFAULT_ALERTS, ...(r.alert_preferences as object) },
+    risk_weights: { ...DEFAULT_RISK_WEIGHTS, ...(r.risk_weights as object) },
+    monthly_billing_target: opt(r.monthly_billing_target != null ? Number(r.monthly_billing_target) : null),
   };
 }
 

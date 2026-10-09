@@ -313,14 +313,14 @@ isOneToOne: false
                   ]
                 },"firm_settings": {
                   Row: {
-                    "address": string,"alert_preferences": NonNullable<Json>,"bank_details": NonNullable<Json>,"brand_color": string,"email": string,"gst_rate": number,"gstin": string | null,"id": boolean,"invoice_prefix": string,"logo_url": string,"name": string,"pan": string | null,"phone": string,"tagline": string,"terms_and_conditions": string | null,"updated_at": string
+                    "address": string,"alert_preferences": NonNullable<Json>,"bank_details": NonNullable<Json>,"brand_color": string,"email": string,"gst_rate": number,"gstin": string | null,"id": boolean,"invoice_prefix": string,"logo_url": string,"monthly_billing_target": number | null,"name": string,"pan": string | null,"phone": string,"risk_weights": NonNullable<Json>,"tagline": string,"terms_and_conditions": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "address"?: string,"alert_preferences"?: NonNullable<Json>,"bank_details"?: NonNullable<Json>,"brand_color"?: string,"email"?: string,"gst_rate"?: number,"gstin"?: string | null,"id"?: boolean,"invoice_prefix"?: string,"logo_url"?: string,"name": string,"pan"?: string | null,"phone"?: string,"tagline"?: string,"terms_and_conditions"?: string | null,"updated_at"?: string
+                    "address"?: string,"alert_preferences"?: NonNullable<Json>,"bank_details"?: NonNullable<Json>,"brand_color"?: string,"email"?: string,"gst_rate"?: number,"gstin"?: string | null,"id"?: boolean,"invoice_prefix"?: string,"logo_url"?: string,"monthly_billing_target"?: number | null,"name": string,"pan"?: string | null,"phone"?: string,"risk_weights"?: NonNullable<Json>,"tagline"?: string,"terms_and_conditions"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "address"?: string,"alert_preferences"?: NonNullable<Json>,"bank_details"?: NonNullable<Json>,"brand_color"?: string,"email"?: string,"gst_rate"?: number,"gstin"?: string | null,"id"?: boolean,"invoice_prefix"?: string,"logo_url"?: string,"name"?: string,"pan"?: string | null,"phone"?: string,"tagline"?: string,"terms_and_conditions"?: string | null,"updated_at"?: string
+                    "address"?: string,"alert_preferences"?: NonNullable<Json>,"bank_details"?: NonNullable<Json>,"brand_color"?: string,"email"?: string,"gst_rate"?: number,"gstin"?: string | null,"id"?: boolean,"invoice_prefix"?: string,"logo_url"?: string,"monthly_billing_target"?: number | null,"name"?: string,"pan"?: string | null,"phone"?: string,"risk_weights"?: NonNullable<Json>,"tagline"?: string,"terms_and_conditions"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     
@@ -517,14 +517,14 @@ isOneToOne: false
                   ]
                 },"profiles": {
                   Row: {
-                    "active": boolean,"avatar_url": string | null,"client_id": string | null,"created_at": string,"email": string,"full_name": string,"id": string,"kind": Database["public"]['Enums']["profile_kind"],"phone": string | null,"title": string | null
+                    "active": boolean,"avatar_url": string | null,"billable_target_percent": number,"client_id": string | null,"created_at": string,"email": string,"full_name": string,"id": string,"kind": Database["public"]['Enums']["profile_kind"],"phone": string | null,"rate_band_id": string | null,"title": string | null,"weekly_capacity_hours": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"avatar_url"?: string | null,"client_id"?: string | null,"created_at"?: string,"email": string,"full_name": string,"id": string,"kind"?: Database["public"]['Enums']["profile_kind"],"phone"?: string | null,"title"?: string | null
+                    "active"?: boolean,"avatar_url"?: string | null,"billable_target_percent"?: number,"client_id"?: string | null,"created_at"?: string,"email": string,"full_name": string,"id": string,"kind"?: Database["public"]['Enums']["profile_kind"],"phone"?: string | null,"rate_band_id"?: string | null,"title"?: string | null,"weekly_capacity_hours"?: number
                   }
                   Update: {
-                    "active"?: boolean,"avatar_url"?: string | null,"client_id"?: string | null,"created_at"?: string,"email"?: string,"full_name"?: string,"id"?: string,"kind"?: Database["public"]['Enums']["profile_kind"],"phone"?: string | null,"title"?: string | null
+                    "active"?: boolean,"avatar_url"?: string | null,"billable_target_percent"?: number,"client_id"?: string | null,"created_at"?: string,"email"?: string,"full_name"?: string,"id"?: string,"kind"?: Database["public"]['Enums']["profile_kind"],"phone"?: string | null,"rate_band_id"?: string | null,"title"?: string | null,"weekly_capacity_hours"?: number
                   }
                   Relationships: [
                     {
@@ -532,6 +532,12 @@ isOneToOne: false
       columns: ["client_id"]
 isOneToOne: false
       referencedRelation: "clients"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "profiles_rate_band_id_fkey"
+      columns: ["rate_band_id"]
+isOneToOne: false
+      referencedRelation: "rate_bands"
       referencedColumns: ["id"]
     }
                   ]
@@ -717,6 +723,20 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"rate_bands": {
+                  Row: {
+                    "blended_rate": number,"id": string,"name": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "blended_rate": number,"id"?: string,"name": string
+                  }
+                  Update: {
+                    "blended_rate"?: number,"id"?: string,"name"?: string
+                  }
+                  Relationships: [
+                    
+                  ]
                 },"snag_comments": {
                   Row: {
                     "author_id": string,"content": string | null,"created_at": string,"id": string,"photo_url": string | null,"snag_id": string
@@ -781,6 +801,26 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"staff_cost_rates": {
+                  Row: {
+                    "cost_rate": number,"effective_from": string,"id": string,"profile_id": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "cost_rate": number,"effective_from": string,"id"?: string,"profile_id": string
+                  }
+                  Update: {
+                    "cost_rate"?: number,"effective_from"?: string,"id"?: string,"profile_id"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "staff_cost_rates_profile_id_fkey"
+      columns: ["profile_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"tasks": {
                   Row: {
                     "assigned_to": string | null,"created_at": string,"created_by": string | null,"description": string | null,"due_date": string | null,"id": string,"is_internal": boolean,"priority": Database["public"]['Enums']["task_priority"],"project_id": string,"room_id": string | null,"status": Database["public"]['Enums']["task_status"],"title": string
@@ -816,6 +856,50 @@ isOneToOne: false
       columns: ["room_id"]
 isOneToOne: false
       referencedRelation: "project_rooms"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"timesheet_entries": {
+                  Row: {
+                    "activity": Database["public"]['Enums']["timesheet_activity"],"billable": boolean,"created_at": string,"decided_at": string | null,"decided_by": string | null,"decision_note": string | null,"fee_stage_id": string | null,"hours": number,"id": string,"notes": string | null,"profile_id": string,"project_id": string | null,"status": Database["public"]['Enums']["timesheet_status"],"submitted_at": string | null,"work_date": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "activity": Database["public"]['Enums']["timesheet_activity"],"billable"?: boolean,"created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"fee_stage_id"?: string | null,"hours": number,"id"?: string,"notes"?: string | null,"profile_id"?: string,"project_id"?: string | null,"status"?: Database["public"]['Enums']["timesheet_status"],"submitted_at"?: string | null,"work_date": string
+                  }
+                  Update: {
+                    "activity"?: Database["public"]['Enums']["timesheet_activity"],"billable"?: boolean,"created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"fee_stage_id"?: string | null,"hours"?: number,"id"?: string,"notes"?: string | null,"profile_id"?: string,"project_id"?: string | null,"status"?: Database["public"]['Enums']["timesheet_status"],"submitted_at"?: string | null,"work_date"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "timesheet_entries_decided_by_fkey"
+      columns: ["decided_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timesheet_entries_fee_stage_id_fkey"
+      columns: ["fee_stage_id"]
+isOneToOne: false
+      referencedRelation: "fee_stage_summary"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timesheet_entries_fee_stage_id_fkey"
+      columns: ["fee_stage_id"]
+isOneToOne: false
+      referencedRelation: "project_fee_stages"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timesheet_entries_profile_id_fkey"
+      columns: ["profile_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timesheet_entries_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
       referencedColumns: ["id"]
     }
                   ]
@@ -891,6 +975,9 @@ isOneToOne: false
 "boq_version_status":
 { Args: { "v": string }; Returns: Database["public"]['Enums']["boq_status"]
                            },
+"can_approve_entry":
+{ Args: { "p_entry": string }; Returns: boolean
+                           },
 "can_bill_project":
 { Args: { "p": string }; Returns: boolean
                            },
@@ -915,8 +1002,14 @@ isOneToOne: false
 "complete_fee_stage":
 { Args: { "p_stage": string }; Returns: string
                            },
+"cost_rate_on":
+{ Args: { "p_date": string,"p_profile": string }; Returns: number
+                           },
 "create_boq_version":
 { Args: { "p": Json }; Returns: string
+                           },
+"decide_timesheet_entries":
+{ Args: { "p_approve": boolean,"p_ids": (string)[],"p_note": string }; Returns: number
                            },
 "execution_base":
 { Args: { "p": string }; Returns: number
@@ -928,6 +1021,9 @@ isOneToOne: false
 { Args: { "d": string }; Returns: string
                            },
 "generate_alerts":
+{ Args: { "p_today"?: string }; Returns: number
+                           },
+"generate_delivery_alerts":
 { Args: { "p_today"?: string }; Returns: number
                            },
 "has_role":
@@ -945,6 +1041,9 @@ isOneToOne: false
 "log_activity":
 { Args: { "p_client": string,"p_desc": string,"p_project": string,"p_title": string,"p_type": Database["public"]['Enums']["activity_type"] }; Returns: undefined
                            },
+"manages_project":
+{ Args: { "p": string }; Returns: boolean
+                           },
 "my_client_id":
 { Args: Record<PropertyKey, never>; Returns: string
                            },
@@ -957,6 +1056,11 @@ isOneToOne: false
 "notify_project_staff":
 { Args: { "p_body": string,"p_link": string,"p_project": string,"p_title": string,"p_type": string }; Returns: undefined
                            },
+"project_cost_rollup":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "actual_cost": number,"billable_hours": number,"blended_cost": number,"fee_stage_id": string,"hours": number,"project_id": string,"unrated_hours": number
+            }[]
+                           },
 "project_fee_value":
 { Args: { "p": string }; Returns: number
                            },
@@ -965,6 +1069,9 @@ isOneToOne: false
                            },
 "reopen_fee_stage":
 { Args: { "p_stage": string }; Returns: undefined
+                           },
+"save_timesheet_week":
+{ Args: { "p_rows": Json,"p_week": string }; Returns: number
                            },
 "section_version":
 { Args: { "s": string }; Returns: string
@@ -975,18 +1082,26 @@ isOneToOne: false
 "snag_project":
 { Args: { "s": string }; Returns: string
                            },
+"staff_week_hours":
+{ Args: { "p_from": string,"p_to": string }; Returns: {
+              "billable_hours": number,"profile_id": string,"submitted": boolean,"total_hours": number,"week_start": string
+            }[]
+                           },
 "storage_project_id":
 { Args: { "object_name": string }; Returns: string
                            },
 "submit_onboarding":
 { Args: { "p": Json }; Returns: string
                            },
+"submit_timesheet_week":
+{ Args: { "p_week": string }; Returns: number
+                           },
 "toggle_milestone":
 { Args: { "p_id": string }; Returns: undefined
                            }
           }
           Enums: {
-            "activity_type": "stage_change"|"boq_submit"|"boq_approve"|"snag_raised"|"snag_closed"|"payment_received"|"note","app_role": "owner"|"director"|"project_manager"|"architect"|"site_supervisor"|"finance"|"admin"|"procurement","boq_status": "draft"|"submitted"|"approved"|"rejected","change_order_reason": "client_request"|"site_condition"|"regulatory"|"design_error","change_order_status": "draft"|"submitted"|"approved"|"rejected","client_source": "referral"|"instagram"|"website"|"walk-in"|"other","discipline": "architecture"|"interiors"|"both","engagement_type": "design_only"|"design_and_execution","fee_basis": "percent_of_cost"|"lump_sum"|"per_sqft"|"hourly","fee_stage_kind": "design_fee"|"execution","fee_stage_status": "not_started"|"in_progress"|"complete","invoice_status": "draft"|"sent"|"cancelled","material_category": "Flooring"|"Walls"|"Ceiling"|"Furniture"|"Lighting"|"Hardware","payment_mode": "bank_transfer"|"upi"|"cheque"|"cash","profile_kind": "staff"|"client"|"vendor","project_status": "lead"|"consultation"|"design"|"boq_approval"|"execution"|"snag"|"handover"|"closed","project_type": "residential"|"commercial"|"office","snag_priority": "critical"|"major"|"minor","snag_status": "raised"|"assigned"|"in_progress"|"fixed"|"verified"|"closed","task_priority": "low"|"medium"|"high"|"urgent","task_status": "todo"|"in_progress"|"done"
+            "activity_type": "stage_change"|"boq_submit"|"boq_approve"|"snag_raised"|"snag_closed"|"payment_received"|"note","app_role": "owner"|"director"|"project_manager"|"architect"|"site_supervisor"|"finance"|"admin"|"procurement","boq_status": "draft"|"submitted"|"approved"|"rejected","change_order_reason": "client_request"|"site_condition"|"regulatory"|"design_error","change_order_status": "draft"|"submitted"|"approved"|"rejected","client_source": "referral"|"instagram"|"website"|"walk-in"|"other","discipline": "architecture"|"interiors"|"both","engagement_type": "design_only"|"design_and_execution","fee_basis": "percent_of_cost"|"lump_sum"|"per_sqft"|"hourly","fee_stage_kind": "design_fee"|"execution","fee_stage_status": "not_started"|"in_progress"|"complete","invoice_status": "draft"|"sent"|"cancelled","material_category": "Flooring"|"Walls"|"Ceiling"|"Furniture"|"Lighting"|"Hardware","payment_mode": "bank_transfer"|"upi"|"cheque"|"cash","profile_kind": "staff"|"client"|"vendor","project_status": "lead"|"consultation"|"design"|"boq_approval"|"execution"|"snag"|"handover"|"closed","project_type": "residential"|"commercial"|"office","snag_priority": "critical"|"major"|"minor","snag_status": "raised"|"assigned"|"in_progress"|"fixed"|"verified"|"closed","task_priority": "low"|"medium"|"high"|"urgent","task_status": "todo"|"in_progress"|"done","timesheet_activity": "design"|"drafting"|"visualisation"|"site_visit"|"client_meeting"|"coordination"|"approvals"|"admin"|"business_development"|"training"|"leave","timesheet_status": "draft"|"submitted"|"approved"|"rejected"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -1106,7 +1221,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "activity_type": ["stage_change", "boq_submit", "boq_approve", "snag_raised", "snag_closed", "payment_received", "note"],"app_role": ["owner", "director", "project_manager", "architect", "site_supervisor", "finance", "admin", "procurement"],"boq_status": ["draft", "submitted", "approved", "rejected"],"change_order_reason": ["client_request", "site_condition", "regulatory", "design_error"],"change_order_status": ["draft", "submitted", "approved", "rejected"],"client_source": ["referral", "instagram", "website", "walk-in", "other"],"discipline": ["architecture", "interiors", "both"],"engagement_type": ["design_only", "design_and_execution"],"fee_basis": ["percent_of_cost", "lump_sum", "per_sqft", "hourly"],"fee_stage_kind": ["design_fee", "execution"],"fee_stage_status": ["not_started", "in_progress", "complete"],"invoice_status": ["draft", "sent", "cancelled"],"material_category": ["Flooring", "Walls", "Ceiling", "Furniture", "Lighting", "Hardware"],"payment_mode": ["bank_transfer", "upi", "cheque", "cash"],"profile_kind": ["staff", "client", "vendor"],"project_status": ["lead", "consultation", "design", "boq_approval", "execution", "snag", "handover", "closed"],"project_type": ["residential", "commercial", "office"],"snag_priority": ["critical", "major", "minor"],"snag_status": ["raised", "assigned", "in_progress", "fixed", "verified", "closed"],"task_priority": ["low", "medium", "high", "urgent"],"task_status": ["todo", "in_progress", "done"]
+            "activity_type": ["stage_change", "boq_submit", "boq_approve", "snag_raised", "snag_closed", "payment_received", "note"],"app_role": ["owner", "director", "project_manager", "architect", "site_supervisor", "finance", "admin", "procurement"],"boq_status": ["draft", "submitted", "approved", "rejected"],"change_order_reason": ["client_request", "site_condition", "regulatory", "design_error"],"change_order_status": ["draft", "submitted", "approved", "rejected"],"client_source": ["referral", "instagram", "website", "walk-in", "other"],"discipline": ["architecture", "interiors", "both"],"engagement_type": ["design_only", "design_and_execution"],"fee_basis": ["percent_of_cost", "lump_sum", "per_sqft", "hourly"],"fee_stage_kind": ["design_fee", "execution"],"fee_stage_status": ["not_started", "in_progress", "complete"],"invoice_status": ["draft", "sent", "cancelled"],"material_category": ["Flooring", "Walls", "Ceiling", "Furniture", "Lighting", "Hardware"],"payment_mode": ["bank_transfer", "upi", "cheque", "cash"],"profile_kind": ["staff", "client", "vendor"],"project_status": ["lead", "consultation", "design", "boq_approval", "execution", "snag", "handover", "closed"],"project_type": ["residential", "commercial", "office"],"snag_priority": ["critical", "major", "minor"],"snag_status": ["raised", "assigned", "in_progress", "fixed", "verified", "closed"],"task_priority": ["low", "medium", "high", "urgent"],"task_status": ["todo", "in_progress", "done"],"timesheet_activity": ["design", "drafting", "visualisation", "site_visit", "client_meeting", "coordination", "approvals", "admin", "business_development", "training", "leave"],"timesheet_status": ["draft", "submitted", "approved", "rejected"]
           }
         }
 } as const

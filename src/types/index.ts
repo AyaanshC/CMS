@@ -568,6 +568,11 @@ export interface MaterialOption {
 
 // --- Studio Settings ---
 
+export interface RiskWeights {
+  fee_burn: number; overdue: number; schedule: number; cost_variance: number;
+  approvals: number; critical_snags: number; pending_changes: number;
+}
+
 export interface StudioSettings {
   name: string;
   tagline: string;
@@ -594,6 +599,8 @@ export interface StudioSettings {
     snag_fix_alerts: boolean;
     boq_ack: boolean;
   };
+  risk_weights: RiskWeights;
+  monthly_billing_target?: number;
 }
 
 // --- Activity Log ---
