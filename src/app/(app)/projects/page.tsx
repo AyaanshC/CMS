@@ -15,6 +15,7 @@ import { useAppStore } from "@/lib/store";
 import { formatCurrency, getStatusColor, formatShortDate, isOverdue, cn } from "@/lib/utils";
 import Link from "next/link";
 import { PROJECT_STAGES, PROJECT_STAGE_LABELS, ProjectStatus } from "@/types";
+import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 
 type View = "kanban" | "list";
 
@@ -123,10 +124,7 @@ export default function ProjectsPage() {
                 </button>
               ))}
             </div>
-            <Button className="gap-2 gradient-primary border-0">
-              <Plus className="w-4 h-4" />
-              New Project
-            </Button>
+            <NewProjectDialog />
           </div>
         </div>
 

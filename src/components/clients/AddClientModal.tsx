@@ -36,26 +36,17 @@ export default function AddClientModal({ open, onClose }: AddClientModalProps) {
     notes: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    addClient({
-      id: Math.random().toString(36).substring(7),
-      full_name: form.full_name,
-      email: form.email,
-      phone: form.phone,
+    const r = await addClient({
+      full_name: form.full_name, email: form.email, phone: form.phone, whatsapp: form.whatsapp, address: form.address,
       source: (form.source as ClientSource) || "other",
-      budget_min: form.budget_min ? parseInt(form.budget_min) : undefined,
-      budget_max: form.budget_max ? parseInt(form.budget_max) : undefined,
-      notes: form.notes,
-      tags: ["New"],
-      active_projects: 0,
-      total_value: 0,
-      created_at: new Date().toISOString(),
+      budget_min: form.budget_min ? Number(form.budget_min) : undefined,
+      budget_max: form.budget_max ? Number(form.budget_max) : undefined,
+      notes: form.notes, tags: ["New"],
     });
-    setForm({
-      full_name: "", email: "", phone: "", whatsapp: "", 
-      address: "", source: "", budget_min: "", budget_max: "", notes: ""
-    });
+    if (!r.ok) return;
+    setForm({ full_name: "", email: "", phone: "", whatsapp: "", address: "", source: "", budget_min: "", budget_max: "", notes: "" });
     onClose();
   };
 

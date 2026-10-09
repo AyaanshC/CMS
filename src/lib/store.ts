@@ -5,6 +5,8 @@ import { createStore, useStore, type StoreApi } from "zustand";
 import { toast } from "@/components/ui/toast";
 import type { ActionResult } from "@/lib/actions/result";
 import type { WorkspaceSnapshot } from "@/lib/data/snapshot";
+import * as clientActions from "@/app/actions/clients";
+import * as projectActions from "@/app/actions/projects";
 import type {
   BOQLineItem, BOQVersion, Client, Expense, Invoice, Message, Project, ProjectMilestone, ProjectRoom,
   ProjectStatus, ProjectUpdate, Snag, SnagComment, SnagStatus, Task, ItemLibraryItem, StudioSettings, ProjectFile,
@@ -12,14 +14,15 @@ import type {
 
 export interface AppActions {
   // Client Actions
-  addClient: (client: Client) => Promise<ActionResult> | void;
-  updateClient: (id: string, updates: Partial<Client>) => Promise<ActionResult> | void;
+  addClient: (client: Partial<Client>) => Promise<ActionResult>;
+  updateClient: (id: string, updates: Partial<Client>) => Promise<ActionResult>;
 
   // Project Actions
-  advanceProjectStage: (projectId: string, stage: ProjectStatus) => Promise<ActionResult> | void;
-  addRoomToProject: (projectId: string, room: Omit<ProjectRoom, 'id' | 'project_id'>) => Promise<ActionResult> | void;
-  addMilestoneToProject: (projectId: string, milestone: Omit<ProjectMilestone, 'id' | 'project_id'>) => Promise<ActionResult> | void;
-  toggleMilestone: (projectId: string, milestoneId: string) => Promise<ActionResult> | void;
+  createProject: (project: Partial<Project>) => Promise<ActionResult>;
+  advanceProjectStage: (projectId: string, stage: ProjectStatus) => Promise<ActionResult>;
+  addRoomToProject: (projectId: string, room: Omit<ProjectRoom, "id" | "project_id">) => Promise<ActionResult>;
+  addMilestoneToProject: (projectId: string, milestone: Omit<ProjectMilestone, "id" | "project_id">) => Promise<ActionResult>;
+  toggleMilestone: (projectId: string, milestoneId: string) => Promise<ActionResult>;
 
   // BOQ Actions
   addBOQVersion: (boq: BOQVersion) => Promise<ActionResult> | void;
@@ -79,80 +82,13 @@ export const createAppStore = (snapshot: WorkspaceSnapshot) =>
   createStore<AppState>()((set, _get) => ({
     ...snapshot,
 
-    addClient: (client) => set((state) => ({ 
-    clients: [client, ...state.clients],
-    activityLogs: [{
-      id: 'act-' + Date.now(),
-      client_id: client.id,
-      title: 'New Client Created',
-      description: `Client profile for ${client.full_name} created.`,
-      type: 'note',
-      created_at: new Date().toISOString()
-    }, ...state.activityLogs]
-  })),
-
-  updateClient: (id, updates) => set((state) => ({
-    clients: state.clients.map(c => c.id === id ? { ...c, ...updates } : c)
-  })),
-
-  // Project Actions
-  advanceProjectStage: (projectId, stage) => set((state) => {
-    const project = state.projects.find(p => p.id === projectId);
-    return {
-      projects: state.projects.map(p => p.id === projectId ? { ...p, status: stage } : p),
-      activityLogs: [{
-        id: 'act-' + Date.now(),
-        project_id: projectId,
-        client_id: project?.client_id,
-        title: `Stage Changed to ${stage.toUpperCase()}`,
-        description: `Project advanced to ${stage.replace('_', ' ')} stage.`,
-        type: 'stage_change',
-        created_at: new Date().toISOString()
-      }, ...state.activityLogs]
-    };
-  }),
-
-  addRoomToProject: (projectId, roomData) => set((state) => ({
-    projects: state.projects.map(p => {
-      if (p.id !== projectId) return p;
-      const rooms = p.rooms || [];
-      const newRoom: ProjectRoom = {
-        id: 'room-' + (rooms.length + 1),
-        project_id: projectId,
-        name: roomData.name,
-        area_sqft: roomData.area_sqft,
-        sort_order: rooms.length + 1,
-      };
-      return { ...p, rooms: [...rooms, newRoom] };
-    })
-  })),
-
-  addMilestoneToProject: (projectId, milestoneData) => set((state) => ({
-    projects: state.projects.map(p => {
-      if (p.id !== projectId) return p;
-      const milestones = p.milestones || [];
-      const newMs: ProjectMilestone = {
-        id: 'ms-' + (milestones.length + 1),
-        project_id: projectId,
-        title: milestoneData.title,
-        due_date: milestoneData.due_date,
-      };
-      return { ...p, milestones: [...milestones, newMs] };
-    })
-  })),
-
-  toggleMilestone: (projectId, milestoneId) => set((state) => ({
-    projects: state.projects.map(p => {
-      if (p.id !== projectId) return p;
-      return {
-        ...p,
-        milestones: p.milestones?.map(m => m.id === milestoneId ? {
-          ...m,
-          completed_at: m.completed_at ? undefined : new Date().toISOString()
-        } : m)
-      };
-    })
-  })),
+    addClient: (client) => run(clientActions.createClient(client)),
+    updateClient: (id, updates) => run(clientActions.updateClient({ ...updates, id })),
+    createProject: (project) => run(projectActions.createProject(project)),
+    advanceProjectStage: (projectId, stage) => run(projectActions.setProjectStage({ id: projectId, status: stage })),
+    addRoomToProject: (projectId, room) => run(projectActions.addRoom({ ...room, project_id: projectId })),
+    addMilestoneToProject: (projectId, m) => run(projectActions.addMilestone({ ...m, project_id: projectId })),
+    toggleMilestone: (_projectId, milestoneId) => run(projectActions.toggleMilestone({ id: milestoneId })),
 
   // BOQ Actions
   addBOQVersion: (boq) => set((state) => ({ boqs: [boq, ...state.boqs] })),
