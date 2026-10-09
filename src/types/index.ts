@@ -457,3 +457,14 @@ export interface ActivityLogItem {
   type: 'stage_change' | 'boq_submit' | 'boq_approve' | 'snag_raised' | 'snag_closed' | 'payment_received' | 'note';
   created_at: string;
 }
+
+export interface SessionProfile {
+  id: string;
+  full_name: string;
+  email: string;
+  kind: ProfileKind;
+  client_id: string | null;
+  title: string | null;
+  roles: AppRole[];
+}
+
