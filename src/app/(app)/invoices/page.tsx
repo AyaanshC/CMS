@@ -22,10 +22,11 @@ import {
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { formatCurrency, formatDate, getStatusColor, cn } from "@/lib/utils";
-import { Invoice } from "@/types";
+import { Invoice, PAYMENT_MODE_LABELS, type PaymentMode } from "@/types";
+import { canRecordPayments } from "@/lib/permissions";
 
 export default function InvoicesPage() {
-  const { invoices, projects, clients, studioSettings, addInvoice, recordPayment } = useAppStore();
+  const { invoices, projects, clients, studioSettings, addInvoice, recordPayment, me } = useAppStore();
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -40,7 +41,7 @@ export default function InvoicesPage() {
   // Record Payment Modal State
   const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
-  const [paymentMode, setPaymentMode] = useState<string>("UPI");
+  const [paymentMode, setPaymentMode] = useState<PaymentMode>("bank_transfer");
   const [paymentRef, setPaymentRef] = useState<string>("");
   const [paymentDate, setPaymentDate] = useState<string>("");
 
@@ -64,63 +65,39 @@ export default function InvoicesPage() {
   const totalOutstanding = invoices.reduce((sum, inv) => sum + inv.amount_due, 0);
   const overdueCount = invoices.filter((inv) => inv.status === "overdue").length;
 
-  const handleCreateInvoice = (e: React.FormEvent) => {
+  const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     const proj = projects.find((p) => p.id === selectedProjectId);
     if (!proj) return;
 
-    const gstPercent = studioSettings.gst_rate || 18;
-    const tax = Math.round((subtotal * gstPercent) / 100);
-    const total = subtotal + tax;
-
-    const newInvoice: Invoice = {
-      id: `inv_${Date.now()}`,
-      invoice_number: `INV-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, "0")}`,
+    const gstPercent = studioSettings.gst_rate;
+    const r = await addInvoice({
       project_id: proj.id,
-      project_name: proj.name,
-      client_name: proj.client_name,
-      issue_date: new Date().toISOString(),
-      due_date: new Date(dueDate).toISOString(),
       subtotal,
       discount: 0,
       gst_rate: gstPercent,
-      gst_amount: tax,
-      total_amount: total,
-      amount_paid: 0,
-      amount_due: total,
-      status: "sent",
-      items: [
-        {
-          id: `item_${Date.now()}`,
-          description: invoiceTitle,
-          quantity: 1,
-          unit_rate: subtotal,
-          amount: subtotal,
-        },
-      ],
-    };
-
-    addInvoice(newInvoice);
-    setShowCreateModal(false);
+      due_date: dueDate,
+      notes: invoiceTitle,
+      send: true,
+    });
+    if (r.ok) setShowCreateModal(false);
   };
 
   const openPaymentModal = (inv: Invoice) => {
     setPaymentInvoice(inv);
     setPaymentAmount(inv.amount_due);
-    setPaymentRef(`TXN-${Date.now().toString().slice(-6)}`);
+    setPaymentRef("");
   };
 
-  const handleRecordPayment = (e: React.FormEvent) => {
+  const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!paymentInvoice || paymentAmount <= 0) return;
 
-    recordPayment(paymentInvoice.id, paymentAmount, paymentDate, paymentMode, paymentRef);
-    setPaymentInvoice(null);
+    const r = await recordPayment(paymentInvoice.id, paymentAmount, paymentDate, paymentMode, paymentRef || undefined);
+    if (r.ok) setPaymentInvoice(null);
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
   return (
     <div>
@@ -234,7 +211,7 @@ export default function InvoicesPage() {
                       className="hover:underline text-indigo-600 font-mono text-xs flex items-center gap-1"
                     >
                       <Receipt className="w-3.5 h-3.5" />
-                      {inv.invoice_number}
+                      {inv.invoice_number ?? "Draft"}
                     </button>
                   </TableCell>
                   <TableCell>
@@ -418,13 +395,12 @@ export default function InvoicesPage() {
                   <label className="text-xs font-semibold text-foreground block mb-1">Payment Mode *</label>
                   <select
                     value={paymentMode}
-                    onChange={(e) => setPaymentMode(e.target.value)}
+                    onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
                     className="w-full text-sm border border-input rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    <option value="UPI">UPI</option>
-                    <option value="NEFT/RTGS">NEFT / RTGS</option>
-                    <option value="Cheque">Cheque</option>
-                    <option value="Cash">Cash</option>
+                    {Object.entries(PAYMENT_MODE_LABELS).map(([k, label]) => (
+                      <option key={k} value={k}>{label}</option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -480,7 +456,7 @@ export default function InvoicesPage() {
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
                     TAX INVOICE
                   </span>
-                  <p className="text-lg font-bold text-indigo-600 font-mono">{viewInvoice.invoice_number}</p>
+                  <p className="text-lg font-bold text-indigo-600 font-mono">{viewInvoice.invoice_number ?? "Draft"}</p>
                   <p className="text-xs text-muted-foreground">Issued: {viewInvoice.issue_date ? formatDate(viewInvoice.issue_date) : "—"}</p>
                   <p className="text-xs text-muted-foreground">Due: {viewInvoice.due_date ? formatDate(viewInvoice.due_date) : "—"}</p>
 

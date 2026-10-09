@@ -10,6 +10,7 @@ import * as projectActions from "@/app/actions/projects";
 import * as boqActions from "@/app/actions/boq";
 import * as snagActions from "@/app/actions/snags";
 import * as taskActions from "@/app/actions/tasks";
+import * as financeActions from "@/app/actions/finance";
 import type {
   BOQLineItem, BOQVersion, Client, Expense, Invoice, Message, Project, ProjectMilestone, ProjectRoom,
   ProjectStatus, ProjectUpdate, Snag, SnagComment, SnagStatus, Task, ItemLibraryItem, StudioSettings, ProjectFile,
@@ -46,9 +47,10 @@ export interface AppActions {
   deleteTask: (taskId: string) => Promise<ActionResult>;
 
   // Finance Actions
-  addInvoice: (invoice: Invoice) => Promise<ActionResult> | void;
-  recordPayment: (invoiceId: string, amount: number, paymentDate: string, mode: string, reference?: string) => Promise<ActionResult> | void;
-  addExpense: (expense: Expense) => Promise<ActionResult> | void;
+  addInvoice: (invoice: Partial<Invoice> & { send?: boolean }) => Promise<ActionResult>;
+  cancelInvoice: (invoiceId: string) => Promise<ActionResult>;
+  recordPayment: (invoiceId: string, amount: number, paymentDate: string, mode: string, reference?: string) => Promise<ActionResult>;
+  addExpense: (expense: Partial<Expense>) => Promise<ActionResult>;
 
   // Messages & Communication
   addMessage: (message: Message) => Promise<ActionResult> | void;
@@ -123,47 +125,12 @@ export const createAppStore = (snapshot: WorkspaceSnapshot) =>
     updateTaskStatus: (taskId, status) => run(taskActions.setTaskStatus({ id: taskId, status })),
     deleteTask: (taskId) => run(taskActions.deleteTask({ id: taskId })),
 
-  // Finance Actions
-  addInvoice: (invoice) => set((state) => ({ 
-    invoices: [invoice, ...state.invoices],
-    notifications: [{
-      id: 'notif-' + Date.now(),
-      user_id: 'client-1',
-      type: 'invoice_sent',
-      title: `Invoice ${invoice.invoice_number} Issued`,
-      body: `Total amount due: ₹${invoice.total_amount.toLocaleString()}`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    }, ...state.notifications]
-  })),
-
-  recordPayment: (invoiceId, amount, paymentDate, mode, reference) => set((state) => {
-    const inv = state.invoices.find(i => i.id === invoiceId);
-    return {
-      invoices: state.invoices.map(i => {
-        if (i.id !== invoiceId) return i;
-        const newPaid = (i.amount_paid || 0) + amount;
-        const newDue = Math.max(0, i.total_amount - newPaid);
-        const newStatus = newDue === 0 ? 'paid' : 'partial';
-        return {
-          ...i,
-          amount_paid: newPaid,
-          amount_due: newDue,
-          status: newStatus
-        };
-      }),
-      activityLogs: [{
-        id: 'act-' + Date.now(),
-        project_id: inv?.project_id,
-        title: `Payment Recorded: ₹${amount.toLocaleString()}`,
-        description: `Payment of ₹${amount.toLocaleString()} received via ${mode.toUpperCase()} for ${inv?.invoice_number}.`,
-        type: 'payment_received',
-        created_at: new Date().toISOString()
-      }, ...state.activityLogs]
-    };
-  }),
-
-  addExpense: (expense) => set((state) => ({ expenses: [expense, ...state.expenses] })),
+    // Finance Actions
+    addInvoice: (invoice) => run(financeActions.createInvoice({ ...invoice, send: invoice.send ?? invoice.status !== "draft" })),
+    cancelInvoice: (invoiceId) => run(financeActions.cancelInvoice({ id: invoiceId })),
+    recordPayment: (invoiceId, amount, paymentDate, mode, reference) =>
+      run(financeActions.recordPayment({ invoice_id: invoiceId, amount, payment_date: paymentDate, mode, reference })),
+    addExpense: (expense) => run(financeActions.addExpense(expense)),
 
   // Communication
   addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),

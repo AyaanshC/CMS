@@ -10,6 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useAppStore } from "@/lib/store";
 import { formatCurrency, formatDate, getStatusColor, cn } from "@/lib/utils";
+import { invoiceAmounts } from "@/lib/finance/money";
+import { canRecordPayments } from "@/lib/permissions";
+import { PAYMENT_MODE_LABELS, type PaymentMode } from "@/types";
 import type { Project, Invoice, Expense } from "@/types";
 
 export default function FinanceTab({
@@ -21,7 +24,7 @@ export default function FinanceTab({
   invoices: Invoice[];
   expenses: Expense[];
 }) {
-  const { addInvoice, recordPayment, addExpense } = useAppStore();
+  const { addInvoice, cancelInvoice, recordPayment, addExpense, studioSettings, me } = useAppStore();
 
   const totalInvoiced = invoices.reduce((sum, inv) => sum + inv.total_amount, 0);
   const totalPaid = invoices.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0);
@@ -30,18 +33,19 @@ export default function FinanceTab({
 
   const [createInvoiceModalOpen, setCreateInvoiceModalOpen] = useState(false);
   const [invoiceForm, setInvoiceForm] = useState({
-    invoiceNumber: `STU-INV-2024-00${invoices.length + 1}`,
     subtotal: 250000,
-    dueDate: new Date(Date.now() + 14 * 86400000).toISOString().split('T')[0],
-    notes: "Payment due for Phase 2 carpentry & electrical works."
+    dueDate: "",
+    notes: "Payment due for Phase 2 carpentry & electrical works.",
+    send: true,
   });
 
   const [recordPaymentModalOpen, setRecordPaymentModalOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [paymentForm, setPaymentForm] = useState({
     amount: 100000,
-    mode: "bank_transfer",
-    reference: "HDFC-REF-8921"
+    mode: "bank_transfer" as PaymentMode,
+    reference: "",
+    paymentDate: new Date().toISOString().slice(0, 10),
   });
 
   const [addExpenseModalOpen, setAddExpenseModalOpen] = useState(false);
@@ -51,51 +55,46 @@ export default function FinanceTab({
     amount: 15000,
   });
 
-  const handleCreateInvoice = (e: React.FormEvent) => {
+  const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
-    const gst = (invoiceForm.subtotal * 18) / 100;
-    const total = invoiceForm.subtotal + gst;
-    const newInv: Invoice = {
-      id: 'inv-' + Date.now(),
+    const r = await addInvoice({
       project_id: project.id,
-      project_name: project.name,
-      client_name: project.client_name,
-      invoice_number: invoiceForm.invoiceNumber,
-      status: 'sent',
-      issue_date: new Date().toISOString().split('T')[0],
-      due_date: invoiceForm.dueDate,
       subtotal: invoiceForm.subtotal,
       discount: 0,
-      gst_rate: 18,
-      gst_amount: gst,
-      total_amount: total,
-      amount_paid: 0,
-      amount_due: total,
-      notes: invoiceForm.notes
-    };
-    addInvoice(newInv);
-    setCreateInvoiceModalOpen(false);
+      gst_rate: studioSettings.gst_rate,
+      due_date: invoiceForm.dueDate,
+      notes: invoiceForm.notes,
+      send: invoiceForm.send,
+    });
+    if (r.ok) setCreateInvoiceModalOpen(false);
   };
 
-  const handleRecordPayment = (e: React.FormEvent) => {
+  const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedInvoiceId) return;
-    recordPayment(selectedInvoiceId, Number(paymentForm.amount), new Date().toISOString().split('T')[0], paymentForm.mode, paymentForm.reference);
-    setRecordPaymentModalOpen(false);
+    const r = await recordPayment(
+      selectedInvoiceId,
+      Number(paymentForm.amount),
+      paymentForm.paymentDate,
+      paymentForm.mode,
+      paymentForm.reference || undefined
+    );
+    if (r.ok) setRecordPaymentModalOpen(false);
   };
 
-  const handleAddExpense = (e: React.FormEvent) => {
+  const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
-    addExpense({
-      id: 'exp-' + Date.now(),
+    const r = await addExpense({
       project_id: project.id,
       category: expenseForm.category,
       description: expenseForm.description,
       amount: Number(expenseForm.amount),
-      expense_date: new Date().toISOString().split('T')[0]
+      expense_date: new Date().toISOString().slice(0, 10),
     });
-    setExpenseForm({ category: "Materials", description: "", amount: 15000 });
-    setAddExpenseModalOpen(false);
+    if (r.ok) {
+      setExpenseForm({ category: "Materials", description: "", amount: 15000 });
+      setAddExpenseModalOpen(false);
+    }
   };
 
   return (
@@ -105,7 +104,7 @@ export default function FinanceTab({
           <span className="text-indigo-600">Total Billed: {formatCurrency(totalInvoiced)}</span>
           <span className="text-emerald-600">Collected: {formatCurrency(totalPaid)}</span>
           <span className="text-rose-600">Expenses: {formatCurrency(totalExp)}</span>
-          <span className="text-foreground">Net Margin: {formatCurrency(netProfit)}</span>
+          <span className="text-foreground">Cash position (collected − expenses): {formatCurrency(netProfit)}</span>
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={() => setAddExpenseModalOpen(true)} className="text-xs">
@@ -125,7 +124,7 @@ export default function FinanceTab({
             <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-bold text-sm text-foreground">{inv.invoice_number}</span>
+                  <span className="font-bold text-sm text-foreground">{inv.invoice_number ?? "Draft"}</span>
                   <Badge className={cn("text-[10px] border-0 uppercase", getStatusColor(inv.status))}>{inv.status}</Badge>
                 </div>
                 <p className="text-xs text-muted-foreground">Due: {inv.due_date ? formatDate(inv.due_date) : "—"} · {inv.notes}</p>
@@ -136,20 +135,36 @@ export default function FinanceTab({
                   <p className="font-bold text-sm">{formatCurrency(inv.total_amount)}</p>
                   <p className="text-[10px] text-muted-foreground">Paid: {formatCurrency(inv.amount_paid || 0)}</p>
                 </div>
-                {inv.amount_due > 0 && (
-                  <Button 
-                    size="sm" 
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedInvoiceId(inv.id);
-                      setPaymentForm({ ...paymentForm, amount: inv.amount_due });
-                      setRecordPaymentModalOpen(true);
-                    }}
-                    className="text-xs text-emerald-600 border-emerald-300 hover:bg-emerald-50"
-                  >
-                    Record Payment
-                  </Button>
-                )}
+                <div className="flex gap-2">
+                  {canRecordPayments(me) && inv.amount_due > 0 && (
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedInvoiceId(inv.id);
+                        setPaymentForm((prev) => ({ ...prev, amount: inv.amount_due }));
+                        setRecordPaymentModalOpen(true);
+                      }}
+                      className="text-xs text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                    >
+                      Record Payment
+                    </Button>
+                  )}
+                  {canRecordPayments(me) && inv.status === "sent" && (inv.amount_paid || 0) === 0 && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={async () => {
+                        if (window.confirm(`Cancel invoice ${inv.invoice_number ?? "Draft"}?`)) {
+                          await cancelInvoice(inv.id);
+                        }
+                      }}
+                      className="text-xs text-rose-600 border-rose-300 hover:bg-rose-50"
+                    >
+                      Cancel invoice
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -190,13 +205,15 @@ export default function FinanceTab({
             <DialogTitle>Create Invoice</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateInvoice} className="space-y-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Invoice Number</Label>
-              <Input 
-                required 
-                value={invoiceForm.invoiceNumber} 
-                onChange={(e) => setInvoiceForm({ ...invoiceForm, invoiceNumber: e.target.value })}
+            <div className="flex items-center gap-2">
+              <input 
+                type="checkbox"
+                id="send-now"
+                checked={invoiceForm.send}
+                onChange={(e) => setInvoiceForm({ ...invoiceForm, send: e.target.checked })}
+                className="h-4 w-4 rounded border-input"
               />
+              <Label htmlFor="send-now" className="text-xs cursor-pointer">Send now (assigns the invoice number)</Label>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
@@ -212,6 +229,7 @@ export default function FinanceTab({
                 <Label className="text-xs">Due Date</Label>
                 <Input 
                   type="date"
+                  required
                   value={invoiceForm.dueDate} 
                   onChange={(e) => setInvoiceForm({ ...invoiceForm, dueDate: e.target.value })}
                 />
@@ -225,9 +243,15 @@ export default function FinanceTab({
                 rows={2}
               />
             </div>
-            <div className="p-2 bg-indigo-50 text-indigo-700 text-xs font-bold rounded text-right">
-              Total with 18% GST: {formatCurrency(invoiceForm.subtotal * 1.18)}
-            </div>
+            {(() => {
+              const preview = invoiceAmounts({ subtotal: invoiceForm.subtotal, discount: 0, gstRate: studioSettings.gst_rate });
+              return (
+                <div className="p-2 bg-indigo-50 text-indigo-700 text-xs font-bold rounded text-right space-y-0.5">
+                  <div>Taxable: {formatCurrency(preview.taxable)} · GST ({studioSettings.gst_rate}%): {formatCurrency(preview.gst)}</div>
+                  <div>Total: {formatCurrency(preview.total)}</div>
+                </div>
+              );
+            })()}
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setCreateInvoiceModalOpen(false)}>Cancel</Button>
               <Button type="submit" className="gradient-primary border-0">Generate Invoice</Button>
@@ -253,16 +277,24 @@ export default function FinanceTab({
               />
             </div>
             <div className="space-y-1">
+              <Label className="text-xs">Payment Date</Label>
+              <Input 
+                type="date"
+                required
+                value={paymentForm.paymentDate} 
+                onChange={(e) => setPaymentForm({ ...paymentForm, paymentDate: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
               <Label className="text-xs">Payment Mode</Label>
               <select
                 value={paymentForm.mode}
-                onChange={(e) => setPaymentForm({ ...paymentForm, mode: e.target.value })}
+                onChange={(e) => setPaymentForm({ ...paymentForm, mode: e.target.value as PaymentMode })}
                 className="w-full h-9 px-2 text-xs rounded border border-input bg-card"
               >
-                <option value="bank_transfer">Bank Transfer (NEFT/RTGS)</option>
-                <option value="upi">UPI / QR Code</option>
-                <option value="cheque">Cheque</option>
-                <option value="cash">Cash</option>
+                {Object.entries(PAYMENT_MODE_LABELS).map(([k, label]) => (
+                  <option key={k} value={k}>{label}</option>
+                ))}
               </select>
             </div>
             <div className="space-y-1">
@@ -270,6 +302,7 @@ export default function FinanceTab({
               <Input 
                 value={paymentForm.reference} 
                 onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
+                placeholder="Optional reference"
               />
             </div>
             <DialogFooter>
