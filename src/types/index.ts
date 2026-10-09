@@ -341,6 +341,8 @@ export interface Snag {
   created_at: string;
   updated_at?: string;
   comments?: SnagComment[];
+  vendor_id?: string;
+  vendor_name?: string;
 }
 
 export interface SnagComment {
@@ -433,6 +435,10 @@ export interface Expense {
   receipt_url?: string;
   expense_date: string;
   created_by_name?: string;
+  vendor_id?: string;
+  boq_line_item_id?: string;
+  cost_type?: CostType;
+  status?: ExpenseStatus;
 }
 
 // --- Tasks ---
@@ -527,6 +533,7 @@ export interface ItemLibraryItem {
   standard_rate: number;
   description?: string;
   specifications?: string;
+  standard_cost_rate?: number;
   created_at: string;
 }
 
@@ -601,6 +608,7 @@ export interface StudioSettings {
   };
   risk_weights: RiskWeights;
   monthly_billing_target?: number;
+  approval_thresholds?: { po_director: number; po_owner: number; expense: number };
 }
 
 // --- Activity Log ---
@@ -614,6 +622,45 @@ export interface ActivityLogItem {
   type: 'stage_change' | 'boq_submit' | 'boq_approve' | 'snag_raised' | 'snag_closed' | 'payment_received' | 'note';
   created_at: string;
 }
+
+// --- Procurement & Cost Control ---
+
+export type VendorStatus = 'active' | 'preferred' | 'blacklisted';
+export interface Vendor {
+  id: string; name: string; category: string; gstin?: string; pan?: string; phone?: string; email?: string;
+  address?: string; payment_terms_days: number; status: VendorStatus; notes?: string;
+}
+export interface VendorQuote {
+  id: string; project_id: string; vendor_id: string; vendor_name: string; boq_line_item_id?: string; package_name?: string;
+  description?: string; quantity: number; rate: number; valid_until?: string; received_at: string;
+}
+export type PoStatus = 'draft' | 'pending_approval' | 'approved' | 'issued' | 'closed' | 'cancelled';
+export interface PoLine {
+  id: string; po_id: string; boq_line_item_id?: string; description: string; unit: string; quantity: number; rate: number;
+  gst_rate: number; amount: number; received_qty: number; billed_qty: number;
+}
+export interface PurchaseOrder {
+  id: string; project_id: string; vendor_id: string; vendor_name: string; number?: string; status: PoStatus;
+  order_date: string; expected_delivery?: string; notes?: string; approval_required_role?: AppRole;
+  approved_by_name?: string; approved_at?: string; created_by?: string; created_at: string; lines: PoLine[]; total: number;
+}
+export interface GoodsReceipt { id: string; po_id: string; received_on: string; received_by_name?: string; notes?: string; photo_url?: string;
+  lines: { po_line_id: string; quantity_received: number; quantity_rejected: number; condition_note?: string }[] }
+export type VendorBillStatus = 'recorded' | 'approved' | 'disputed';
+export interface VendorBill {
+  id: string; vendor_id: string; vendor_name: string; project_id: string; po_id?: string; bill_number: string; bill_date: string;
+  due_date?: string; status: VendorBillStatus; notes?: string; file_url?: string; subtotal: number; gst_amount: number; total: number;
+  paid: number; outstanding: number; match_issues: string[];
+  lines: { id: string; po_line_id?: string; description: string; quantity: number; rate: number; gst_rate: number; amount: number }[];
+}
+export interface VendorPayment { id: string; vendor_id: string; bill_id?: string; project_id: string; amount: number; tds_amount: number;
+  paid_on: string; mode: PaymentMode; reference?: string; is_advance: boolean }
+export interface CostControlRow {
+  project_id: string; line_item_id: string; category: string; description: string; unit: string; quantity: number;
+  sell_rate: number; cost_rate?: number; sell_amount: number; budget?: number; committed: number; actual: number;
+}
+export type ExpenseStatus = 'pending' | 'approved' | 'rejected';
+export type CostType = 'design' | 'execution';
 
 export interface SessionProfile {
   id: string;
