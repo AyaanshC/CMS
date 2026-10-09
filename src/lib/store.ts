@@ -13,9 +13,10 @@ import * as taskActions from "@/app/actions/tasks";
 import * as financeActions from "@/app/actions/finance";
 import * as fileActions from "@/app/actions/files";
 import * as commsActions from "@/app/actions/comms";
+import * as settingsActions from "@/app/actions/settings";
 import type {
   BOQLineItem, BOQVersion, Client, Expense, Invoice, Message, Project, ProjectMilestone, ProjectRoom,
-  ProjectStatus, ProjectUpdate, Snag, SnagComment, SnagStatus, Task, ItemLibraryItem, StudioSettings, ProjectFile,
+  ProjectStatus, ProjectUpdate, Snag, SnagComment, SnagStatus, Task, ItemLibraryItem, StudioSettings,
 } from "@/types";
 
 export type NewFileRecord = {
@@ -70,20 +71,19 @@ export interface AppActions {
   deleteFile: (fileId: string) => Promise<ActionResult>;
 
   // Item Library & Materials
-  addItemToLibrary: (item: Omit<ItemLibraryItem, 'id' | 'created_at'>) => Promise<ActionResult> | void;
-  updateLibraryItem: (id: string, updates: Partial<ItemLibraryItem>) => Promise<ActionResult> | void;
-  deleteLibraryItem: (id: string) => Promise<ActionResult> | void;
+  addItemToLibrary: (item: Omit<ItemLibraryItem, 'id' | 'created_at'>) => Promise<ActionResult>;
+  updateLibraryItem: (id: string, updates: Partial<ItemLibraryItem>) => Promise<ActionResult>;
+  deleteLibraryItem: (id: string) => Promise<ActionResult>;
   toggleMaterialSelection: (materialId: string) => Promise<ActionResult>;
 
   // Settings & Activity
-  updateStudioSettings: (settings: Partial<StudioSettings>) => Promise<ActionResult> | void;
+  updateStudioSettings: (settings: Partial<StudioSettings>) => Promise<ActionResult>;
   markNotificationRead: (id: string) => Promise<ActionResult>;
   markAllNotificationsRead: () => Promise<ActionResult>;
 }
 
 export type AppState = WorkspaceSnapshot & AppActions;
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function run(p: Promise<ActionResult>): Promise<ActionResult> {
   const r = await p;
   if (!r.ok) toast.add({ title: "Could not save", description: r.error, type: "error" });
@@ -157,27 +157,12 @@ export const createAppStore = (snapshot: WorkspaceSnapshot) =>
     markAllNotificationsRead: () => run(commsActions.markAllNotificationsRead()),
 
   // Item Library & Materials
-  addItemToLibrary: (itemData) => set((state) => {
-    const newItem: ItemLibraryItem = {
-      id: 'lib-' + Date.now(),
-      created_at: new Date().toISOString().split('T')[0],
-      ...itemData
-    };
-    return { itemLibrary: [newItem, ...state.itemLibrary] };
-  }),
+    addItemToLibrary: (item) => run(settingsActions.addLibraryItem(item)),
+    updateLibraryItem: (id, updates) => run(settingsActions.updateLibraryItem({ ...updates, id })),
+    deleteLibraryItem: (id) => run(settingsActions.deleteLibraryItem({ id })),
 
-  updateLibraryItem: (id, updates) => set((state) => ({
-    itemLibrary: state.itemLibrary.map(item => item.id === id ? { ...item, ...updates } : item)
-  })),
-
-  deleteLibraryItem: (id) => set((state) => ({
-    itemLibrary: state.itemLibrary.filter(item => item.id !== id)
-  })),
-
-  // Settings & Activity
-  updateStudioSettings: (settingsUpdates) => set((state) => ({
-    studioSettings: { ...state.studioSettings, ...settingsUpdates }
-  })),
+    // Settings & Activity
+    updateStudioSettings: (settings) => run(settingsActions.updateSettings(settings)),
   }));
 
 export const AppStoreContext = createContext<StoreApi<AppState> | null>(null);

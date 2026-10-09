@@ -13,12 +13,37 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
 import {
-  Building2, Layers, Users, Sliders, Bell, Sparkles, Plus, Trash2, Check,
-  Copy, ExternalLink, Save, Search, FileText, Phone, Mail, MapPin, IndianRupee
+  Building2, Layers, Users, Sliders, Bell, Plus, Trash2, Check,
+  Copy, ExternalLink, Save, Search, FileText, Phone, Mail, IndianRupee
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { formatCurrency, cn } from "@/lib/utils";
-import { ItemLibraryItem } from "@/types";
+import { hasAnyRole } from "@/lib/permissions";
+import { toast } from "@/components/ui/toast";
+import { inviteStaff, setStaffRoles, setStaffActive } from "@/app/actions/team";
+import type { AppRole, TeamMember } from "@/types";
+
+const ROLE_LABELS: Record<AppRole, string> = {
+  owner: "Owner",
+  director: "Director",
+  project_manager: "Project Manager",
+  architect: "Architect",
+  site_supervisor: "Site Supervisor",
+  finance: "Finance",
+  admin: "Admin",
+  procurement: "Procurement",
+};
+
+const ALL_ROLES: AppRole[] = [
+  "owner",
+  "director",
+  "project_manager",
+  "architect",
+  "site_supervisor",
+  "finance",
+  "admin",
+  "procurement",
+];
 
 export default function SettingsPage() {
   const {
@@ -28,7 +53,11 @@ export default function SettingsPage() {
     addItemToLibrary,
     deleteLibraryItem,
     boqTemplates,
+    me,
+    team,
   } = useAppStore();
+
+  const isOwner = hasAnyRole(me, ["owner"]);
 
   // Studio Settings form state
   const [studioForm, setStudioForm] = useState({ ...studioSettings });
@@ -48,29 +77,32 @@ export default function SettingsPage() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteRole, setInviteRole] = useState("Site Supervisor");
-  const [invitedMembers, setInvitedMembers] = useState([
-    { name: "Priya Sharma", role: "Principal Designer", email: "priya@urbanarch.com", phone: "+91 98765 43210", active: true },
-    { name: "Aarav Mehta", role: "Site Supervisor", email: "aarav@urbanarch.com", phone: "+91 98765 11223", active: true },
-    { name: "Neha Verma", role: "3D Visualizer & CAD Lead", email: "neha@urbanarch.com", phone: "+91 98765 33445", active: true },
-    { name: "Kunal Singhal", role: "Procurement & Costing Lead", email: "kunal@urbanarch.com", phone: "+91 98765 55667", active: true },
-  ]);
+  const [inviteTitle, setInviteTitle] = useState("");
+  const [inviteRoles, setInviteRoles] = useState<AppRole[]>(["architect"]);
+  const [inviting, setInviting] = useState(false);
+
+  // Role Editor state
+  const [editingMemberRoles, setEditingMemberRoles] = useState<{ user: TeamMember; roles: AppRole[] } | null>(null);
 
   // Public Onboarding Link State
   const [copiedLink, setCopiedLink] = useState(false);
 
-  const handleSaveSettings = (e: React.FormEvent) => {
+  const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateStudioSettings(studioForm);
-    setSavedSettingsSuccess(true);
-    setTimeout(() => setSavedSettingsSuccess(false), 2500);
+    const r = await updateStudioSettings(studioForm);
+    if (r.ok) {
+      setSavedSettingsSuccess(true);
+      setTimeout(() => setSavedSettingsSuccess(false), 2500);
+    } else {
+      toast.add({ title: "Could not save settings", description: r.error, type: "error" });
+    }
   };
 
-  const handleAddItem = (e: React.FormEvent) => {
+  const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim()) return;
 
-    addItemToLibrary({
+    const r = await addItemToLibrary({
       category: newItemCategory,
       item_name: newItemName.trim(),
       specifications: newItemSpecs.trim(),
@@ -78,28 +110,69 @@ export default function SettingsPage() {
       standard_rate: Number(newItemRate),
     });
 
-    setNewItemName("");
-    setNewItemSpecs("");
-    setShowAddItemModal(false);
+    if (!r?.ok && r?.error) {
+      toast.add({ title: "Could not add item", description: r.error, type: "error" });
+    } else {
+      setNewItemName("");
+      setNewItemSpecs("");
+      setShowAddItemModal(false);
+    }
   };
 
-  const handleInviteSubmit = (e: React.FormEvent) => {
+  const handleInviteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!inviteName.trim() || !inviteEmail.trim()) return;
+    if (!inviteName.trim() || !inviteEmail.trim() || inviteRoles.length === 0) return;
 
-    setInvitedMembers((prev) => [
-      ...prev,
-      {
-        name: inviteName.trim(),
-        role: inviteRole,
+    setInviting(true);
+    try {
+      const r = await inviteStaff({
+        full_name: inviteName.trim(),
         email: inviteEmail.trim(),
-        phone: "+91 98000 00000",
-        active: true,
-      },
-    ]);
-    setInviteName("");
-    setInviteEmail("");
-    setShowInviteModal(false);
+        title: inviteTitle.trim() || undefined,
+        roles: inviteRoles,
+      });
+
+      if (!r.ok) {
+        toast.add({ title: "Could not invite staff", description: r.error, type: "error" });
+      } else {
+        toast.add({
+          title: "Staff Login Created",
+          description: "Login created. Ask them to sign in at /login with 'Email me a sign-in link'.",
+          type: "success",
+        });
+        setInviteName("");
+        setInviteEmail("");
+        setInviteTitle("");
+        setInviteRoles(["architect"]);
+        setShowInviteModal(false);
+      }
+    } finally {
+      setInviting(false);
+    }
+  };
+
+  const handleToggleActive = async (member: TeamMember) => {
+    const r = await setStaffActive({ id: member.id, active: !member.active });
+    if (!r.ok) {
+      toast.add({ title: "Status update failed", description: r.error, type: "error" });
+    } else {
+      toast.add({
+        title: "Status updated",
+        description: `${member.full_name} is now ${!member.active ? "active" : "inactive"}.`,
+        type: "success",
+      });
+    }
+  };
+
+  const handleSaveRoles = async () => {
+    if (!editingMemberRoles) return;
+    const r = await setStaffRoles({ user_id: editingMemberRoles.user.id, roles: editingMemberRoles.roles });
+    if (!r.ok) {
+      toast.add({ title: "Role update failed", description: r.error, type: "error" });
+    } else {
+      toast.add({ title: "Roles updated", description: "Staff roles updated successfully.", type: "success" });
+      setEditingMemberRoles(null);
+    }
   };
 
   const copyOnboardingUrl = () => {
@@ -134,7 +207,7 @@ export default function SettingsPage() {
               <Layers className="w-3.5 h-3.5" /> BOQ Templates ({boqTemplates.length})
             </TabsTrigger>
             <TabsTrigger value="team" className="gap-1.5 text-xs py-2 px-3">
-              <Users className="w-3.5 h-3.5" /> Team & Roles ({invitedMembers.length})
+              <Users className="w-3.5 h-3.5" /> Team & Roles ({team.length})
             </TabsTrigger>
             <TabsTrigger value="onboarding" className="gap-1.5 text-xs py-2 px-3">
               <Sliders className="w-3.5 h-3.5" /> Onboarding Intake Form
@@ -164,156 +237,164 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSaveSettings} className="space-y-6">
-                  {/* Basic Details */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="text-xs font-semibold text-foreground block mb-1">Studio Name</label>
-                      <Input
-                        value={studioForm.name}
-                        onChange={(e) => setStudioForm({ ...studioForm, name: e.target.value })}
-                      />
+                  <fieldset disabled={!isOwner} className="space-y-6">
+                    {/* Basic Details */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                      <div>
+                        <label className="text-xs font-semibold text-foreground block mb-1">Studio Name</label>
+                        <Input
+                          value={studioForm.name}
+                          onChange={(e) => setStudioForm({ ...studioForm, name: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-foreground block mb-1">Tagline</label>
+                        <Input
+                          value={studioForm.tagline}
+                          onChange={(e) => setStudioForm({ ...studioForm, tagline: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-foreground block mb-1">Official Email</label>
+                        <Input
+                          value={studioForm.email}
+                          onChange={(e) => setStudioForm({ ...studioForm, email: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-foreground block mb-1">Phone / WhatsApp</label>
+                        <Input
+                          value={studioForm.phone}
+                          onChange={(e) => setStudioForm({ ...studioForm, phone: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-foreground block mb-1">GSTIN</label>
+                        <Input
+                          value={studioForm.gstin}
+                          onChange={(e) => setStudioForm({ ...studioForm, gstin: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-foreground block mb-1">PAN Number</label>
+                        <Input
+                          value={studioForm.pan}
+                          onChange={(e) => setStudioForm({ ...studioForm, pan: e.target.value })}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-xs font-semibold text-foreground block mb-1">Tagline</label>
-                      <Input
-                        value={studioForm.tagline}
-                        onChange={(e) => setStudioForm({ ...studioForm, tagline: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-foreground block mb-1">Official Email</label>
-                      <Input
-                        value={studioForm.email}
-                        onChange={(e) => setStudioForm({ ...studioForm, email: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-foreground block mb-1">Phone / WhatsApp</label>
-                      <Input
-                        value={studioForm.phone}
-                        onChange={(e) => setStudioForm({ ...studioForm, phone: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-foreground block mb-1">GSTIN</label>
-                      <Input
-                        value={studioForm.gstin}
-                        onChange={(e) => setStudioForm({ ...studioForm, gstin: e.target.value })}
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs font-semibold text-foreground block mb-1">PAN Number</label>
-                      <Input
-                        value={studioForm.pan}
-                        onChange={(e) => setStudioForm({ ...studioForm, pan: e.target.value })}
-                      />
-                    </div>
-                  </div>
 
-                  <div>
-                    <label className="text-xs font-semibold text-foreground block mb-1">Studio Address</label>
-                    <Input
-                      value={studioForm.address}
-                      onChange={(e) => setStudioForm({ ...studioForm, address: e.target.value })}
-                    />
-                  </div>
+                    <div>
+                      <label className="text-xs font-semibold text-foreground block mb-1">Studio Address</label>
+                      <Input
+                        value={studioForm.address}
+                        onChange={(e) => setStudioForm({ ...studioForm, address: e.target.value })}
+                      />
+                    </div>
 
-                  {/* Bank & Payment Details */}
-                  <div className="pt-4 border-t border-border">
-                    <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                      <IndianRupee className="w-4 h-4 text-indigo-600" /> Bank & Settlement Accounts
-                    </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
-                      <div>
-                        <label className="text-xs font-semibold text-foreground block mb-1">Beneficiary Name</label>
-                        <Input
-                          value={studioForm.bank_details.account_name}
-                          onChange={(e) =>
-                            setStudioForm({
-                              ...studioForm,
-                              bank_details: { ...studioForm.bank_details, account_name: e.target.value },
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-foreground block mb-1">Bank Name</label>
-                        <Input
-                          value={studioForm.bank_details.bank_name}
-                          onChange={(e) =>
-                            setStudioForm({
-                              ...studioForm,
-                              bank_details: { ...studioForm.bank_details, bank_name: e.target.value },
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-foreground block mb-1">Account Number</label>
-                        <Input
-                          value={studioForm.bank_details.account_number}
-                          onChange={(e) =>
-                            setStudioForm({
-                              ...studioForm,
-                              bank_details: { ...studioForm.bank_details, account_number: e.target.value },
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-foreground block mb-1">IFSC Code</label>
-                        <Input
-                          value={studioForm.bank_details.ifsc_code}
-                          onChange={(e) =>
-                            setStudioForm({
-                              ...studioForm,
-                              bank_details: { ...studioForm.bank_details, ifsc_code: e.target.value },
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-foreground block mb-1">UPI ID for Client Pay</label>
-                        <Input
-                          value={studioForm.bank_details.upi_id}
-                          onChange={(e) =>
-                            setStudioForm({
-                              ...studioForm,
-                              bank_details: { ...studioForm.bank_details, upi_id: e.target.value },
-                            })
-                          }
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-semibold text-foreground block mb-1">Default GST Rate (%)</label>
-                        <Input
-                          type="number"
-                          value={studioForm.gst_rate}
-                          onChange={(e) =>
-                            setStudioForm({ ...studioForm, gst_rate: Number(e.target.value) })
-                          }
-                        />
+                    {/* Bank & Payment Details */}
+                    <div className="pt-4 border-t border-border">
+                      <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
+                        <IndianRupee className="w-4 h-4 text-indigo-600" /> Bank & Settlement Accounts
+                      </h3>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                          <label className="text-xs font-semibold text-foreground block mb-1">Beneficiary Name</label>
+                          <Input
+                            value={studioForm.bank_details.account_name}
+                            onChange={(e) =>
+                              setStudioForm({
+                                ...studioForm,
+                                bank_details: { ...studioForm.bank_details, account_name: e.target.value },
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-foreground block mb-1">Bank Name</label>
+                          <Input
+                            value={studioForm.bank_details.bank_name}
+                            onChange={(e) =>
+                              setStudioForm({
+                                ...studioForm,
+                                bank_details: { ...studioForm.bank_details, bank_name: e.target.value },
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-foreground block mb-1">Account Number</label>
+                          <Input
+                            value={studioForm.bank_details.account_number}
+                            onChange={(e) =>
+                              setStudioForm({
+                                ...studioForm,
+                                bank_details: { ...studioForm.bank_details, account_number: e.target.value },
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-foreground block mb-1">IFSC Code</label>
+                          <Input
+                            value={studioForm.bank_details.ifsc_code}
+                            onChange={(e) =>
+                              setStudioForm({
+                                ...studioForm,
+                                bank_details: { ...studioForm.bank_details, ifsc_code: e.target.value },
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-foreground block mb-1">UPI ID for Client Pay</label>
+                          <Input
+                            value={studioForm.bank_details.upi_id}
+                            onChange={(e) =>
+                              setStudioForm({
+                                ...studioForm,
+                                bank_details: { ...studioForm.bank_details, upi_id: e.target.value },
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-semibold text-foreground block mb-1">Default GST Rate (%)</label>
+                          <Input
+                            type="number"
+                            value={studioForm.gst_rate}
+                            onChange={(e) =>
+                              setStudioForm({ ...studioForm, gst_rate: Number(e.target.value) })
+                            }
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Terms & Conditions */}
-                  <div className="pt-4 border-t border-border">
-                    <label className="text-xs font-semibold text-foreground block mb-1">
-                      Default Terms & Payment Conditions (Appears on Invoices & BOQ)
-                    </label>
-                    <Textarea
-                      rows={3}
-                      value={studioForm.terms_and_conditions}
-                      onChange={(e) => setStudioForm({ ...studioForm, terms_and_conditions: e.target.value })}
-                    />
-                  </div>
+                    {/* Terms & Conditions */}
+                    <div className="pt-4 border-t border-border">
+                      <label className="text-xs font-semibold text-foreground block mb-1">
+                        Default Terms & Payment Conditions (Appears on Invoices & BOQ)
+                      </label>
+                      <Textarea
+                        rows={3}
+                        value={studioForm.terms_and_conditions}
+                        onChange={(e) => setStudioForm({ ...studioForm, terms_and_conditions: e.target.value })}
+                      />
+                    </div>
+                  </fieldset>
 
-                  <div className="flex justify-end pt-2">
-                    <Button type="submit" className="gradient-primary border-0 text-white gap-2 shadow-sm">
-                      <Save className="w-4 h-4" /> Save Profile Settings
-                    </Button>
-                  </div>
+                  {isOwner ? (
+                    <div className="flex justify-end pt-2">
+                      <Button type="submit" className="gradient-primary border-0 text-white gap-2 shadow-sm">
+                        <Save className="w-4 h-4" /> Save Profile Settings
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-right italic">
+                      Only studio owners can edit firm branding and financial details.
+                    </p>
+                  )}
                 </form>
               </CardContent>
             </Card>
@@ -373,7 +454,7 @@ export default function SettingsPage() {
                         <td className="py-3 px-4">
                           <p className="font-semibold text-foreground">{item.item_name}</p>
                           <p className="text-xs text-muted-foreground mt-0.5 max-w-md truncate">
-                            {item.specifications}
+                            {item.specifications || item.description}
                           </p>
                         </td>
                         <td className="py-3 px-4 text-center">
@@ -390,7 +471,12 @@ export default function SettingsPage() {
                         <td className="py-3 px-4 text-center">
                           <button
                             type="button"
-                            onClick={() => deleteLibraryItem(item.id)}
+                            onClick={async () => {
+                              const r = await deleteLibraryItem(item.id);
+                              if (!r?.ok && r?.error) {
+                                toast.add({ title: "Could not delete item", description: r.error, type: "error" });
+                              }
+                            }}
                             className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                             title="Delete item"
                           >
@@ -451,38 +537,69 @@ export default function SettingsPage() {
                 <h3 className="text-base font-bold text-foreground">Design & Execution Team</h3>
                 <p className="text-xs text-muted-foreground">Manage roles, site supervisors, and permissions.</p>
               </div>
-              <Button
-                onClick={() => setShowInviteModal(true)}
-                className="gradient-primary border-0 text-white gap-1.5 shadow-sm"
-              >
-                <Plus className="w-4 h-4" /> Invite Member
-              </Button>
+              {isOwner && (
+                <Button
+                  onClick={() => setShowInviteModal(true)}
+                  className="gradient-primary border-0 text-white gap-1.5 shadow-sm"
+                >
+                  <Plus className="w-4 h-4" /> Invite Member
+                </Button>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-              {invitedMembers.map((member, i) => (
-                <Card key={i} className="shadow-sm">
+              {team.map((member) => (
+                <Card key={member.id} className={cn("shadow-sm", !member.active && "opacity-60")}>
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-start justify-between">
                       <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
-                        {member.name.split(" ").map((n) => n[0]).join("")}
+                        {member.full_name.split(" ").map((n) => n[0]).join("")}
                       </div>
-                      <Badge variant="outline" className="text-[10px]">
-                        Active
+                      <Badge variant={member.active ? "outline" : "destructive"} className="text-[10px]">
+                        {member.active ? "Active" : "Inactive"}
                       </Badge>
                     </div>
                     <div>
-                      <p className="font-bold text-sm text-foreground">{member.name}</p>
-                      <p className="text-xs text-indigo-600 font-medium">{member.role}</p>
+                      <p className="font-bold text-sm text-foreground">{member.full_name}</p>
+                      <p className="text-xs text-indigo-600 font-medium">{member.title || "Team Member"}</p>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {member.roles.map((r) => (
+                        <Badge key={r} variant="secondary" className="capitalize text-[10px]">
+                          {ROLE_LABELS[r] || r}
+                        </Badge>
+                      ))}
                     </div>
                     <div className="pt-2 border-t border-border text-xs text-muted-foreground space-y-1">
-                      <p className="flex items-center gap-1.5">
-                        <Mail className="w-3 h-3" /> {member.email}
+                      <p className="flex items-center gap-1.5 truncate">
+                        <Mail className="w-3 h-3 shrink-0" /> {member.email}
                       </p>
-                      <p className="flex items-center gap-1.5">
-                        <Phone className="w-3 h-3" /> {member.phone}
-                      </p>
+                      {member.phone && (
+                        <p className="flex items-center gap-1.5">
+                          <Phone className="w-3 h-3 shrink-0" /> {member.phone}
+                        </p>
+                      )}
                     </div>
+                    {isOwner && (
+                      <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs h-7 px-2"
+                          onClick={() => setEditingMemberRoles({ user: member, roles: [...member.roles] })}
+                        >
+                          Edit Roles
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={member.active ? "destructive" : "secondary"}
+                          className="text-xs h-7 px-2"
+                          onClick={() => handleToggleActive(member)}
+                        >
+                          {member.active ? "Deactivate" : "Reactivate"}
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -551,24 +668,40 @@ export default function SettingsPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   {[
-                    { title: "WhatsApp Daily Site Photo Digest", desc: "Notify clients via WhatsApp when new photo updates are posted." },
-                    { title: "Payment Milestone Reminders", desc: "Send automated gentle reminders 3 days before invoice due date." },
-                    { title: "Snag Fix Instant Alerts", desc: "Notify client immediately when site supervisor marks a defect as fixed." },
-                    { title: "BOQ Approval Acknowledgment", desc: "Send email PDF copy to client immediately upon digital approval." },
-                  ].map((notif, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3.5 bg-slate-50/70 rounded-xl border border-border">
+                    { key: "whatsapp_digest" as const, title: "WhatsApp Daily Site Photo Digest", desc: "Notify clients via WhatsApp when new photo updates are posted." },
+                    { key: "payment_reminders" as const, title: "Payment Milestone Reminders", desc: "Send automated gentle reminders 3 days before invoice due date." },
+                    { key: "snag_fix_alerts" as const, title: "Snag Fix Instant Alerts", desc: "Notify client immediately when site supervisor marks a defect as fixed." },
+                    { key: "boq_ack" as const, title: "BOQ Approval Acknowledgment", desc: "Send email PDF copy to client immediately upon digital approval." },
+                  ].map((notif) => (
+                    <div key={notif.key} className="flex items-center justify-between p-3.5 bg-slate-50/70 rounded-xl border border-border">
                       <div>
                         <p className="text-sm font-semibold text-foreground">{notif.title}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{notif.desc}</p>
                       </div>
                       <input
                         type="checkbox"
-                        defaultChecked
+                        checked={Boolean(studioSettings.alert_preferences?.[notif.key])}
+                        onChange={async (e) => {
+                          const updated = {
+                            whatsapp_digest: studioSettings.alert_preferences?.whatsapp_digest ?? false,
+                            payment_reminders: studioSettings.alert_preferences?.payment_reminders ?? false,
+                            snag_fix_alerts: studioSettings.alert_preferences?.snag_fix_alerts ?? false,
+                            boq_ack: studioSettings.alert_preferences?.boq_ack ?? false,
+                            [notif.key]: e.target.checked,
+                          };
+                          const r = await updateStudioSettings({ alert_preferences: updated });
+                          if (!r.ok) {
+                            toast.add({ title: "Failed to update alert preference", description: r.error, type: "error" });
+                          }
+                        }}
                         className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
                       />
                     </div>
                   ))}
                 </div>
+                <p className="text-xs text-muted-foreground italic">
+                  Delivery starts in Phase 1 (email) and Phase 5 (WhatsApp); preferences are saved now.
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
@@ -661,6 +794,53 @@ export default function SettingsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Role Editor Dialog */}
+      <Dialog open={Boolean(editingMemberRoles)} onOpenChange={(open) => !open && setEditingMemberRoles(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Roles — {editingMemberRoles?.user.full_name}</DialogTitle>
+            <DialogDescription>
+              Select the system roles for this team member.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="grid grid-cols-2 gap-2">
+              {ALL_ROLES.map((role) => {
+                const checked = editingMemberRoles?.roles.includes(role) ?? false;
+                return (
+                  <label
+                    key={role}
+                    className="flex items-center gap-2 p-2 border rounded-md text-xs cursor-pointer hover:bg-slate-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={(e) => {
+                        if (!editingMemberRoles) return;
+                        const next = e.target.checked
+                          ? [...editingMemberRoles.roles, role]
+                          : editingMemberRoles.roles.filter((r) => r !== role);
+                        setEditingMemberRoles({ ...editingMemberRoles, roles: next });
+                      }}
+                      className="rounded text-indigo-600"
+                    />
+                    <span>{ROLE_LABELS[role]}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0 pt-2">
+            <Button type="button" variant="outline" onClick={() => setEditingMemberRoles(null)}>
+              Cancel
+            </Button>
+            <Button type="button" onClick={handleSaveRoles} className="gradient-primary border-0 text-white">
+              Save Roles
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Invite Member Dialog */}
       <Dialog open={showInviteModal} onOpenChange={setShowInviteModal}>
         <DialogContent className="max-w-md">
@@ -694,26 +874,47 @@ export default function SettingsPage() {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-foreground block mb-1">Role *</label>
-              <select
-                value={inviteRole}
-                onChange={(e) => setInviteRole(e.target.value)}
-                className="w-full text-sm border border-input rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="Principal Designer">Principal Designer</option>
-                <option value="Project Manager">Project Manager</option>
-                <option value="Site Supervisor">Site Supervisor</option>
-                <option value="3D Visualizer & CAD Lead">3D Visualizer & CAD Lead</option>
-                <option value="Procurement & Costing Lead">Procurement & Costing Lead</option>
-              </select>
+              <label className="text-xs font-semibold text-foreground block mb-1">Job Title</label>
+              <Input
+                value={inviteTitle}
+                onChange={(e) => setInviteTitle(e.target.value)}
+                placeholder="e.g. Site Supervisor"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-foreground block mb-1">System Roles *</label>
+              <div className="grid grid-cols-2 gap-2 mt-1">
+                {ALL_ROLES.map((role) => {
+                  const checked = inviteRoles.includes(role);
+                  return (
+                    <label
+                      key={role}
+                      className="flex items-center gap-2 p-2 border rounded-md text-xs cursor-pointer hover:bg-slate-50"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          setInviteRoles((prev) =>
+                            e.target.checked ? [...prev, role] : prev.filter((r) => r !== role)
+                          );
+                        }}
+                        className="rounded text-indigo-600"
+                      />
+                      <span>{ROLE_LABELS[role]}</span>
+                    </label>
+                  );
+                })}
+              </div>
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0 pt-2">
-              <Button type="button" variant="outline" onClick={() => setShowInviteModal(false)}>
+              <Button type="button" variant="outline" onClick={() => setShowInviteModal(false)} disabled={inviting}>
                 Cancel
               </Button>
-              <Button type="submit" className="gradient-primary border-0 text-white">
-                Send Invitation
+              <Button type="submit" disabled={inviting || inviteRoles.length === 0} className="gradient-primary border-0 text-white">
+                {inviting ? "Creating Login…" : "Send Invitation"}
               </Button>
             </DialogFooter>
           </form>
