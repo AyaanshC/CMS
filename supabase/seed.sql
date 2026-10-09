@@ -202,3 +202,7 @@ select '00000000-0000-4000-8000-000000000003', d::date, 'a1000000-0000-4000-8000
        'coordination', 3, 'approved', now(), '00000000-0000-4000-8000-000000000002', now()
 from generate_series('2026-09-21'::date, '2026-10-02'::date, interval '1 day') d where extract(isodow from d) <= 5;
 
+insert into public.vendors (name, category, gstin, phone, email, payment_terms_days, status) values
+  ('Sri Lakshmi Gypsum Works', 'Civil & Ceiling', '29ABCDE1234F1Z5', '+91 90000 11111', 'lakshmi@vendor.test', 15, 'preferred'),
+  ('Modern Modular Interiors', 'Carpentry', '29BCDEF2345G1Z6', '+91 90000 22222', 'mmi@vendor.test', 30, 'active'),
+  ('Bright Electricals', 'Electrical', '29CDEFG3456H1Z7', '+91 90000 33333', 'bright@vendor.test', 30, 'active');
