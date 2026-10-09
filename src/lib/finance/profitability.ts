@@ -1,6 +1,7 @@
 import { ratio } from "@/lib/metrics/kpis";
 import { round2 } from "./money";
-import type { ChangeOrder, Expense, FeeStage, Invoice, ProjectCostRow } from "@/types";
+import type { ChangeOrder, CostControlRow, Expense, FeeStage, Invoice, ProjectCostRow, VendorBill } from "@/types";
+import { executionForecast } from "@/lib/procurement/costControl";
 
 export interface ProfitInput {
   stages: FeeStage[];
@@ -8,6 +9,8 @@ export interface ProfitInput {
   invoices: Invoice[];
   costs: ProjectCostRow[];
   expenses: Expense[];
+  vendorBills: VendorBill[];
+  costRows: CostControlRow[];
   useActual: boolean;
 }
 
@@ -21,6 +24,11 @@ export interface Profitability {
   eacMargin: number | null; eacMarginPct: number | null;
   hours: number; unratedHours: number; costBasis: "actual" | "blended";
   stages: StageBurn[];
+  executionEarned: number;
+  executionCost: number;
+  executionMargin: number;
+  plannedExecutionMargin: number | null;
+  designMargin: number;
 }
 
 const BURN_TOLERANCE = 15; // percentage points (spec 5.1 M2)
@@ -41,11 +49,29 @@ export function projectProfitability(i: ProfitInput): Profitability {
   const contractValue = round2(stageAmount + coFees);
   const earned = round2(stageEarned + coEarned);
   const labourCost = sum(i.costs.map(costOf));
-  const directCost = sum(i.expenses.map((e) => e.amount));
+
+  const expenses = i.expenses ?? [];
+  const vendorBills = i.vendorBills ?? [];
+  const costRows = i.costRows ?? [];
+
+  const liveExpenses = expenses.filter((e) => e.status !== "rejected");
+  const designDirect = sum(liveExpenses.filter((e) => e.cost_type !== "execution").map((e) => e.amount));
+  const execExpenses = sum(liveExpenses.filter((e) => e.cost_type === "execution").map((e) => e.amount));
+  const bills = sum(vendorBills.filter((b) => b.status === "approved").map((b) => b.subtotal));
+  const directCost = round2(designDirect + execExpenses + bills);
+
+  const executionEarned = sum(i.stages.filter((s) => s.kind === "execution").map((s) => s.earned));
+  const executionCost = round2(bills + execExpenses);
+  const executionMargin = round2(executionEarned - executionCost);
+  const plannedBudget = costRows.length && costRows.every((r) => r.budget != null) ? sum(costRows.map((r) => r.budget!)) : null;
+  const plannedExecutionMargin = plannedBudget === null ? null : round2(sum(costRows.map((r) => r.sell_amount)) - plannedBudget);
+
   const marginToDate = round2(earned - labourCost - directCost);
   const percentComplete = stageAmount > 0 ? stageEarned / stageAmount : null;
-
-  const eacMargin = percentComplete ? round2(contractValue - (labourCost + directCost) / percentComplete) : null;
+  const execForecast = costRows.length ? executionForecast(costRows) : null;
+  const eacMargin = percentComplete
+    ? round2(contractValue - (labourCost + designDirect) / percentComplete - (execForecast ?? (executionCost / percentComplete)))
+    : null;
 
   return {
     contractValue, earned, labourCost, directCost, marginToDate,
@@ -64,5 +90,10 @@ export function projectProfitability(i: ProfitInput): Profitability {
         overBurn: burnPct !== null && burnPct - s.percent_complete > BURN_TOLERANCE,
       };
     }),
+    executionEarned,
+    executionCost,
+    executionMargin,
+    plannedExecutionMargin,
+    designMargin: round2(marginToDate - executionMargin),
   };
 }
