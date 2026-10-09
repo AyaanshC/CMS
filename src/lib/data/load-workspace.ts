@@ -1,11 +1,12 @@
 import "server-only";
+import { addDays, weekStart } from "@/lib/time/weeks";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { SessionProfile } from "@/types";
 import {
-  makeUrlFor, mapActivity, mapAlert, mapBoq, mapChangeOrder, mapClient, mapCreditNote, mapExpense, mapFeeStage,
+  makeUrlFor, mapActivity, mapAlert, mapBoq, mapChangeOrder, mapClient, mapCostRow, mapCreditNote, mapExpense, mapFeeStage,
   mapFeeTemplate, mapFile, mapInvoice, mapLibraryItem, mapMaterial, mapMessage, mapNotification,
-  mapPayment, mapProject, mapSettings, mapSnag, mapTask, mapTeamMember, mapTemplate, mapUpdate,
-  withClientStats, withOutstanding,
+  mapPayment, mapProject, mapSettings, mapSnag, mapTask, mapTeamMember, mapTemplate, mapTimesheetEntry, mapUpdate,
+  mapWeekHours, withClientStats, withOutstanding,
 } from "./mappers";
 import type { WorkspaceSnapshot } from "./snapshot";
 
@@ -14,15 +15,17 @@ const isUrl = (p: string) => /^https?:\/\//.test(p);
 // ponytail: loads the whole RLS-visible workspace per request (fine for ≤ 60 live
 // projects). Switch to per-page queries if load time exceeds ~500 ms.
 export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapshot> {
+  const from = addDays(weekStart(new Date().toISOString().slice(0, 10)), -77);
   const db = await createServerSupabase();
   const [
     settings, clients, team, projects, boqs, snags, tasks, invoices, summaries, payments, expenses,
     messages, updates, notifications, library, templates, materials, files, activity,
     feeStages, feeTemplates, changeOrders, creditNotes, alerts,
+    timesheets, projectCosts, staffHours, rateBands, costRates,
   ] = await Promise.all([
     db.from("firm_settings").select("*").single(),
     db.from("clients").select("*").is("archived_at", null).order("created_at", { ascending: false }),
-    db.from("profiles").select("id, full_name, email, phone, title, avatar_url, active, user_roles(role)").eq("kind", "staff").order("full_name"),
+    db.from("profiles").select("id, full_name, email, phone, title, avatar_url, active, weekly_capacity_hours, billable_target_percent, rate_band_id, user_roles(role)").eq("kind", "staff").order("full_name"),
     db.from("projects")
       .select("*, client:clients(full_name), rooms:project_rooms(*), milestones:project_milestones(*), members:project_members(role_on_project, profile:profiles(id, full_name, avatar_url))")
       .is("archived_at", null).order("created_at", { ascending: false }),
@@ -48,11 +51,17 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
     db.from("change_orders").select("*").order("created_at", { ascending: false }),
     db.from("credit_notes").select("*").order("issued_at", { ascending: false }),
     db.from("alerts").select("*").eq("recipient_id", me.id).is("acknowledged_at", null).order("created_at", { ascending: false }),
+    db.from("timesheet_entries").select("*, author:profiles!timesheet_entries_profile_id_fkey(full_name), project:projects(name)").gte("work_date", from).order("work_date"),
+    db.rpc("project_cost_rollup"),
+    db.rpc("staff_week_hours", { p_from: from, p_to: addDays(from, 7 * 12 - 1) }),
+    db.from("rate_bands").select("*").order("blended_rate", { ascending: false }),
+    db.from("staff_cost_rates").select("*").order("effective_from", { ascending: false }),
   ]);
 
   const failed = [settings, clients, team, projects, boqs, snags, tasks, invoices, summaries, payments, expenses,
     messages, updates, notifications, library, templates, materials, files, activity,
-    feeStages, feeTemplates, changeOrders, creditNotes, alerts].find((r) => r.error);
+    feeStages, feeTemplates, changeOrders, creditNotes, alerts,
+    timesheets, projectCosts, staffHours, rateBands, costRates].find((r) => r.error);
   if (failed?.error) throw new Error(`Workspace load failed: ${failed.error.message}`);
 
   // Sign every storage path once.
@@ -99,5 +108,10 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
     files: (files.data ?? []).map((f) => mapFile(f, urlFor)),
     activityLogs: mappedActivity,
     alerts: (alerts.data ?? []).map(mapAlert),
+    timesheetEntries: (timesheets.data ?? []).map(mapTimesheetEntry),
+    projectCosts: (projectCosts.data ?? []).map(mapCostRow),
+    staffWeekHours: (staffHours.data ?? []).map(mapWeekHours),
+    rateBands: (rateBands.data ?? []).map((b) => ({ id: b.id, name: b.name, blended_rate: Number(b.blended_rate) })),
+    costRates: (costRates.data ?? []).map((c) => ({ id: c.id, profile_id: c.profile_id, effective_from: c.effective_from, cost_rate: Number(c.cost_rate) })),
   };
 }

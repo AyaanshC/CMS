@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  makeUrlFor, mapBoq, mapFeeStage, mapInvoice, mapMessage, mapProject, withClientStats, withOutstanding,
+  makeUrlFor, mapBoq, mapCostRow, mapFeeStage, mapInvoice, mapMessage, mapProject, withClientStats, withOutstanding,
   type BoqRow, type InvoiceRow, type ProjectRow,
 } from "./mappers";
 import type { Client, Invoice, Project } from "@/types";
@@ -127,3 +127,12 @@ describe("mapFeeStage", () => {
     expect(s).toMatchObject({ name: "Concept", amount: 90000, checklist: [{ label: "Sign-off", done: true }], planned_start: undefined });
   });
 });
+
+describe("mapCostRow", () => {
+  it("keeps actual cost absent (not 0) when hidden", () => {
+    const r = mapCostRow({ project_id: "p", fee_stage_id: null, hours: 10, billable_hours: 8, unrated_hours: 0, blended_cost: 11000, actual_cost: null });
+    expect(r.actual_cost).toBeUndefined();
+    expect(r.fee_stage_id).toBeUndefined();
+  });
+});
+

@@ -3,8 +3,8 @@ import type { Tables } from "@/lib/supabase/database.types";
 import type {
   ActivityLogItem, Alert, AppRole, BOQTemplate, BOQVersion, ChangeOrder, ChecklistItem, Client, CreditNote, Expense,
   FeeStage, FeeStageKind, FeeStageStatus, FeeTemplate, Invoice, InvoiceStatus, ItemLibraryItem, MaterialOption,
-  Message, Notification, Payment, ProfileKind, Project, ProjectFile, ProjectUpdate, Snag, StudioSettings,
-  Task, TeamMember,
+  Message, Notification, Payment, ProfileKind, Project, ProjectCostRow, ProjectFile, ProjectUpdate, Snag, StaffWeekHours, StudioSettings,
+  Task, TeamMember, TimesheetEntry,
 } from "@/types";
 
 export type UrlFor = (pathOrUrl: string | null | undefined) => string | undefined;
@@ -321,5 +321,28 @@ export function mapTeamMember(r: {
 export function mapAlert(r: Tables<"alerts">): Alert {
   return { id: r.id, kind: r.kind, title: r.title, body: r.body, link: opt(r.link), project_id: opt(r.project_id),
     invoice_id: opt(r.invoice_id), created_at: r.created_at, acknowledged_at: opt(r.acknowledged_at) };
+}
+
+export function mapCostRow(r: {
+  project_id: string; fee_stage_id: string | null; hours: number; billable_hours: number; unrated_hours: number;
+  blended_cost: number; actual_cost: number | null;
+}): ProjectCostRow {
+  return {
+    project_id: r.project_id, fee_stage_id: opt(r.fee_stage_id), hours: r.hours, billable_hours: r.billable_hours,
+    unrated_hours: r.unrated_hours, blended_cost: r.blended_cost, actual_cost: opt(r.actual_cost),
+  };
+}
+
+export function mapWeekHours(r: { profile_id: string; week_start: string; total_hours: number | null; billable_hours: number; submitted: boolean }): StaffWeekHours {
+  return { profile_id: r.profile_id, week_start: r.week_start, total_hours: r.total_hours ?? 0, billable_hours: r.billable_hours, submitted: r.submitted };
+}
+
+export function mapTimesheetEntry(r: Tables<"timesheet_entries"> & { author: { full_name: string } | null; project: { name: string } | null }): TimesheetEntry {
+  return {
+    id: r.id, profile_id: r.profile_id, profile_name: r.author?.full_name, work_date: r.work_date,
+    project_id: opt(r.project_id), project_name: r.project?.name, fee_stage_id: opt(r.fee_stage_id),
+    activity: r.activity, hours: r.hours, billable: r.billable, notes: opt(r.notes), status: r.status,
+    decision_note: opt(r.decision_note),
+  };
 }
 
