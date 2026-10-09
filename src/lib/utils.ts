@@ -131,3 +131,6 @@ export function getPriorityDot(priority: string): string {
   };
   return colors[priority] || 'bg-slate-400';
 }
+
+// Calendar date in the viewer's timezone (en-CA formats as YYYY-MM-DD).
+export const localToday = () => new Date().toLocaleDateString("en-CA");

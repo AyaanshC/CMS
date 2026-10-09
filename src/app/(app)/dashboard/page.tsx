@@ -4,94 +4,57 @@ import { TopBar } from "@/components/layout/AppSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend,
+  PieChart, Pie, Cell,
 } from "recharts";
 import {
   FolderKanban, IndianRupee, AlertCircle, CheckSquare,
-  Clock, TrendingUp, ArrowRight, Bell, CalendarDays,
+  Clock, ArrowRight, Bell,
 } from "lucide-react";
 import {
   formatCurrency, formatRelativeTime, getStatusColor,
-  getPriorityColor, getInitials, formatShortDate, isOverdue,
+  getPriorityColor, formatShortDate, isOverdue, localToday, cn,
 } from "@/lib/utils";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
-import { MOCK_REVENUE_DATA, MOCK_PROJECT_STATUS_DATA } from "@/lib/mock-data";
+import { dashboardKpis, monthlySeries, stageDistribution } from "@/lib/metrics/kpis";
+import { NotEnoughData } from "@/components/metrics/NotEnoughData";
+import { MetricInfo } from "@/components/metrics/MetricInfo";
+import type { ProjectStatus } from "@/types";
 
-const KPI_CARDS = [
-  {
-    title: "Active Projects",
-    value: 6, // Mock static for now since original was static
-    icon: FolderKanban,
-    color: "gradient-primary",
-    textColor: "text-indigo-600",
-    bgColor: "bg-indigo-50",
-    change: "+2 this month",
-    href: "/projects",
-  },
-  {
-    title: "Revenue This Month",
-    value: formatCurrency(1250000),
-    icon: IndianRupee,
-    color: "gradient-success",
-    textColor: "text-emerald-600",
-    bgColor: "bg-emerald-50",
-    change: "+18% vs last month",
-    href: "/reports",
-  },
-  {
-    title: "Outstanding Payments",
-    value: formatCurrency(450000),
-    icon: AlertCircle,
-    color: "gradient-warning",
-    textColor: "text-amber-600",
-    bgColor: "bg-amber-50",
-    change: "3 invoices pending",
-    href: "/invoices",
-  },
-  {
-    title: "Open Snags",
-    value: 12,
-    icon: AlertCircle,
-    color: "gradient-danger",
-    textColor: "text-red-600",
-    bgColor: "bg-red-50",
-    change: "2 critical priority",
-    href: "/projects",
-  },
-  {
-    title: "Tasks Due Today",
-    value: 5,
-    icon: CheckSquare,
-    color: "gradient-primary",
-    textColor: "text-violet-600",
-    bgColor: "bg-violet-50",
-    change: "Across 3 projects",
-    href: "/tasks",
-  },
-  {
-    title: "Pending Approvals",
-    value: 2,
-    icon: Clock,
-    color: "gradient-warning",
-    textColor: "text-orange-600",
-    bgColor: "bg-orange-50",
-    change: "BOQ + Design",
-    href: "/projects",
-  },
-];
+const STAGE_COLORS: Record<ProjectStatus, string> = {
+  lead: "#94a3b8",
+  consultation: "#60a5fa",
+  design: "#8b5cf6",
+  boq_approval: "#fbbf24",
+  execution: "#6366f1",
+  snag: "#f97316",
+  handover: "#14b8a6",
+  closed: "#22c55e",
+};
 
-const CUSTOM_TOOLTIP = ({ active, payload, label }: any) => {
+interface TooltipPayloadEntry {
+  color: string;
+  name: string;
+  value: number;
+}
+
+const CUSTOM_TOOLTIP = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: TooltipPayloadEntry[];
+  label?: string;
+}) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-card border border-border rounded-xl p-3 shadow-lg text-sm">
         <p className="font-semibold text-foreground mb-1">{label}</p>
-        {payload.map((entry: any, i: number) => (
+        {payload.map((entry, i) => (
           <p key={i} style={{ color: entry.color }}>
             {entry.name}: {formatCurrency(entry.value)}
           </p>
@@ -103,7 +66,78 @@ const CUSTOM_TOOLTIP = ({ active, payload, label }: any) => {
 };
 
 export default function DashboardPage() {
-  const { notifications, projects, tasks } = useAppStore();
+  const { me, notifications, projects, tasks, invoices, payments, snags, boqs, expenses } = useAppStore();
+  const today = localToday();
+  const k = dashboardKpis({ projects, invoices, payments, snags, tasks, boqs }, today);
+  const series = monthlySeries(invoices, payments, expenses, today);
+  const stages = stageDistribution(projects);
+
+  const cards = [
+    {
+      title: "Active Projects",
+      value: k.activeProjects,
+      icon: FolderKanban,
+      textColor: "text-indigo-600",
+      bgColor: "bg-indigo-50",
+      note: `${projects.filter((p) => p.status === "lead").length} open leads`,
+      href: "/projects",
+      formula: "Projects not in Lead or Closed stage",
+    },
+    {
+      title: "Collected This Month",
+      value: formatCurrency(k.collectedThisMonth),
+      icon: IndianRupee,
+      textColor: "text-emerald-600",
+      bgColor: "bg-emerald-50",
+      note: "Payments recorded this month",
+      href: "/invoices",
+      formula: "Sum of payments dated this calendar month",
+    },
+    {
+      title: "Outstanding",
+      value: formatCurrency(k.outstanding),
+      icon: AlertCircle,
+      textColor: "text-amber-600",
+      bgColor: "bg-amber-50",
+      note: `${k.overdueInvoices} overdue`,
+      href: "/invoices",
+      formula: "Sum of amount due on sent invoices",
+    },
+    {
+      title: "Open Snags",
+      value: k.openSnags,
+      icon: AlertCircle,
+      textColor: "text-red-600",
+      bgColor: "bg-red-50",
+      note: `${k.criticalSnags} critical`,
+      href: "/projects",
+      formula: "Snags not yet closed",
+    },
+    {
+      title: "Tasks Due Today",
+      value: k.tasksDueToday,
+      icon: CheckSquare,
+      textColor: "text-violet-600",
+      bgColor: "bg-violet-50",
+      note: `${k.overdueTasks} overdue`,
+      href: "/tasks",
+      formula: "Open tasks with today's due date",
+    },
+    {
+      title: "Awaiting Client Approval",
+      value: k.pendingApprovals,
+      icon: Clock,
+      textColor: "text-orange-600",
+      bgColor: "bg-orange-50",
+      note: "Submitted BOQs",
+      href: "/projects",
+      formula: "BOQ versions in Submitted status",
+    },
+  ];
+
+  const hasSeriesData = series.some((s) => s.invoiced > 0 || s.collected > 0 || s.expenses > 0);
+  const hasStagesData = stages.length > 0;
+
   const recentActivity = notifications.slice(0, 5);
   const upcomingTasks = tasks
     .filter((t) => t.status !== "done")
@@ -114,21 +148,26 @@ export default function DashboardPage() {
     <div>
       <TopBar
         title="Dashboard"
-        subtitle={`Good morning, Priya 👋`}
+        subtitle={`Welcome back, ${me.full_name.split(" ")[0]}`}
       />
       <div className="p-6 space-y-6">
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          {KPI_CARDS.map((kpi) => (
+          {cards.map((kpi) => (
             <Link key={kpi.title} href={kpi.href}>
-              <Card className="card-hover border-border cursor-pointer">
-                <CardContent className="p-4">
-                  <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center mb-3", kpi.bgColor)}>
-                    <kpi.icon className={cn("w-4 h-4", kpi.textColor)} />
+              <Card className="card-hover border-border cursor-pointer h-full">
+                <CardContent className="p-4 flex flex-col justify-between h-full">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", kpi.bgColor)}>
+                        <kpi.icon className={cn("w-4 h-4", kpi.textColor)} />
+                      </div>
+                      <MetricInfo formula={kpi.formula} />
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
+                    <p className="text-xs font-medium text-muted-foreground mt-0.5">{kpi.title}</p>
                   </div>
-                  <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
-                  <p className="text-xs font-medium text-muted-foreground mt-0.5">{kpi.title}</p>
-                  <p className="text-[11px] text-muted-foreground mt-1 opacity-70">{kpi.change}</p>
+                  <p className="text-[11px] text-muted-foreground mt-2 opacity-70">{kpi.note}</p>
                 </CardContent>
               </Card>
             </Link>
@@ -140,21 +179,28 @@ export default function DashboardPage() {
           <Card className="lg:col-span-2">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">Revenue vs Expenses</CardTitle>
+                <CardTitle className="text-base font-semibold">Invoiced, collected and expenses</CardTitle>
                 <Badge variant="secondary" className="text-xs">Last 6 months</Badge>
               </div>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={MOCK_REVENUE_DATA} barSize={20} barGap={4}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`} />
-                  <Tooltip content={<CUSTOM_TOOLTIP />} />
-                  <Bar dataKey="revenue" name="Revenue" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="expenses" name="Expenses" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {!hasSeriesData ? (
+                <div className="h-[220px] flex items-center justify-center">
+                  <NotEnoughData hint="Appears once invoices or payments are recorded" />
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={series} barSize={16} barGap={4}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                    <XAxis dataKey="month" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`} />
+                    <Tooltip content={<CUSTOM_TOOLTIP />} />
+                    <Bar dataKey="invoiced" name="Invoiced" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="collected" name="Collected" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="expenses" name="Expenses" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </CardContent>
           </Card>
 
@@ -164,35 +210,47 @@ export default function DashboardPage() {
               <CardTitle className="text-base font-semibold">Projects by Stage</CardTitle>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={180}>
-                <PieChart>
-                  <Pie
-                    data={MOCK_PROJECT_STATUS_DATA}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={50}
-                    outerRadius={75}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {MOCK_PROJECT_STATUS_DATA.map((entry: any, index: number) => (
-                      <Cell key={index} fill={entry.color} />
+              {!hasStagesData ? (
+                <div className="h-[220px] flex items-center justify-center">
+                  <NotEnoughData />
+                </div>
+              ) : (
+                <>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <PieChart>
+                      <Pie
+                        data={stages}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={50}
+                        outerRadius={75}
+                        paddingAngle={3}
+                        dataKey="count"
+                        nameKey="label"
+                      >
+                        {stages.map((entry) => (
+                          <Cell key={entry.stage} fill={STAGE_COLORS[entry.stage] || "#94a3b8"} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(v, n) => [v, n]} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="space-y-1.5 mt-2">
+                    {stages.map((item) => (
+                      <div key={item.stage} className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-2 h-2 rounded-full"
+                            style={{ background: STAGE_COLORS[item.stage] || "#94a3b8" }}
+                          />
+                          <span className="text-muted-foreground">{item.label}</span>
+                        </div>
+                        <span className="font-medium">{item.count}</span>
+                      </div>
                     ))}
-                  </Pie>
-                  <Tooltip formatter={(v, n) => [v, n]} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div className="space-y-1.5 mt-2">
-                {MOCK_PROJECT_STATUS_DATA.map((item: any) => (
-                  <div key={item.name} className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full" style={{ background: item.color }} />
-                      <span className="text-muted-foreground">{item.name}</span>
-                    </div>
-                    <span className="font-medium">{item.value}</span>
                   </div>
-                ))}
-              </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </div>
