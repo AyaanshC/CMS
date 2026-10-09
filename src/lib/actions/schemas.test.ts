@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   changeOrderInput, clientInput, creditNoteInput, feeStageUpdate, feeTermsInput, invoiceInput, issueInvoiceInput,
-  lineItemInput, messageInput, paymentInput, projectInput, taskInput,
+  lineItemInput, messageInput, paymentInput, projectInput, taskInput, timesheetWeekInput,
 } from "./schemas";
 
 const P = "a1000000-0000-4000-8000-000000000001";
@@ -78,4 +78,17 @@ describe("receivables schemas", () => {
     expect(issueInvoiceInput.safeParse({ id: P }).success).toBe(true);
   });
 });
+
+describe("timesheetWeekInput", () => {
+  const row = { project_id: P, activity: "design", billable: true, hours: [8, 8, 8, 8, 8, 0, 0] };
+  it("requires a Monday and seven day values", () => {
+    expect(timesheetWeekInput.safeParse({ week_start: "2026-10-05", rows: [row] }).success).toBe(true);
+    expect(timesheetWeekInput.safeParse({ week_start: "2026-10-06", rows: [row] }).success).toBe(false);
+    expect(timesheetWeekInput.safeParse({ week_start: "2026-10-05", rows: [{ ...row, hours: [8] }] }).success).toBe(false);
+  });
+  it("rejects negative or >24 hour cells", () => {
+    expect(timesheetWeekInput.safeParse({ week_start: "2026-10-05", rows: [{ ...row, hours: [25, 0, 0, 0, 0, 0, 0] }] }).success).toBe(false);
+  });
+});
+
 

@@ -44,7 +44,7 @@ describe("projectProfitability", () => {
   });
 
   it("falls back to blended when actual is hidden", () => {
-    const hidden = costs.map(({ actual_cost: _, ...c }) => c);
+    const hidden = costs.map((c) => ({ ...c, actual_cost: undefined }));
     expect(projectProfitability({ stages, changeOrders, invoices, costs: hidden, expenses, useActual: true }).costBasis).toBe("blended");
   });
 

@@ -16,6 +16,7 @@ import {
   Building2,
   Search,
   Landmark,
+  Clock,
 } from "lucide-react";
 import { cn, getInitials } from "@/lib/utils";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -41,6 +42,7 @@ const NAV_ITEMS: { href: string; label: string; icon: typeof LayoutDashboard; ro
   { href: "/invoices", label: "Invoices", icon: Receipt, roles: ["owner", "director", "project_manager", "finance"] },
   { href: "/finance", label: "Finance", icon: Landmark, roles: ["owner", "director", "finance"] },
   { href: "/tasks", label: "My Tasks", icon: CheckSquare },
+  { href: "/timesheets", label: "Timesheet", icon: Clock },
   { href: "/reports", label: "Reports", icon: BarChart3, roles: ["owner", "director", "finance"] },
 ];
 

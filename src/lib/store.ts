@@ -18,10 +18,15 @@ import * as feeActions from "@/app/actions/fees";
 import * as coActions from "@/app/actions/change-orders";
 import * as recvActions from "@/app/actions/receivables";
 import * as alertActions from "@/app/actions/alerts";
+import * as tsActions from "@/app/actions/timesheets";
 import type {
   BOQLineItem, BOQVersion, ChangeOrder, Client, Expense, FeeStage, Invoice, Message, Project, ProjectMilestone, ProjectRoom,
-  ProjectStatus, ProjectUpdate, Snag, SnagComment, SnagStatus, Task, ItemLibraryItem, StudioSettings,
+  ProjectStatus, ProjectUpdate, Snag, SnagComment, SnagStatus, Task, ItemLibraryItem, StudioSettings, TimesheetActivity,
 } from "@/types";
+
+export interface WeekRow {
+  project_id: string | null; fee_stage_id: string | null; activity: TimesheetActivity; billable: boolean; notes?: string; hours: number[];
+}
 
 export type NewFileRecord = {
   project_id: string; folder?: string; file_name: string; storage_path: string;
@@ -103,6 +108,11 @@ export interface AppActions {
   updateStudioSettings: (settings: Partial<StudioSettings>) => Promise<ActionResult>;
   markNotificationRead: (id: string) => Promise<ActionResult>;
   markAllNotificationsRead: () => Promise<ActionResult>;
+
+  // Timesheets
+  saveTimesheetWeek: (weekStart: string, rows: WeekRow[]) => Promise<ActionResult>;
+  submitTimesheetWeek: (weekStart: string) => Promise<ActionResult>;
+  decideTimesheetEntries: (ids: string[], approve: boolean, note?: string) => Promise<ActionResult>;
 }
 
 export type AppState = WorkspaceSnapshot & AppActions;
@@ -205,6 +215,11 @@ export const createAppStore = (snapshot: WorkspaceSnapshot) =>
 
     // Settings & Activity
     updateStudioSettings: (settings) => run(settingsActions.updateSettings(settings)),
+
+    // Timesheets
+    saveTimesheetWeek: (weekStart, rows) => run(tsActions.saveTimesheetWeek({ week_start: weekStart, rows })),
+    submitTimesheetWeek: (weekStart) => run(tsActions.submitTimesheetWeek({ week_start: weekStart })),
+    decideTimesheetEntries: (ids, approve, note) => run(tsActions.decideTimesheetEntries({ ids, approve, note })),
   }));
 
 export const AppStoreContext = createContext<StoreApi<AppState> | null>(null);

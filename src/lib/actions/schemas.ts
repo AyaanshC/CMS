@@ -275,3 +275,20 @@ export const issueInvoiceInput = z.object({ id, due_date: optDate });
 export const creditNoteInput = z.object({ invoice_id: id, amount: z.coerce.number().finite().positive().max(1e11), reason: text(300) });
 export const retentionInput = z.object({ id, retention_amount: money });
 
+const isMonday = (d: string) => new Date(`${d}T00:00:00Z`).getUTCDay() === 1;
+export const timesheetWeekInput = z.object({
+  week_start: date.refine(isMonday, "Week must start on a Monday"),
+  rows: z.array(z.object({
+    project_id: optId,
+    fee_stage_id: optId,
+    activity: z.enum(["design", "drafting", "visualisation", "site_visit", "client_meeting", "coordination", "approvals", "admin", "business_development", "training", "leave"]),
+    billable: z.boolean(),
+    notes: optText(300),
+    hours: z.array(z.coerce.number().min(0).max(24)).length(7),
+  })).max(40),
+});
+export const weekInput = z.object({ week_start: date.refine(isMonday, "Week must start on a Monday") });
+export const timesheetDecisionInput = z.object({ ids: z.array(id).min(1).max(500), approve: z.boolean(), note: optText(500) })
+  .refine((d) => d.approve || !!d.note, { message: "Say why the time is being sent back", path: ["note"] });
+
+
