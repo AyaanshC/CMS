@@ -16,7 +16,7 @@ import {
 import { useAppStore } from "@/lib/store";
 import { formatCurrency, getStatusColor, localToday, cn } from "@/lib/utils";
 import {
-  avgApprovalDays, avgSnagFixHours, cleanHandoverRate, fyStart, monthlySeries,
+  avgApprovalDays, avgSnagFixHours, cleanHandoverRate, fyStart, inputGst, monthlySeries,
   onTimeMilestones, outputGst, ratio,
 } from "@/lib/metrics/kpis";
 import { NotEnoughData } from "@/components/metrics/NotEnoughData";
@@ -29,7 +29,7 @@ const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4"
 
 export default function ReportsPage() {
   const store = useAppStore();
-  const { me, projects, invoices, payments, expenses, snags, boqs, studioSettings } = store;
+  const { me, projects, invoices, payments, expenses, snags, boqs, studioSettings, vendorBills } = store;
   const isOwnerOrFinance = hasAnyRole(me, ["owner", "finance"]);
   const [useActual, setUseActual] = useState(false);
   const today = localToday();
@@ -77,6 +77,8 @@ export default function ReportsPage() {
   // GST
   const fiscalYearStart = fyStart(today);
   const gst = outputGst(invoices, fiscalYearStart, today);
+  const itc = inputGst(vendorBills, fiscalYearStart, today);
+  const netGst = gst - itc;
 
   const handlePrint = () => {
     window.print();
@@ -447,7 +449,7 @@ export default function ReportsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="p-4 bg-slate-50 rounded-xl border border-border">
                     <div className="flex items-center gap-1.5">
                       <p className="text-xs text-muted-foreground">Output GST Collected</p>
@@ -459,13 +461,24 @@ export default function ReportsPage() {
                   <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
                     <div className="flex items-center gap-1.5">
                       <p className="text-xs text-emerald-800">Input Tax Credit (ITC)</p>
-                      <MetricInfo formula="Input tax credit tracking arrives with vendor bills in Phase 3" />
+                      <MetricInfo formula="GST on approved vendor bills in the current financial year" />
                     </div>
-                    <div className="mt-2">
-                      <NotEnoughData hint="Needs vendor bills (Phase 3)" />
+                    <p className="text-2xl font-bold text-emerald-700 mt-1">{formatCurrency(itc)}</p>
+                    <p className="text-[11px] text-emerald-600 mt-0.5">Approved vendor bills this financial year</p>
+                  </div>
+                  <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs text-indigo-800">Net GST (estimate)</p>
+                      <MetricInfo formula="Output GST minus Input Tax Credit (ITC)" />
                     </div>
+                    <p className="text-2xl font-bold text-indigo-700 mt-1">{formatCurrency(netGst)}</p>
+                    <p className="text-[11px] text-indigo-600 mt-0.5">Output − input</p>
                   </div>
                 </div>
+
+                <p className="text-xs text-muted-foreground italic">
+                  Estimate; reconcile with GSTR-2B in your accounting system before filing.
+                </p>
 
                 <div className="p-4 bg-slate-100/70 rounded-xl text-xs space-y-1.5 text-slate-700">
                   <div className="flex justify-between">

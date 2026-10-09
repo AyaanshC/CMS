@@ -27,6 +27,7 @@ import { OwnerDashboard } from "@/components/dashboard/OwnerDashboard";
 import { DirectorDashboard } from "@/components/dashboard/DirectorDashboard";
 import { PmDashboard } from "@/components/dashboard/PmDashboard";
 import { MyWeekDashboard } from "@/components/dashboard/MyWeekDashboard";
+import { SiteDashboard } from "@/components/dashboard/SiteDashboard";
 import type { ProjectStatus } from "@/types";
 
 const STAGE_COLORS: Record<ProjectStatus, string> = {
@@ -160,6 +161,7 @@ export default function DashboardPage() {
         {me.roles.includes("owner") ? <OwnerDashboard />
           : me.roles.includes("director") ? <DirectorDashboard />
           : me.roles.includes("project_manager") ? <PmDashboard />
+          : me.roles.includes("site_supervisor") ? <><SiteDashboard /><MyWeekDashboard /></>
           : <MyWeekDashboard />}
         {(me.roles.includes("director") || me.roles.includes("project_manager")) && <MyWeekDashboard />}
 

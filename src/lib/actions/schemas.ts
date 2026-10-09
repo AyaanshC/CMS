@@ -214,7 +214,15 @@ export const settingsInput = z.object({
   alert_preferences: z.object({
     whatsapp_digest: z.boolean(), payment_reminders: z.boolean(), snag_fix_alerts: z.boolean(), boq_ack: z.boolean(),
   }).optional(),
-});
+  approval_thresholds: z.object({
+    po_director: money,
+    po_owner: money,
+    expense: money,
+  }).optional(),
+}).refine(
+  (s) => !s.approval_thresholds || s.approval_thresholds.po_owner > s.approval_thresholds.po_director,
+  { message: "Owner PO threshold must be greater than Director threshold", path: ["approval_thresholds", "po_owner"] },
+);
 export const staffInviteInput = z.object({ full_name: text(120), email: z.email(), title: optText(80), roles: z.array(appRole).min(1) });
 export const staffRolesInput = z.object({ user_id: id, roles: z.array(appRole).min(1) });
 export const portalInviteInput = z.object({ client_id: id, full_name: text(120), email: z.email() });

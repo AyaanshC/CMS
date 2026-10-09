@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   billInput, changeOrderInput, clientInput, costRateInput, creditNoteInput, feeStageUpdate, feeTermsInput, invoiceInput, issueInvoiceInput,
-  lineItemInput, messageInput, paymentInput, poInput, projectInput, receiptInput, riskSettingsInput, staffTermsInput, taskInput, timesheetWeekInput,
+  lineItemInput, messageInput, paymentInput, poInput, projectInput, receiptInput, riskSettingsInput, settingsInput, staffTermsInput, taskInput, timesheetWeekInput,
   vendorPaymentInput,
 } from "./schemas";
 
@@ -102,6 +102,10 @@ describe("staff and risk settings", () => {
   });
   it("requires all seven risk weights", () => {
     expect(riskSettingsInput.safeParse({ risk_weights: { fee_burn: 25 } }).success).toBe(false);
+  });
+  it("validates approval thresholds where owner exceeds director", () => {
+    expect(settingsInput.safeParse({ approval_thresholds: { po_director: 50000, po_owner: 100000, expense: 10000 } }).success).toBe(true);
+    expect(settingsInput.safeParse({ approval_thresholds: { po_director: 100000, po_owner: 50000, expense: 10000 } }).success).toBe(false);
   });
 });
 

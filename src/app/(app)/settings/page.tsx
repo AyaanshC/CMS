@@ -104,6 +104,11 @@ export default function SettingsPage() {
   // Risk & Targets state
   const [riskWeights, setRiskWeights] = useState<RiskWeights>(() => studioSettings.risk_weights ?? DEFAULT_RISK_WEIGHTS);
   const [billingTarget, setBillingTarget] = useState<string>(() => studioSettings.monthly_billing_target ? String(studioSettings.monthly_billing_target) : "");
+  const [thresholds, setThresholds] = useState({
+    po_director: studioSettings.approval_thresholds?.po_director ?? 100000,
+    po_owner: studioSettings.approval_thresholds?.po_owner ?? 500000,
+    expense: studioSettings.approval_thresholds?.expense ?? 10000,
+  });
   const [savingRisk, setSavingRisk] = useState(false);
   const [savedRiskSuccess, setSavedRiskSuccess] = useState(false);
 
@@ -155,18 +160,29 @@ export default function SettingsPage() {
 
   const handleSaveRiskSettings = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (thresholds.po_owner <= thresholds.po_director) {
+      return toast.add({
+        title: "Invalid thresholds",
+        description: "Owner PO threshold must be greater than Director threshold",
+        type: "error",
+      });
+    }
     setSavingRisk(true);
     const r = await updateRiskSettings({
       risk_weights: riskWeights,
       monthly_billing_target: billingTarget ? Number(billingTarget) : null,
     });
+    const r2 = await updateStudioSettings({
+      approval_thresholds: thresholds,
+    });
     setSavingRisk(false);
-    if (!r.ok) {
-      toast.add({ title: "Could not save risk settings", description: r.error, type: "error" });
+    const err = (!r.ok && r.error) || (!r2.ok && r2.error);
+    if (err) {
+      toast.add({ title: "Could not save risk settings", description: err, type: "error" });
     } else {
       setSavedRiskSuccess(true);
       setTimeout(() => setSavedRiskSuccess(false), 2500);
-      toast.add({ title: "Risk & target settings saved", description: "Studio risk weights and targets updated.", type: "success" });
+      toast.add({ title: "Risk & target settings saved", description: "Studio risk weights, targets and approval thresholds updated.", type: "success" });
     }
   };
 
@@ -1042,6 +1058,68 @@ export default function SettingsPage() {
                         <p className="text-[11px] text-muted-foreground">
                           Shown on owner dashboard alongside month-to-date invoiced volume.
                         </p>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-border">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                        Approval Thresholds (₹)
+                      </h4>
+                      <p className="text-xs text-muted-foreground mb-4">
+                        Purchase orders and expenses exceeding these values require senior authorization.
+                      </p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="p-3 border rounded-lg bg-slate-50/50 space-y-1.5">
+                          <label className="text-xs font-semibold text-foreground block">
+                            PO Director Threshold (₹)
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={thresholds.po_director}
+                              onChange={(e) => setThresholds({ ...thresholds, po_director: Number(e.target.value) })}
+                              className="h-8 pl-6 text-xs bg-white"
+                              required
+                            />
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">POs above this require Director approval.</p>
+                        </div>
+                        <div className="p-3 border rounded-lg bg-slate-50/50 space-y-1.5">
+                          <label className="text-xs font-semibold text-foreground block">
+                            PO Owner Threshold (₹)
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={thresholds.po_owner}
+                              onChange={(e) => setThresholds({ ...thresholds, po_owner: Number(e.target.value) })}
+                              className="h-8 pl-6 text-xs bg-white"
+                              required
+                            />
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">POs above this require Owner approval.</p>
+                        </div>
+                        <div className="p-3 border rounded-lg bg-slate-50/50 space-y-1.5">
+                          <label className="text-xs font-semibold text-foreground block">
+                            Expense Approval Threshold (₹)
+                          </label>
+                          <div className="relative">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
+                            <Input
+                              type="number"
+                              min="0"
+                              value={thresholds.expense}
+                              onChange={(e) => setThresholds({ ...thresholds, expense: Number(e.target.value) })}
+                              className="h-8 pl-6 text-xs bg-white"
+                              required
+                            />
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">Expenses above this require Owner / Finance sign-off.</p>
+                        </div>
                       </div>
                     </div>
 

@@ -1,6 +1,6 @@
 import { round2 } from "@/lib/finance/money";
 import { PROJECT_STAGES, PROJECT_STAGE_LABELS } from "@/types";
-import type { BOQVersion, Expense, Invoice, Payment, Project, ProjectStatus, Snag, Task } from "@/types";
+import type { BOQVersion, Expense, Invoice, Payment, Project, ProjectStatus, Snag, Task, VendorBill } from "@/types";
 
 // Pure metric functions. A metric that cannot be measured returns null so the UI
 // shows "Not enough data yet" instead of NaN, 0% or a made-up value.
@@ -93,4 +93,8 @@ export function fyStart(today: string): string {
 
 export function outputGst(invoices: Invoice[], from: string, to: string): number {
   return sum(invoices.filter((i) => isLive(i) && i.issue_date && i.issue_date >= from && i.issue_date <= to).map((i) => i.gst_amount));
+}
+
+export function inputGst(bills: VendorBill[], from: string, to: string): number {
+  return sum(bills.filter((b) => b.status === "approved" && b.bill_date >= from && b.bill_date <= to).map((b) => b.gst_amount));
 }

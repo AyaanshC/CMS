@@ -1,6 +1,7 @@
 "use client";
 
 import { TopBar } from "@/components/layout/AppSidebar";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { AgeingTable } from "@/components/finance/AgeingTable";
 import { InvoiceQueue } from "@/components/finance/InvoiceQueue";
@@ -8,17 +9,25 @@ import { MetricInfo } from "@/components/metrics/MetricInfo";
 import { NotEnoughData } from "@/components/metrics/NotEnoughData";
 import { ageing, billingLagDays, clientPaymentBehaviour, dso, unbilledWip } from "@/lib/metrics/receivables";
 import { useAppStore } from "@/lib/store";
-import { formatCurrency, localToday } from "@/lib/utils";
+import { addDays } from "@/lib/time/weeks";
+import { formatCurrency, formatDate, localToday } from "@/lib/utils";
 
 export default function FinancePage() {
-  const { invoices, feeStages } = useAppStore();
+  const { invoices, feeStages, vendorBills, expenses, decideExpense } = useAppStore();
   const today = localToday();
+  const in7Days = addDays(today, 7);
   const rows = ageing(invoices, today);
   const d = dso(invoices, today);
   const lag = billingLagDays(feeStages, invoices);
   const wip = unbilledWip(feeStages);
   const behaviour = clientPaymentBehaviour(invoices);
   const overdue = invoices.filter((i) => i.status === "overdue").reduce((s, i) => s + i.amount_due, 0);
+
+  const payablesDue = vendorBills.filter(
+    (b) => b.status === "approved" && b.outstanding > 0 && b.due_date && b.due_date <= in7Days
+  );
+  const totalPayablesDue = payablesDue.reduce((sum, b) => sum + b.outstanding, 0);
+  const pendingExpenses = expenses.filter((e) => e.status === "pending");
 
   const tiles = [
     { label: "Unbilled work", value: formatCurrency(wip), formula: "Fee earned on stages (fee × % complete) minus amount invoiced for those stages" },
@@ -39,6 +48,98 @@ export default function FinancePage() {
             </CardContent></Card>
           ))}
         </div>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold">Payables due in 7 days</p>
+                <p className="text-xs text-muted-foreground">Approved vendor bills due by {formatDate(in7Days)}</p>
+              </div>
+              <p className="text-lg font-bold text-amber-600">{formatCurrency(totalPayablesDue)}</p>
+            </div>
+            {payablesDue.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No payables due in the next 7 days.</p>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b text-muted-foreground text-left">
+                    <th className="py-1">Vendor</th>
+                    <th>Bill #</th>
+                    <th>Due date</th>
+                    <th className="text-right">Total</th>
+                    <th className="text-right">Outstanding</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {payablesDue.map((b) => (
+                    <tr key={b.id}>
+                      <td className="py-1.5 font-medium">{b.vendor_name}</td>
+                      <td>{b.bill_number}</td>
+                      <td className={b.due_date! < today ? "text-red-600 font-medium" : ""}>
+                        {formatDate(b.due_date!)}
+                      </td>
+                      <td className="text-right">{formatCurrency(b.total)}</td>
+                      <td className="text-right font-semibold">{formatCurrency(b.outstanding)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-semibold">Expenses awaiting approval ({pendingExpenses.length})</p>
+                <p className="text-xs text-muted-foreground">Requires owner or finance decision</p>
+              </div>
+            </div>
+            {pendingExpenses.length === 0 ? (
+              <p className="text-xs text-muted-foreground">No expenses awaiting approval.</p>
+            ) : (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b text-muted-foreground text-left">
+                    <th className="py-1">Date</th>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th className="text-right">Amount</th>
+                    <th className="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {pendingExpenses.map((exp) => (
+                    <tr key={exp.id}>
+                      <td className="py-1.5">{formatDate(exp.expense_date)}</td>
+                      <td className="font-medium">{exp.category}</td>
+                      <td className="text-muted-foreground">{exp.description}</td>
+                      <td className="text-right font-semibold">{formatCurrency(exp.amount)}</td>
+                      <td className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button size="sm" className="h-7 text-xs" onClick={() => decideExpense(exp.id, true)}>
+                            Approve
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs"
+                            onClick={() => {
+                              const note = window.prompt("Reason for rejecting expense?");
+                              if (note !== null) decideExpense(exp.id, false, note || undefined);
+                            }}
+                          >
+                            Reject
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </CardContent>
+        </Card>
         <InvoiceQueue />
         <AgeingTable rows={rows} />
         <Card><CardContent className="p-4">

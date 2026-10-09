@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
-  avgApprovalDays, avgSnagFixHours, cleanHandoverRate, dashboardKpis, fyStart, monthlySeries,
+  avgApprovalDays, avgSnagFixHours, cleanHandoverRate, dashboardKpis, fyStart, inputGst, monthlySeries,
   onTimeMilestones, outputGst, ratio, stageDistribution,
 } from "./kpis";
-import type { BOQVersion, Expense, Invoice, Payment, Project, Snag, Task } from "@/types";
+import type { BOQVersion, Expense, Invoice, Payment, Project, Snag, Task, VendorBill } from "@/types";
 
 const TODAY = "2026-10-09";
 const inv = (o: Partial<Invoice>): Invoice => ({
@@ -119,5 +119,15 @@ describe("stageDistribution", () => {
   it("lists non-empty stages in pipeline order", () => {
     expect(stageDistribution([proj({ status: "execution" }), proj({ status: "lead" }), proj({ status: "execution" })]))
       .toEqual([{ stage: "lead", label: "Lead", count: 1 }, { stage: "execution", label: "Execution", count: 2 }]);
+  });
+});
+
+describe("inputGst", () => {
+  it("sums GST on approved vendor bills in range", () => {
+    expect(inputGst([
+      { status: "approved", bill_date: "2026-05-01", gst_amount: 900 },
+      { status: "disputed", bill_date: "2026-05-01", gst_amount: 500 },
+      { status: "approved", bill_date: "2026-03-01", gst_amount: 100 },
+    ] as VendorBill[], "2026-04-01", "2026-10-09")).toBe(900);
   });
 });
