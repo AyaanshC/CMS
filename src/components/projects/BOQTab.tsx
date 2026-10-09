@@ -55,7 +55,6 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
               version_label: 'Initial Draft Estimate',
               status: 'draft',
               grand_total: 450000,
-              total_amount: 450000,
               gst_percent: 18,
               discount_amount: 0,
               designer_fee: 35000,
@@ -109,7 +108,6 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
       version_label: `Revision v${nextVerNumber} (Post Client Review)`,
       status: 'draft',
       grand_total: selectedBoq.grand_total,
-      total_amount: selectedBoq.total_amount,
       gst_percent: selectedBoq.gst_percent,
       discount_amount: selectedBoq.discount_amount,
       designer_fee: selectedBoq.designer_fee,
@@ -345,9 +343,9 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
                   if (item) {
                     setNewItemForm({
                       ...newItemForm,
-                      description: item.name || item.item_name || "",
+                      description: item.item_name || "",
                       unit: item.unit,
-                      unit_rate: item.base_rate || item.standard_rate || 0
+                      unit_rate: item.standard_rate || 0
                     });
                   }
                 }}
@@ -356,7 +354,7 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
                 <option value="" disabled>Select from item library...</option>
                 {itemLibrary.map(item => (
                   <option key={item.id} value={item.id}>
-                    {item.name} ({item.unit} @ ₹{item.standard_rate})
+                    {item.item_name} ({item.unit} @ ₹{item.standard_rate})
                   </option>
                 ))}
               </select>
@@ -520,7 +518,7 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
                 <h2 className="text-xl font-bold text-slate-900">{studioSettings.name}</h2>
                 <p className="text-xs text-slate-500">{studioSettings.tagline}</p>
                 <p className="text-xs text-slate-500 mt-1">{studioSettings.address}</p>
-                <p className="text-xs text-slate-500">GST: {studioSettings.gst_number}</p>
+                <p className="text-xs text-slate-500">GST: {studioSettings.gstin || "—"}</p>
               </div>
               <div className="text-right">
                 <span className="px-2 py-0.5 rounded text-xs font-bold bg-slate-100 uppercase">

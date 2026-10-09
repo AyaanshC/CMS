@@ -247,7 +247,7 @@ function ClientProfileContent({ params }: { params: Promise<{ id: string }> }) {
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-semibold text-foreground">{invoice.invoice_number}</p>
-                        <p className="text-xs text-muted-foreground">{invoice.project_name} · Due {formatDate(invoice.due_date)}</p>
+                        <p className="text-xs text-muted-foreground">{invoice.project_name} · Due {invoice.due_date ? formatDate(invoice.due_date) : "—"}</p>
                       </div>
                       <div className="text-right">
                         <p className="font-bold text-foreground">{formatCurrency(invoice.total_amount)}</p>

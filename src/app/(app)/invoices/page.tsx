@@ -49,7 +49,7 @@ export default function InvoicesPage() {
 
   const filtered = invoices.filter((inv) => {
     const matchesSearch =
-      inv.invoice_number.toLowerCase().includes(search.toLowerCase()) ||
+      (inv.invoice_number || "").toLowerCase().includes(search.toLowerCase()) ||
       inv.client_name.toLowerCase().includes(search.toLowerCase()) ||
       inv.project_name.toLowerCase().includes(search.toLowerCase());
 
@@ -82,17 +82,19 @@ export default function InvoicesPage() {
       issue_date: new Date().toISOString(),
       due_date: new Date(dueDate).toISOString(),
       subtotal,
-      tax_amount: tax,
+      discount: 0,
+      gst_rate: gstPercent,
+      gst_amount: tax,
       total_amount: total,
       amount_paid: 0,
       amount_due: total,
-      status: "issued",
+      status: "sent",
       items: [
         {
           id: `item_${Date.now()}`,
           description: invoiceTitle,
           quantity: 1,
-          rate: subtotal,
+          unit_rate: subtotal,
           amount: subtotal,
         },
       ],
@@ -245,8 +247,8 @@ export default function InvoicesPage() {
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <p className="text-xs text-foreground">Issued: {formatDate(inv.issue_date)}</p>
-                    <p className="text-[11px] text-muted-foreground">Due: {formatDate(inv.due_date)}</p>
+                    <p className="text-xs text-foreground">Issued: {inv.issue_date ? formatDate(inv.issue_date) : "—"}</p>
+                    <p className="text-[11px] text-muted-foreground">Due: {inv.due_date ? formatDate(inv.due_date) : "—"}</p>
                   </TableCell>
                   <TableCell>
                     <Badge className={cn("text-[10px] border-0", getStatusColor(inv.status))}>
@@ -479,8 +481,8 @@ export default function InvoicesPage() {
                     TAX INVOICE
                   </span>
                   <p className="text-lg font-bold text-indigo-600 font-mono">{viewInvoice.invoice_number}</p>
-                  <p className="text-xs text-muted-foreground">Issued: {formatDate(viewInvoice.issue_date)}</p>
-                  <p className="text-xs text-muted-foreground">Due: {formatDate(viewInvoice.due_date)}</p>
+                  <p className="text-xs text-muted-foreground">Issued: {viewInvoice.issue_date ? formatDate(viewInvoice.issue_date) : "—"}</p>
+                  <p className="text-xs text-muted-foreground">Due: {viewInvoice.due_date ? formatDate(viewInvoice.due_date) : "—"}</p>
 
                   {viewInvoice.status === "paid" && (
                     <div className="mt-2 inline-block border-2 border-emerald-500 text-emerald-600 font-extrabold text-xs px-2.5 py-0.5 rounded tracking-widest uppercase rotate-[-6deg]">
@@ -518,8 +520,8 @@ export default function InvoicesPage() {
                       <tr key={it.id}>
                         <td className="py-3 font-medium text-foreground">{it.description}</td>
                         <td className="py-3 text-center text-muted-foreground">{it.quantity}</td>
-                        <td className="py-3 text-right text-muted-foreground">{formatCurrency(it.rate || it.unit_rate || 0)}</td>
-                        <td className="py-3 text-right font-semibold">{formatCurrency(it.amount || it.total || 0)}</td>
+                        <td className="py-3 text-right text-muted-foreground">{formatCurrency(it.unit_rate || 0)}</td>
+                        <td className="py-3 text-right font-semibold">{formatCurrency(it.amount || 0)}</td>
                       </tr>
                     ))
                   ) : (
@@ -541,7 +543,7 @@ export default function InvoicesPage() {
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>GST ({studioSettings.gst_rate}%):</span>
-                  <span>{formatCurrency(viewInvoice.tax_amount || viewInvoice.gst_amount || 0)}</span>
+                  <span>{formatCurrency(viewInvoice.gst_amount || 0)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-base text-foreground pt-2 border-t border-border">
                   <span>Total Amount:</span>

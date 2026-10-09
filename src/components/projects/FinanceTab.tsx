@@ -65,8 +65,9 @@ export default function FinanceTab({
       issue_date: new Date().toISOString().split('T')[0],
       due_date: invoiceForm.dueDate,
       subtotal: invoiceForm.subtotal,
-      gst_amount: gst,
       discount: 0,
+      gst_rate: 18,
+      gst_amount: gst,
       total_amount: total,
       amount_paid: 0,
       amount_due: total,
@@ -127,7 +128,7 @@ export default function FinanceTab({
                   <span className="font-bold text-sm text-foreground">{inv.invoice_number}</span>
                   <Badge className={cn("text-[10px] border-0 uppercase", getStatusColor(inv.status))}>{inv.status}</Badge>
                 </div>
-                <p className="text-xs text-muted-foreground">Due: {formatDate(inv.due_date)} · {inv.notes}</p>
+                <p className="text-xs text-muted-foreground">Due: {inv.due_date ? formatDate(inv.due_date) : "—"} · {inv.notes}</p>
               </div>
 
               <div className="flex items-center gap-6">

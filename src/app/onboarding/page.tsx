@@ -120,20 +120,20 @@ export default function OnboardingPage() {
           id: `m_1`,
           project_id: projectId,
           title: "Initial Consultation & Site Measurements",
-          target_date: new Date().toISOString(),
+          due_date: new Date().toISOString(),
           completed_at: new Date().toISOString(),
         },
         {
           id: `m_2`,
           project_id: projectId,
           title: "2D Layout & Concept Presentation",
-          target_date: new Date(Date.now() + 7 * 86400000).toISOString(),
+          due_date: new Date(Date.now() + 7 * 86400000).toISOString(),
         },
         {
           id: `m_3`,
           project_id: projectId,
           title: "3D Renders & Material Selection",
-          target_date: new Date(Date.now() + 15 * 86400000).toISOString(),
+          due_date: new Date(Date.now() + 15 * 86400000).toISOString(),
         },
       ],
     };

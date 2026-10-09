@@ -39,7 +39,7 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
   // New Snag form state
   const [room, setRoom] = useState(project?.rooms?.[0]?.name || "Living Room");
   const [description, setDescription] = useState("");
-  const [priority, setPriority] = useState<SnagPriority>("medium");
+  const [priority, setPriority] = useState<SnagPriority>("major");
   const [photoUrl, setPhotoUrl] = useState("https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&auto=format&fit=crop&q=60");
 
   if (!project) {
@@ -64,11 +64,12 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
     const newSnag: Snag = {
       id: `snag_${Date.now()}`,
       project_id: project.id,
-      room,
+      room_name: room,
+      title: description.slice(0, 50),
       description,
       priority,
       status: "raised",
-      reported_by: "Client",
+      raised_by_name: "Client",
       created_at: new Date().toISOString(),
       before_photo_url: photoUrl || undefined,
       comments: [
@@ -181,7 +182,7 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
                   {snag.before_photo_url ? (
                     <img
                       src={snag.before_photo_url}
-                      alt={snag.room}
+                      alt={snag.room_name}
                       className="w-16 h-16 rounded-lg object-cover flex-shrink-0 border border-border"
                     />
                   ) : (
@@ -193,7 +194,7 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
                   <div>
                     <div className="flex flex-wrap items-center gap-2 mb-1.5">
                       <Badge variant="outline" className="font-semibold text-xs">
-                        {snag.room}
+                        {snag.room_name}
                       </Badge>
                       <Badge className={cn("text-[10px] border-0", getPriorityColor(snag.priority))}>
                         {snag.priority}
@@ -284,8 +285,8 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
 
             <div>
               <label className="text-xs font-semibold text-foreground block mb-1">Priority</label>
-              <div className="grid grid-cols-4 gap-2">
-                {(["low", "medium", "high", "critical"] as const).map((p) => (
+              <div className="grid grid-cols-3 gap-2">
+                {(["minor", "major", "critical"] as const).map((p) => (
                   <button
                     type="button"
                     key={p}
@@ -341,7 +342,7 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <div className="flex items-center gap-2 mb-1">
-                <Badge variant="outline">{selectedSnag.room}</Badge>
+                <Badge variant="outline">{selectedSnag.room_name}</Badge>
                 <Badge className={cn("text-xs border-0", getStatusColor(selectedSnag.status))}>
                   {selectedSnag.status.replace("_", " ")}
                 </Badge>

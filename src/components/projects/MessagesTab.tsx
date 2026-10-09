@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatDateTime, getInitials, cn } from "@/lib/utils";
-import { Paperclip, Send, Check, CheckCheck, MessageSquare, Image as ImageIcon } from "lucide-react";
+import { Paperclip, Send, Check, MessageSquare, Image as ImageIcon } from "lucide-react";
 
 import { useAppStore } from "@/lib/store";
 
@@ -24,9 +24,8 @@ export default function MessagesTab({ projectId, messages }: { projectId: string
       project_id: projectId,
       sender_id: 'user-1', // Mock designer id
       sender_name: 'Priya Sharma', // Mock designer name
-      sender_role: 'designer',
+      sender_role: 'staff',
       content: newMessage.trim(),
-      is_read: false,
       created_at: new Date().toISOString(),
     };
     addMessage(msg);
@@ -44,11 +43,10 @@ export default function MessagesTab({ projectId, messages }: { projectId: string
       project_id: projectId,
       sender_id: 'user-1', // Mock designer id
       sender_name: 'Priya Sharma',
-      sender_role: 'designer',
+      sender_role: 'staff',
       content: "",
       file_url: fileUrl,
       file_name: file.name,
-      is_read: false,
       created_at: new Date().toISOString(),
     };
     addMessage(msg);
@@ -62,7 +60,7 @@ export default function MessagesTab({ projectId, messages }: { projectId: string
       {/* Chat messages area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
         {messages.map((msg) => {
-          const isMe = msg.sender_role === "designer"; // Assuming we are logged in as designer
+          const isMe = msg.sender_role === "staff"; // Assuming we are logged in as designer
           return (
             <div key={msg.id} className={cn("flex w-full", isMe ? "justify-end" : "justify-start")}>
               <div className={cn("flex max-w-[75%] gap-2", isMe ? "flex-row-reverse" : "flex-row")}>
@@ -92,9 +90,7 @@ export default function MessagesTab({ projectId, messages }: { projectId: string
                   
                   <div className={cn("flex items-center gap-1 text-[10px] text-muted-foreground px-1 mt-0.5", isMe ? "justify-end" : "justify-start")}>
                     {formatDateTime(msg.created_at)}
-                    {isMe && (
-                      msg.is_read ? <CheckCheck className="w-3 h-3 text-blue-500" /> : <Check className="w-3 h-3" />
-                    )}
+                    {isMe && <Check className="w-3 h-3" />}
                   </div>
                 </div>
               </div>

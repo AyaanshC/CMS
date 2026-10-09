@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { use, Suspense } from "react";
 import { useAppStore } from "@/lib/store";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatFileSize } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -82,7 +82,7 @@ function PortalFilesContent({ params }: { params: Promise<{ slug: string }> }) {
       {/* Grid of Files */}
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
         {filteredFiles.map((file) => {
-          const isImage = file.thumbnail_url || file.file_type.includes("image");
+          const isImage = file.file_type.includes("image");
           return (
             <Card
               key={file.id}
@@ -90,10 +90,10 @@ function PortalFilesContent({ params }: { params: Promise<{ slug: string }> }) {
               onClick={() => setPreviewFile(file)}
             >
               <div className="relative aspect-video bg-slate-100 overflow-hidden flex items-center justify-center">
-                {file.thumbnail_url ? (
+                {isImage ? (
                   <img
-                    src={file.thumbnail_url}
-                    alt={file.name}
+                    src={file.file_url}
+                    alt={file.file_name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (
@@ -114,15 +114,15 @@ function PortalFilesContent({ params }: { params: Promise<{ slug: string }> }) {
 
               <CardContent className="p-3.5 flex-1 flex flex-col justify-between">
                 <div>
-                  <p className="font-semibold text-sm text-foreground truncate">{file.name}</p>
+                  <p className="font-semibold text-sm text-foreground truncate">{file.file_name}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Added {formatDate(file.uploaded_at)}
+                    Added {formatDate(file.created_at)}
                   </p>
                 </div>
 
                 <div className="flex items-center justify-between pt-3 mt-3 border-t border-border">
                   <span className="text-xs text-muted-foreground">
-                    {(file.file_size / (1024 * 1024)).toFixed(1)} MB
+                    {formatFileSize(file.file_size_bytes || 0)}
                   </span>
                   <div className="flex items-center gap-1">
                     <Button
@@ -174,27 +174,27 @@ function PortalFilesContent({ params }: { params: Promise<{ slug: string }> }) {
                   {previewFile.category.replace("_", " ")}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  Uploaded on {formatDate(previewFile.uploaded_at)}
+                  Uploaded on {formatDate(previewFile.created_at)}
                 </span>
               </div>
-              <DialogTitle className="text-base truncate">{previewFile.name}</DialogTitle>
+              <DialogTitle className="text-base truncate">{previewFile.file_name}</DialogTitle>
             </DialogHeader>
 
             <div className="py-2">
-              {previewFile.thumbnail_url ? (
+              {previewFile.file_type.includes("image") ? (
                 <div className="rounded-lg overflow-hidden border border-border max-h-[500px] flex items-center justify-center bg-black/5">
                   <img
-                    src={previewFile.thumbnail_url}
-                    alt={previewFile.name}
+                    src={previewFile.file_url}
+                    alt={previewFile.file_name}
                     className="max-h-[480px] w-auto object-contain"
                   />
                 </div>
               ) : (
                 <div className="p-12 text-center bg-slate-50 rounded-lg border border-border">
                   <FileText className="w-16 h-16 text-muted-foreground/40 mx-auto mb-2" />
-                  <p className="text-sm font-medium">{previewFile.name}</p>
+                  <p className="text-sm font-medium">{previewFile.file_name}</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {(previewFile.file_size / (1024 * 1024)).toFixed(1)} MB · Document Preview
+                    {formatFileSize(previewFile.file_size_bytes || 0)} · Document Preview
                   </p>
                 </div>
               )}

@@ -40,7 +40,6 @@ export default function AddClientModal({ open, onClose }: AddClientModalProps) {
     e.preventDefault();
     addClient({
       id: Math.random().toString(36).substring(7),
-      studio_id: "studio-1",
       full_name: form.full_name,
       email: form.email,
       phone: form.phone,

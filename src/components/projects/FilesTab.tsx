@@ -33,11 +33,9 @@ export default function FilesTab({ project, files }: { project: Project; files: 
       file_url: fileForm.fileUrl,
       file_type: fileForm.fileName.endsWith('.pdf') ? 'application/pdf' : 'image/jpeg',
       file_size_bytes: 2100000,
-      file_size: 2100000,
       category: 'document',
       uploaded_by: 'user-1',
       uploaded_by_name: 'Priya Sharma',
-      uploaded_at: new Date().toISOString(),
       is_client_visible: fileForm.isClientVisible,
       created_at: new Date().toISOString().split('T')[0]
     });

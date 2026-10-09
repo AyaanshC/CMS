@@ -75,7 +75,7 @@ export default function SettingsPage() {
       item_name: newItemName.trim(),
       specifications: newItemSpecs.trim(),
       unit: newItemUnit,
-      base_rate: Number(newItemRate),
+      standard_rate: Number(newItemRate),
     });
 
     setNewItemName("");
@@ -111,7 +111,7 @@ export default function SettingsPage() {
 
   const filteredLibrary = itemLibrary.filter((item) => {
     const matchesSearch =
-      (item.item_name || item.name || "").toLowerCase().includes(itemSearch.toLowerCase()) ||
+      (item.item_name || "").toLowerCase().includes(itemSearch.toLowerCase()) ||
       (item.specifications || item.description || "").toLowerCase().includes(itemSearch.toLowerCase());
     const matchesCategory =
       itemCategoryFilter === "all" || item.category === itemCategoryFilter;
@@ -385,7 +385,7 @@ export default function SettingsPage() {
                           {item.unit}
                         </td>
                         <td className="py-3 px-4 text-right font-bold text-foreground">
-                          {formatCurrency(item.base_rate || item.standard_rate || 0)}
+                          {formatCurrency(item.standard_rate || 0)}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <button

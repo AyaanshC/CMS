@@ -1,31 +1,23 @@
 // ============================================================
-// INTERIOR DESIGNER CMS — Type Definitions
+// INTERIOR DESIGNER CMS — Clean Domain Type Definitions
 // ============================================================
 
-// --- Users & Auth ---
+// --- Users & Roles ---
 
-export type UserRole = 'designer' | 'team' | 'client' | 'vendor';
-export type TeamRole = 'editor' | 'viewer';
+export type AppRole =
+  | 'owner' | 'director' | 'project_manager' | 'architect'
+  | 'site_supervisor' | 'finance' | 'admin' | 'procurement';
+export type ProfileKind = 'staff' | 'client' | 'vendor';
 
-export interface User {
+export interface TeamMember {
   id: string;
   full_name: string;
   email: string;
   phone?: string;
-  whatsapp?: string;
+  title?: string;
   avatar_url?: string;
-  role: UserRole;
-  studio_id?: string;
-}
-
-export interface Studio {
-  id: string;
-  name: string;
-  logo_url?: string;
-  address?: string;
-  gst_number?: string;
-  brand_color: string;
-  owner_id: string;
+  roles: AppRole[];
+  active: boolean;
 }
 
 // --- Clients ---
@@ -34,7 +26,6 @@ export type ClientSource = 'referral' | 'instagram' | 'website' | 'walk-in' | 'o
 
 export interface Client {
   id: string;
-  studio_id?: string;
   full_name: string;
   email?: string;
   phone: string;
@@ -89,7 +80,6 @@ export const PROJECT_STAGE_LABELS: Record<ProjectStatus, string> = {
 
 export interface Project {
   id: string;
-  studio_id?: string;
   client_id: string;
   client_name: string;
   name: string;
@@ -105,6 +95,8 @@ export interface Project {
   actual_end_date?: string;
   total_budget?: number;
   portal_slug: string;
+  director_id?: string;
+  manager_id?: string;
   created_at: string;
   updated_at?: string;
   // relations
@@ -129,7 +121,6 @@ export interface ProjectMilestone {
   project_id: string;
   title: string;
   due_date?: string;
-  target_date?: string;
   completed_at?: string;
 }
 
@@ -156,12 +147,11 @@ export interface BOQVersion {
   approved_at?: string;
   approved_by?: string;
   approval_note?: string;
-  grand_total: number;
-  total_amount: number;
   gst_percent: number;
   discount_amount: number;
   designer_fee: number;
-  created_by: string;
+  grand_total: number;        // computed by boqTotals()
+  created_by?: string;
   created_at: string;
   sections: BOQSection[];
 }
@@ -186,16 +176,14 @@ export interface BOQLineItem {
   unit: string;
   quantity: number;
   unit_rate: number;
-  rate?: number;
-  total: number;
-  amount?: number;
+  total: number;              // computed by lineTotal()
   remarks?: string;
   sort_order: number;
 }
 
 // --- Snags ---
 
-export type SnagPriority = 'critical' | 'major' | 'minor' | 'high' | 'medium' | 'low';
+export type SnagPriority = 'critical' | 'major' | 'minor';
 export type SnagStatus = 'raised' | 'assigned' | 'in_progress' | 'fixed' | 'verified' | 'closed';
 
 export interface Snag {
@@ -203,7 +191,6 @@ export interface Snag {
   project_id: string;
   room_id?: string;
   room_name?: string;
-  room?: string;
   title?: string;
   description?: string;
   location_detail?: string;
@@ -211,12 +198,12 @@ export interface Snag {
   status: SnagStatus;
   raised_by?: string;
   raised_by_name?: string;
-  reported_by?: string;
   assigned_to?: string;
   assigned_to_name?: string;
   due_date?: string;
   before_photo_url?: string;
   after_photo_url?: string;
+  fixed_at?: string;
   client_closed_at?: string;
   designer_verified_at?: string;
   created_at: string;
@@ -237,18 +224,23 @@ export interface SnagComment {
 
 // --- Finance ---
 
-export type InvoiceStatus = 'draft' | 'issued' | 'sent' | 'paid' | 'overdue' | 'partial' | 'partially_paid';
-export type PaymentMode = 'bank_transfer' | 'cash' | 'cheque' | 'upi' | 'UPI' | 'NEFT/RTGS' | 'Cheque' | 'Cash';
+export type InvoiceStatus = 'draft' | 'sent' | 'partial' | 'paid' | 'overdue' | 'cancelled';
+export type PaymentMode = 'bank_transfer' | 'upi' | 'cheque' | 'cash';
+
+export const PAYMENT_MODE_LABELS: Record<PaymentMode, string> = {
+  bank_transfer: 'NEFT / RTGS / IMPS',
+  upi: 'UPI',
+  cheque: 'Cheque',
+  cash: 'Cash',
+};
 
 export interface InvoiceLineItem {
   id: string;
   invoice_id?: string;
   description: string;
   quantity: number;
-  rate?: number;
-  unit_rate?: number;
-  amount?: number;
-  total?: number;
+  unit_rate: number;
+  amount: number;
 }
 
 export interface Invoice {
@@ -256,31 +248,30 @@ export interface Invoice {
   project_id: string;
   project_name: string;
   client_name: string;
-  invoice_number: string;
-  status: InvoiceStatus;
-  issue_date: string;
-  due_date: string;
+  invoice_number?: string;    // assigned when sent
+  status: InvoiceStatus;      // effective status (overdue/partial/paid derived)
+  issue_date?: string;
+  due_date?: string;
   subtotal: number;
-  gst_amount?: number;
-  tax_amount?: number;
-  discount?: number;
+  discount: number;
+  gst_rate: number;
+  gst_amount: number;
   total_amount: number;
   amount_paid: number;
   amount_due: number;
   notes?: string;
-  line_items?: InvoiceLineItem[];
   items?: InvoiceLineItem[];
 }
 
 export interface Payment {
   id: string;
   invoice_id: string;
-  project_id: string;
   amount: number;
   payment_date: string;
   mode: PaymentMode;
   reference?: string;
   notes?: string;
+  recorded_by_name?: string;
 }
 
 export interface Expense {
@@ -291,6 +282,7 @@ export interface Expense {
   amount: number;
   receipt_url?: string;
   expense_date: string;
+  created_by_name?: string;
 }
 
 // --- Tasks ---
@@ -324,15 +316,12 @@ export interface ProjectFile {
   folder?: string;
   category: string;
   file_name: string;
-  name?: string;
+  storage_path?: string;
   file_url: string;
   file_type: string;
   file_size_bytes?: number;
-  file_size: number;
-  thumbnail_url?: string;
-  uploaded_by: string;
+  uploaded_by?: string;
   uploaded_by_name?: string;
-  uploaded_at: string;
   is_client_visible: boolean;
   created_at: string;
 }
@@ -344,11 +333,10 @@ export interface Message {
   project_id: string;
   sender_id?: string;
   sender_name: string;
-  sender_role: UserRole;
+  sender_role: 'staff' | 'client';
   content?: string;
   file_url?: string;
   file_name?: string;
-  is_read?: boolean;
   created_at: string;
 }
 
@@ -379,28 +367,14 @@ export interface Notification {
   created_at: string;
 }
 
-// --- Dashboard KPIs ---
-
-export interface DashboardKPIs {
-  active_projects: number;
-  revenue_this_month: number;
-  outstanding_payments: number;
-  open_snags: number;
-  tasks_due_today: number;
-  pending_approvals: number;
-}
-
 // --- Item Library / Rate Master ---
 
 export interface ItemLibraryItem {
   id: string;
-  studio_id?: string;
-  name?: string;
-  item_name?: string;
+  item_name: string;
   category: string;
   unit: string;
-  standard_rate?: number;
-  base_rate?: number;
+  standard_rate: number;
   description?: string;
   specifications?: string;
   created_at: string;
@@ -450,18 +424,12 @@ export interface StudioSettings {
   address: string;
   phone: string;
   email: string;
-  gst_number?: string;
   gstin?: string;
   pan?: string;
   gst_rate: number;
   brand_color: string;
   logo_url: string;
   invoice_prefix: string;
-  bank_name?: string;
-  account_number?: string;
-  ifsc_code?: string;
-  upi_id?: string;
-  terms_conditions?: string;
   terms_and_conditions?: string;
   bank_details: {
     account_name: string;
@@ -469,6 +437,12 @@ export interface StudioSettings {
     account_number: string;
     ifsc_code: string;
     upi_id: string;
+  };
+  alert_preferences: {
+    whatsapp_digest: boolean;
+    payment_reminders: boolean;
+    snag_fix_alerts: boolean;
+    boq_ack: boolean;
   };
 }
 

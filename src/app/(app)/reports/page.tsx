@@ -41,7 +41,7 @@ export default function ReportsPage() {
 
   // Snags by Room
   const snagsByRoomMap = snags.reduce((acc, s) => {
-    const room = s.room_name || s.room || "General";
+    const room = s.room_name || "General";
     acc[room] = (acc[room] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);

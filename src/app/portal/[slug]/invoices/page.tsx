@@ -169,7 +169,7 @@ function PortalInvoicesContent({ params }: { params: Promise<{ slug: string }> }
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Issued: {formatDate(inv.issue_date)} · Due: {formatDate(inv.due_date)}
+                    Issued: {inv.issue_date ? formatDate(inv.issue_date) : "—"} · Due: {inv.due_date ? formatDate(inv.due_date) : "—"}
                   </p>
                 </div>
               </div>
@@ -237,8 +237,8 @@ function PortalInvoicesContent({ params }: { params: Promise<{ slug: string }> }
                     TAX INVOICE
                   </span>
                   <p className="text-lg font-bold text-indigo-600">{selectedInvoice.invoice_number}</p>
-                  <p className="text-xs text-muted-foreground">Date: {formatDate(selectedInvoice.issue_date)}</p>
-                  <p className="text-xs text-muted-foreground">Due: {formatDate(selectedInvoice.due_date)}</p>
+                  <p className="text-xs text-muted-foreground">Date: {selectedInvoice.issue_date ? formatDate(selectedInvoice.issue_date) : "—"}</p>
+                  <p className="text-xs text-muted-foreground">Due: {selectedInvoice.due_date ? formatDate(selectedInvoice.due_date) : "—"}</p>
 
                   {selectedInvoice.status === "paid" && (
                     <div className="mt-2 inline-block border-2 border-emerald-500 text-emerald-600 font-extrabold text-xs px-2.5 py-0.5 rounded tracking-widest uppercase rotate-[-6deg]">
@@ -290,7 +290,7 @@ function PortalInvoicesContent({ params }: { params: Promise<{ slug: string }> }
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>GST ({studioSettings.gst_rate}%):</span>
-                  <span>{formatCurrency(selectedInvoice.tax_amount || selectedInvoice.gst_amount || 0)}</span>
+                  <span>{formatCurrency(selectedInvoice.gst_amount || 0)}</span>
                 </div>
                 <div className="flex justify-between font-bold text-base text-foreground pt-2 border-t border-border">
                   <span>Total Amount:</span>

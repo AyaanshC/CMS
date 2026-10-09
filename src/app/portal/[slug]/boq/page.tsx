@@ -187,18 +187,18 @@ function PortalBOQContent({ params }: { params: Promise<{ slug: string }> }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="shadow-sm">
           <CardContent className="p-4">
-            <p className="text-xs font-medium text-muted-foreground">Total Estimate</p>
+            <p className="text-xs font-medium text-muted-foreground">Items & Fee Subtotal</p>
             <p className="text-2xl font-bold text-foreground mt-1">
-              {formatCurrency(activeBOQ.total_amount)}
+              {formatCurrency(Math.round(activeBOQ.grand_total / (1 + (activeBOQ.gst_percent || 18) / 100)))}
             </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Excluding GST ({studioSettings.gst_rate}%)</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Excluding GST ({activeBOQ.gst_percent || studioSettings.gst_rate}%)</p>
           </CardContent>
         </Card>
         <Card className="shadow-sm">
           <CardContent className="p-4">
-            <p className="text-xs font-medium text-muted-foreground">GST Amount ({studioSettings.gst_rate}%)</p>
+            <p className="text-xs font-medium text-muted-foreground">GST Amount ({activeBOQ.gst_percent || studioSettings.gst_rate}%)</p>
             <p className="text-2xl font-bold text-slate-700 mt-1">
-              {formatCurrency((activeBOQ.total_amount * studioSettings.gst_rate) / 100)}
+              {formatCurrency(activeBOQ.grand_total - Math.round(activeBOQ.grand_total / (1 + (activeBOQ.gst_percent || 18) / 100)))}
             </p>
             <p className="text-[11px] text-muted-foreground mt-0.5">Applicable tax</p>
           </CardContent>
@@ -207,7 +207,7 @@ function PortalBOQContent({ params }: { params: Promise<{ slug: string }> }) {
           <CardContent className="p-4">
             <p className="text-xs font-medium text-slate-400">Total Payable Value</p>
             <p className="text-2xl font-bold text-white mt-1">
-              {formatCurrency(activeBOQ.total_amount * (1 + studioSettings.gst_rate / 100))}
+              {formatCurrency(activeBOQ.grand_total)}
             </p>
             <p className="text-[11px] text-slate-400 mt-0.5">Inclusive of GST</p>
           </CardContent>
@@ -269,10 +269,10 @@ function PortalBOQContent({ params }: { params: Promise<{ slug: string }> }) {
                           <td className="py-3 px-4 text-center font-medium">{item.quantity}</td>
                           <td className="py-3 px-4 text-center text-muted-foreground text-xs">{item.unit}</td>
                           <td className="py-3 px-4 text-right text-muted-foreground">
-                            {formatCurrency(item.rate || item.unit_rate || 0)}
+                            {formatCurrency(item.unit_rate || 0)}
                           </td>
                           <td className="py-3 px-4 text-right font-semibold text-foreground">
-                            {formatCurrency(item.amount || item.total || 0)}
+                            {formatCurrency(item.total || 0)}
                           </td>
                         </tr>
                       ))}
@@ -301,14 +301,8 @@ function PortalBOQContent({ params }: { params: Promise<{ slug: string }> }) {
           <div className="space-y-4 py-2">
             <div className="p-3 bg-slate-50 rounded-lg border border-border text-xs space-y-1">
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Estimate:</span>
-                <span className="font-bold text-foreground">{formatCurrency(activeBOQ.total_amount)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">With GST ({studioSettings.gst_rate}%):</span>
-                <span className="font-bold text-foreground">
-                  {formatCurrency(activeBOQ.total_amount * (1 + studioSettings.gst_rate / 100))}
-                </span>
+                <span className="text-muted-foreground">Total Value (Inc. GST):</span>
+                <span className="font-bold text-foreground">{formatCurrency(activeBOQ.grand_total)}</span>
               </div>
             </div>
 
