@@ -155,19 +155,77 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
-                },"clients": {
+                },"change_orders": {
                   Row: {
-                    "address": string | null,"archived_at": string | null,"budget_max": number | null,"budget_min": number | null,"created_at": string,"email": string | null,"full_name": string,"id": string,"notes": string | null,"phone": string,"source": Database["public"]['Enums']["client_source"] | null,"style_preferences": Json | null,"tags": (string)[],"whatsapp": string | null
+                    "cost_impact": number,"created_at": string,"created_by": string | null,"decided_at": string | null,"decided_by": string | null,"decision_note": string | null,"description": string | null,"fee_impact": number,"id": string,"number": string,"project_id": string,"reason": Database["public"]['Enums']["change_order_reason"],"schedule_impact_days": number,"status": Database["public"]['Enums']["change_order_status"],"submitted_at": string | null,"title": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "address"?: string | null,"archived_at"?: string | null,"budget_max"?: number | null,"budget_min"?: number | null,"created_at"?: string,"email"?: string | null,"full_name": string,"id"?: string,"notes"?: string | null,"phone": string,"source"?: Database["public"]['Enums']["client_source"] | null,"style_preferences"?: Json | null,"tags"?: (string)[],"whatsapp"?: string | null
+                    "cost_impact"?: number,"created_at"?: string,"created_by"?: string | null,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"description"?: string | null,"fee_impact"?: number,"id"?: string,"number": string,"project_id": string,"reason": Database["public"]['Enums']["change_order_reason"],"schedule_impact_days"?: number,"status"?: Database["public"]['Enums']["change_order_status"],"submitted_at"?: string | null,"title": string
                   }
                   Update: {
-                    "address"?: string | null,"archived_at"?: string | null,"budget_max"?: number | null,"budget_min"?: number | null,"created_at"?: string,"email"?: string | null,"full_name"?: string,"id"?: string,"notes"?: string | null,"phone"?: string,"source"?: Database["public"]['Enums']["client_source"] | null,"style_preferences"?: Json | null,"tags"?: (string)[],"whatsapp"?: string | null
+                    "cost_impact"?: number,"created_at"?: string,"created_by"?: string | null,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"description"?: string | null,"fee_impact"?: number,"id"?: string,"number"?: string,"project_id"?: string,"reason"?: Database["public"]['Enums']["change_order_reason"],"schedule_impact_days"?: number,"status"?: Database["public"]['Enums']["change_order_status"],"submitted_at"?: string | null,"title"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "change_orders_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "change_orders_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"clients": {
+                  Row: {
+                    "address": string | null,"archived_at": string | null,"budget_max": number | null,"budget_min": number | null,"created_at": string,"email": string | null,"full_name": string,"id": string,"notes": string | null,"payment_terms_days": number,"phone": string,"source": Database["public"]['Enums']["client_source"] | null,"style_preferences": Json | null,"tags": (string)[],"whatsapp": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "address"?: string | null,"archived_at"?: string | null,"budget_max"?: number | null,"budget_min"?: number | null,"created_at"?: string,"email"?: string | null,"full_name": string,"id"?: string,"notes"?: string | null,"payment_terms_days"?: number,"phone": string,"source"?: Database["public"]['Enums']["client_source"] | null,"style_preferences"?: Json | null,"tags"?: (string)[],"whatsapp"?: string | null
+                  }
+                  Update: {
+                    "address"?: string | null,"archived_at"?: string | null,"budget_max"?: number | null,"budget_min"?: number | null,"created_at"?: string,"email"?: string | null,"full_name"?: string,"id"?: string,"notes"?: string | null,"payment_terms_days"?: number,"phone"?: string,"source"?: Database["public"]['Enums']["client_source"] | null,"style_preferences"?: Json | null,"tags"?: (string)[],"whatsapp"?: string | null
                   }
                   Relationships: [
                     
+                  ]
+                },"credit_notes": {
+                  Row: {
+                    "amount": number,"created_at": string,"created_by": string | null,"id": string,"invoice_id": string,"issued_at": string,"number": string | null,"reason": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount": number,"created_at"?: string,"created_by"?: string | null,"id"?: string,"invoice_id": string,"issued_at"?: string,"number"?: string | null,"reason": string
+                  }
+                  Update: {
+                    "amount"?: number,"created_at"?: string,"created_by"?: string | null,"id"?: string,"invoice_id"?: string,"issued_at"?: string,"number"?: string | null,"reason"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "credit_notes_created_by_fkey"
+      columns: ["created_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "credit_notes_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "invoice_summary"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "credit_notes_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "invoices"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"expenses": {
                   Row: {
@@ -194,6 +252,20 @@ isOneToOne: false
       referencedRelation: "projects"
       referencedColumns: ["id"]
     }
+                  ]
+                },"fee_templates": {
+                  Row: {
+                    "discipline": Database["public"]['Enums']["discipline"],"id": string,"kind": Database["public"]['Enums']["fee_stage_kind"],"name": string,"stages": NonNullable<Json>
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "discipline": Database["public"]['Enums']["discipline"],"id"?: string,"kind": Database["public"]['Enums']["fee_stage_kind"],"name": string,"stages": NonNullable<Json>
+                  }
+                  Update: {
+                    "discipline"?: Database["public"]['Enums']["discipline"],"id"?: string,"kind"?: Database["public"]['Enums']["fee_stage_kind"],"name"?: string,"stages"?: NonNullable<Json>
+                  }
+                  Relationships: [
+                    
                   ]
                 },"firm_settings": {
                   Row: {
@@ -251,17 +323,35 @@ isOneToOne: false
                   ]
                 },"invoices": {
                   Row: {
-                    "created_at": string,"discount": number,"due_date": string | null,"gst_amount": number | null,"gst_rate": number,"id": string,"invoice_number": string | null,"issue_date": string | null,"notes": string | null,"project_id": string,"status": Database["public"]['Enums']["invoice_status"],"subtotal": number,"total_amount": number | null
+                    "change_order_id": string | null,"created_at": string,"discount": number,"due_date": string | null,"fee_stage_id": string | null,"gst_amount": number | null,"gst_rate": number,"id": string,"invoice_number": string | null,"issue_date": string | null,"notes": string | null,"project_id": string,"retention_amount": number,"retention_released_at": string | null,"status": Database["public"]['Enums']["invoice_status"],"subtotal": number,"total_amount": number | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"discount"?: number,"due_date"?: string | null,"gst_amount"?: never,"gst_rate": number,"id"?: string,"invoice_number"?: string | null,"issue_date"?: string | null,"notes"?: string | null,"project_id": string,"status"?: Database["public"]['Enums']["invoice_status"],"subtotal": number,"total_amount"?: never
+                    "change_order_id"?: string | null,"created_at"?: string,"discount"?: number,"due_date"?: string | null,"fee_stage_id"?: string | null,"gst_amount"?: never,"gst_rate": number,"id"?: string,"invoice_number"?: string | null,"issue_date"?: string | null,"notes"?: string | null,"project_id": string,"retention_amount"?: number,"retention_released_at"?: string | null,"status"?: Database["public"]['Enums']["invoice_status"],"subtotal": number,"total_amount"?: never
                   }
                   Update: {
-                    "created_at"?: string,"discount"?: number,"due_date"?: string | null,"gst_amount"?: never,"gst_rate"?: number,"id"?: string,"invoice_number"?: string | null,"issue_date"?: string | null,"notes"?: string | null,"project_id"?: string,"status"?: Database["public"]['Enums']["invoice_status"],"subtotal"?: number,"total_amount"?: never
+                    "change_order_id"?: string | null,"created_at"?: string,"discount"?: number,"due_date"?: string | null,"fee_stage_id"?: string | null,"gst_amount"?: never,"gst_rate"?: number,"id"?: string,"invoice_number"?: string | null,"issue_date"?: string | null,"notes"?: string | null,"project_id"?: string,"retention_amount"?: number,"retention_released_at"?: string | null,"status"?: Database["public"]['Enums']["invoice_status"],"subtotal"?: number,"total_amount"?: never
                   }
                   Relationships: [
                     {
+      foreignKeyName: "invoices_change_order_id_fkey"
+      columns: ["change_order_id"]
+isOneToOne: false
+      referencedRelation: "change_orders"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invoices_fee_stage_id_fkey"
+      columns: ["fee_stage_id"]
+isOneToOne: false
+      referencedRelation: "fee_stage_summary"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "invoices_fee_stage_id_fkey"
+      columns: ["fee_stage_id"]
+isOneToOne: false
+      referencedRelation: "project_fee_stages"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "invoices_project_id_fkey"
       columns: ["project_id"]
 isOneToOne: false
@@ -351,14 +441,14 @@ isOneToOne: false
                   ]
                 },"payments": {
                   Row: {
-                    "amount": number,"created_at": string,"id": string,"invoice_id": string,"mode": Database["public"]['Enums']["payment_mode"],"notes": string | null,"payment_date": string,"recorded_by": string | null,"reference": string | null
+                    "amount": number,"created_at": string,"id": string,"invoice_id": string,"mode": Database["public"]['Enums']["payment_mode"],"notes": string | null,"payment_date": string,"recorded_by": string | null,"reference": string | null,"tds_amount": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount": number,"created_at"?: string,"id"?: string,"invoice_id": string,"mode": Database["public"]['Enums']["payment_mode"],"notes"?: string | null,"payment_date": string,"recorded_by"?: string | null,"reference"?: string | null
+                    "amount": number,"created_at"?: string,"id"?: string,"invoice_id": string,"mode": Database["public"]['Enums']["payment_mode"],"notes"?: string | null,"payment_date": string,"recorded_by"?: string | null,"reference"?: string | null,"tds_amount"?: number
                   }
                   Update: {
-                    "amount"?: number,"created_at"?: string,"id"?: string,"invoice_id"?: string,"mode"?: Database["public"]['Enums']["payment_mode"],"notes"?: string | null,"payment_date"?: string,"recorded_by"?: string | null,"reference"?: string | null
+                    "amount"?: number,"created_at"?: string,"id"?: string,"invoice_id"?: string,"mode"?: Database["public"]['Enums']["payment_mode"],"notes"?: string | null,"payment_date"?: string,"recorded_by"?: string | null,"reference"?: string | null,"tds_amount"?: number
                   }
                   Relationships: [
                     {
@@ -398,6 +488,26 @@ isOneToOne: false
       columns: ["client_id"]
 isOneToOne: false
       referencedRelation: "clients"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"project_fee_stages": {
+                  Row: {
+                    "checklist": NonNullable<Json>,"completed_at": string | null,"created_at": string,"id": string,"kind": Database["public"]['Enums']["fee_stage_kind"],"name": string,"percent": number,"percent_complete": number,"planned_end": string | null,"planned_start": string | null,"project_id": string,"sort_order": number,"status": Database["public"]['Enums']["fee_stage_status"]
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "checklist"?: NonNullable<Json>,"completed_at"?: string | null,"created_at"?: string,"id"?: string,"kind": Database["public"]['Enums']["fee_stage_kind"],"name": string,"percent": number,"percent_complete"?: number,"planned_end"?: string | null,"planned_start"?: string | null,"project_id": string,"sort_order"?: number,"status"?: Database["public"]['Enums']["fee_stage_status"]
+                  }
+                  Update: {
+                    "checklist"?: NonNullable<Json>,"completed_at"?: string | null,"created_at"?: string,"id"?: string,"kind"?: Database["public"]['Enums']["fee_stage_kind"],"name"?: string,"percent"?: number,"percent_complete"?: number,"planned_end"?: string | null,"planned_start"?: string | null,"project_id"?: string,"sort_order"?: number,"status"?: Database["public"]['Enums']["fee_stage_status"]
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "project_fee_stages_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
       referencedColumns: ["id"]
     }
                   ]
@@ -533,14 +643,14 @@ isOneToOne: false
                   ]
                 },"projects": {
                   Row: {
-                    "actual_end_date": string | null,"archived_at": string | null,"area_sqft": number | null,"client_id": string,"created_at": string,"director_id": string | null,"estimated_end_date": string | null,"id": string,"manager_id": string | null,"name": string,"portal_token": string,"progress_percent": number,"property_address": string | null,"property_type": string | null,"reference_number": string,"start_date": string | null,"status": Database["public"]['Enums']["project_status"],"total_budget": number | null,"type": Database["public"]['Enums']["project_type"] | null,"updated_at": string
+                    "actual_end_date": string | null,"archived_at": string | null,"area_sqft": number | null,"client_id": string,"created_at": string,"director_id": string | null,"discipline": Database["public"]['Enums']["discipline"] | null,"engagement_type": Database["public"]['Enums']["engagement_type"] | null,"estimated_construction_cost": number | null,"estimated_end_date": string | null,"fee_amount": number | null,"fee_basis": Database["public"]['Enums']["fee_basis"] | null,"fee_rate": number | null,"id": string,"manager_id": string | null,"name": string,"portal_token": string,"progress_percent": number,"property_address": string | null,"property_type": string | null,"reference_number": string,"start_date": string | null,"status": Database["public"]['Enums']["project_status"],"total_budget": number | null,"type": Database["public"]['Enums']["project_type"] | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "actual_end_date"?: string | null,"archived_at"?: string | null,"area_sqft"?: number | null,"client_id": string,"created_at"?: string,"director_id"?: string | null,"estimated_end_date"?: string | null,"id"?: string,"manager_id"?: string | null,"name": string,"portal_token"?: string,"progress_percent"?: number,"property_address"?: string | null,"property_type"?: string | null,"reference_number"?: string,"start_date"?: string | null,"status"?: Database["public"]['Enums']["project_status"],"total_budget"?: number | null,"type"?: Database["public"]['Enums']["project_type"] | null,"updated_at"?: string
+                    "actual_end_date"?: string | null,"archived_at"?: string | null,"area_sqft"?: number | null,"client_id": string,"created_at"?: string,"director_id"?: string | null,"discipline"?: Database["public"]['Enums']["discipline"] | null,"engagement_type"?: Database["public"]['Enums']["engagement_type"] | null,"estimated_construction_cost"?: number | null,"estimated_end_date"?: string | null,"fee_amount"?: number | null,"fee_basis"?: Database["public"]['Enums']["fee_basis"] | null,"fee_rate"?: number | null,"id"?: string,"manager_id"?: string | null,"name": string,"portal_token"?: string,"progress_percent"?: number,"property_address"?: string | null,"property_type"?: string | null,"reference_number"?: string,"start_date"?: string | null,"status"?: Database["public"]['Enums']["project_status"],"total_budget"?: number | null,"type"?: Database["public"]['Enums']["project_type"] | null,"updated_at"?: string
                   }
                   Update: {
-                    "actual_end_date"?: string | null,"archived_at"?: string | null,"area_sqft"?: number | null,"client_id"?: string,"created_at"?: string,"director_id"?: string | null,"estimated_end_date"?: string | null,"id"?: string,"manager_id"?: string | null,"name"?: string,"portal_token"?: string,"progress_percent"?: number,"property_address"?: string | null,"property_type"?: string | null,"reference_number"?: string,"start_date"?: string | null,"status"?: Database["public"]['Enums']["project_status"],"total_budget"?: number | null,"type"?: Database["public"]['Enums']["project_type"] | null,"updated_at"?: string
+                    "actual_end_date"?: string | null,"archived_at"?: string | null,"area_sqft"?: number | null,"client_id"?: string,"created_at"?: string,"director_id"?: string | null,"discipline"?: Database["public"]['Enums']["discipline"] | null,"engagement_type"?: Database["public"]['Enums']["engagement_type"] | null,"estimated_construction_cost"?: number | null,"estimated_end_date"?: string | null,"fee_amount"?: number | null,"fee_basis"?: Database["public"]['Enums']["fee_basis"] | null,"fee_rate"?: number | null,"id"?: string,"manager_id"?: string | null,"name"?: string,"portal_token"?: string,"progress_percent"?: number,"property_address"?: string | null,"property_type"?: string | null,"reference_number"?: string,"start_date"?: string | null,"status"?: Database["public"]['Enums']["project_status"],"total_budget"?: number | null,"type"?: Database["public"]['Enums']["project_type"] | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -688,9 +798,29 @@ isOneToOne: false
                 }
           }
           Views: {
-            "invoice_summary": {
+            "fee_stage_summary": {
                   Row: {
-                    "amount_due": number | null,"amount_paid": number | null,"effective_status": string | null,"id": string | null,"project_id": string | null
+                    "amount": number | null,"checklist": Json | null,"completed_at": string | null,"earned": number | null,"id": string | null,"invoiced": number | null,"kind": Database["public"]['Enums']["fee_stage_kind"] | null,"name": string | null,"percent": number | null,"percent_complete": number | null,"planned_end": string | null,"planned_start": string | null,"project_id": string | null,"sort_order": number | null,"status": Database["public"]['Enums']["fee_stage_status"] | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                           "amount"?: never,"checklist"?: Json | null,"completed_at"?: string | null,"earned"?: never,"id"?: string | null,"invoiced"?: never,"kind"?: Database["public"]['Enums']["fee_stage_kind"] | null,"name"?: string | null,"percent"?: number | null,"percent_complete"?: number | null,"planned_end"?: string | null,"planned_start"?: string | null,"project_id"?: string | null,"sort_order"?: number | null,"status"?: Database["public"]['Enums']["fee_stage_status"] | null
+                         }
+                        Update: {
+                           "amount"?: never,"checklist"?: Json | null,"completed_at"?: string | null,"earned"?: never,"id"?: string | null,"invoiced"?: never,"kind"?: Database["public"]['Enums']["fee_stage_kind"] | null,"name"?: string | null,"percent"?: number | null,"percent_complete"?: number | null,"planned_end"?: string | null,"planned_start"?: string | null,"project_id"?: string | null,"sort_order"?: number | null,"status"?: Database["public"]['Enums']["fee_stage_status"] | null
+                         }
+                        Relationships: [
+                    {
+      foreignKeyName: "project_fee_stages_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"invoice_summary": {
+                  Row: {
+                    "amount_due": number | null,"amount_paid": number | null,"credited": number | null,"effective_status": string | null,"id": string | null,"last_payment_date": string | null,"project_id": string | null,"retention_held": number | null,"tds_amount": number | null
                   }
                   ComputedFields: never
                   Relationships: [
@@ -705,7 +835,10 @@ isOneToOne: false
                 }
           }
           Functions: {
-            "boq_version_project":
+            "apply_fee_template":
+{ Args: { "p_project": string,"p_template": string }; Returns: number
+                           },
+"boq_version_project":
 { Args: { "v": string }; Returns: string
                            },
 "boq_version_status":
@@ -729,8 +862,20 @@ isOneToOne: false
 "client_decide_boq":
 { Args: { "p_approve": boolean,"p_boq": string,"p_note": string,"p_signer": string }; Returns: undefined
                            },
+"client_decide_change_order":
+{ Args: { "p_approve": boolean,"p_co": string,"p_note": string,"p_signer": string }; Returns: undefined
+                           },
+"complete_fee_stage":
+{ Args: { "p_stage": string }; Returns: string
+                           },
 "create_boq_version":
 { Args: { "p": Json }; Returns: string
+                           },
+"execution_base":
+{ Args: { "p": string }; Returns: number
+                           },
+"fee_percent_total":
+{ Args: { "k": Database["public"]['Enums']["fee_stage_kind"],"p": string }; Returns: number
                            },
 "financial_year":
 { Args: { "d": string }; Returns: string
@@ -762,8 +907,14 @@ isOneToOne: false
 "notify_project_staff":
 { Args: { "p_body": string,"p_link": string,"p_project": string,"p_title": string,"p_type": string }; Returns: undefined
                            },
+"project_fee_value":
+{ Args: { "p": string }; Returns: number
+                           },
 "react_to_update":
 { Args: { "p_kind": string,"p_update": string }; Returns: undefined
+                           },
+"reopen_fee_stage":
+{ Args: { "p_stage": string }; Returns: undefined
                            },
 "section_version":
 { Args: { "s": string }; Returns: string
@@ -785,7 +936,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "activity_type": "stage_change"|"boq_submit"|"boq_approve"|"snag_raised"|"snag_closed"|"payment_received"|"note","app_role": "owner"|"director"|"project_manager"|"architect"|"site_supervisor"|"finance"|"admin"|"procurement","boq_status": "draft"|"submitted"|"approved"|"rejected","client_source": "referral"|"instagram"|"website"|"walk-in"|"other","invoice_status": "draft"|"sent"|"cancelled","material_category": "Flooring"|"Walls"|"Ceiling"|"Furniture"|"Lighting"|"Hardware","payment_mode": "bank_transfer"|"upi"|"cheque"|"cash","profile_kind": "staff"|"client"|"vendor","project_status": "lead"|"consultation"|"design"|"boq_approval"|"execution"|"snag"|"handover"|"closed","project_type": "residential"|"commercial"|"office","snag_priority": "critical"|"major"|"minor","snag_status": "raised"|"assigned"|"in_progress"|"fixed"|"verified"|"closed","task_priority": "low"|"medium"|"high"|"urgent","task_status": "todo"|"in_progress"|"done"
+            "activity_type": "stage_change"|"boq_submit"|"boq_approve"|"snag_raised"|"snag_closed"|"payment_received"|"note","app_role": "owner"|"director"|"project_manager"|"architect"|"site_supervisor"|"finance"|"admin"|"procurement","boq_status": "draft"|"submitted"|"approved"|"rejected","change_order_reason": "client_request"|"site_condition"|"regulatory"|"design_error","change_order_status": "draft"|"submitted"|"approved"|"rejected","client_source": "referral"|"instagram"|"website"|"walk-in"|"other","discipline": "architecture"|"interiors"|"both","engagement_type": "design_only"|"design_and_execution","fee_basis": "percent_of_cost"|"lump_sum"|"per_sqft"|"hourly","fee_stage_kind": "design_fee"|"execution","fee_stage_status": "not_started"|"in_progress"|"complete","invoice_status": "draft"|"sent"|"cancelled","material_category": "Flooring"|"Walls"|"Ceiling"|"Furniture"|"Lighting"|"Hardware","payment_mode": "bank_transfer"|"upi"|"cheque"|"cash","profile_kind": "staff"|"client"|"vendor","project_status": "lead"|"consultation"|"design"|"boq_approval"|"execution"|"snag"|"handover"|"closed","project_type": "residential"|"commercial"|"office","snag_priority": "critical"|"major"|"minor","snag_status": "raised"|"assigned"|"in_progress"|"fixed"|"verified"|"closed","task_priority": "low"|"medium"|"high"|"urgent","task_status": "todo"|"in_progress"|"done"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -905,7 +1056,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "activity_type": ["stage_change", "boq_submit", "boq_approve", "snag_raised", "snag_closed", "payment_received", "note"],"app_role": ["owner", "director", "project_manager", "architect", "site_supervisor", "finance", "admin", "procurement"],"boq_status": ["draft", "submitted", "approved", "rejected"],"client_source": ["referral", "instagram", "website", "walk-in", "other"],"invoice_status": ["draft", "sent", "cancelled"],"material_category": ["Flooring", "Walls", "Ceiling", "Furniture", "Lighting", "Hardware"],"payment_mode": ["bank_transfer", "upi", "cheque", "cash"],"profile_kind": ["staff", "client", "vendor"],"project_status": ["lead", "consultation", "design", "boq_approval", "execution", "snag", "handover", "closed"],"project_type": ["residential", "commercial", "office"],"snag_priority": ["critical", "major", "minor"],"snag_status": ["raised", "assigned", "in_progress", "fixed", "verified", "closed"],"task_priority": ["low", "medium", "high", "urgent"],"task_status": ["todo", "in_progress", "done"]
+            "activity_type": ["stage_change", "boq_submit", "boq_approve", "snag_raised", "snag_closed", "payment_received", "note"],"app_role": ["owner", "director", "project_manager", "architect", "site_supervisor", "finance", "admin", "procurement"],"boq_status": ["draft", "submitted", "approved", "rejected"],"change_order_reason": ["client_request", "site_condition", "regulatory", "design_error"],"change_order_status": ["draft", "submitted", "approved", "rejected"],"client_source": ["referral", "instagram", "website", "walk-in", "other"],"discipline": ["architecture", "interiors", "both"],"engagement_type": ["design_only", "design_and_execution"],"fee_basis": ["percent_of_cost", "lump_sum", "per_sqft", "hourly"],"fee_stage_kind": ["design_fee", "execution"],"fee_stage_status": ["not_started", "in_progress", "complete"],"invoice_status": ["draft", "sent", "cancelled"],"material_category": ["Flooring", "Walls", "Ceiling", "Furniture", "Lighting", "Hardware"],"payment_mode": ["bank_transfer", "upi", "cheque", "cash"],"profile_kind": ["staff", "client", "vendor"],"project_status": ["lead", "consultation", "design", "boq_approval", "execution", "snag", "handover", "closed"],"project_type": ["residential", "commercial", "office"],"snag_priority": ["critical", "major", "minor"],"snag_status": ["raised", "assigned", "in_progress", "fixed", "verified", "closed"],"task_priority": ["low", "medium", "high", "urgent"],"task_status": ["todo", "in_progress", "done"]
           }
         }
 } as const

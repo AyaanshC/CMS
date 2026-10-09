@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  makeUrlFor, mapBoq, mapInvoice, mapMessage, mapProject, withClientStats, withOutstanding,
+  makeUrlFor, mapBoq, mapFeeStage, mapInvoice, mapMessage, mapProject, withClientStats, withOutstanding,
   type BoqRow, type InvoiceRow, type ProjectRow,
 } from "./mappers";
 import type { Client, Invoice, Project } from "@/types";
@@ -11,6 +11,7 @@ const projectRow: ProjectRow = {
   start_date: "2026-07-01", estimated_end_date: null, actual_end_date: null, total_budget: 1250000,
   portal_token: "tok123", director_id: "u2", manager_id: "u3", created_at: "2026-07-01T00:00:00Z",
   updated_at: "2026-07-01T00:00:00Z", archived_at: null,
+  engagement_type: null, discipline: null, fee_basis: null, fee_rate: null, fee_amount: null, estimated_construction_cost: null,
   client: { full_name: "Arun Sharma" },
   rooms: [
     { id: "r2", project_id: "p1", name: "Bedroom", room_type: null, area_sqft: 200, sort_order: 2 },
@@ -60,13 +61,14 @@ describe("mapInvoice", () => {
   const row: InvoiceRow = {
     id: "e1", project_id: "p1", invoice_number: "PDS/26-27/0001", status: "sent", issue_date: "2026-10-01",
     due_date: "2026-10-15", subtotal: 250000, discount: 0, gst_rate: 18, gst_amount: 45000, total_amount: 295000,
+    retention_amount: 0, retention_released_at: null, fee_stage_id: null, change_order_id: null,
     notes: null, created_at: "2026-10-01T00:00:00Z",
     project: { name: "Sharma Residence", client: { full_name: "Arun Sharma" } },
     items: [],
   };
 
   it("uses the database's effective status and balances", () => {
-    const inv = mapInvoice(row, { id: "e1", amount_paid: 100000, amount_due: 195000, effective_status: "partial" });
+    const inv = mapInvoice(row, { id: "e1", amount_paid: 100000, tds_amount: 0, credited: 0, retention_held: 0, amount_due: 195000, effective_status: "partial", last_payment_date: "2026-10-05" });
     expect(inv).toMatchObject({ status: "partial", amount_paid: 100000, amount_due: 195000, client_name: "Arun Sharma" });
   });
 
@@ -112,5 +114,16 @@ describe("withOutstanding and withClientStats", () => {
       { id: "a1", client_id: "c1", title: "", description: "", type: "note", created_at: "2026-10-05T00:00:00Z" },
     ]);
     expect(c).toMatchObject({ active_projects: 1, total_value: 1250100, last_activity: "2026-10-05T00:00:00Z" });
+  });
+});
+
+describe("mapFeeStage", () => {
+  it("maps the summary view row", () => {
+    const s = mapFeeStage({
+      id: "s1", project_id: "p1", kind: "design_fee", name: "Concept", percent: 10, sort_order: 1, status: "complete",
+      percent_complete: 100, planned_start: null, planned_end: null, completed_at: "2026-10-01T00:00:00Z",
+      checklist: [{ label: "Sign-off", done: true }], amount: 90000, earned: 90000, invoiced: 90000,
+    });
+    expect(s).toMatchObject({ name: "Concept", amount: 90000, checklist: [{ label: "Sign-off", done: true }], planned_start: undefined });
   });
 });

@@ -1,9 +1,10 @@
 import { boqTotals, lineTotal } from "@/lib/finance/money";
 import type { Tables } from "@/lib/supabase/database.types";
 import type {
-  ActivityLogItem, AppRole, BOQTemplate, BOQVersion, Client, Expense, Invoice, InvoiceStatus, ItemLibraryItem,
-  MaterialOption, Message, Notification, Payment, ProfileKind, Project, ProjectFile, ProjectUpdate, Snag,
-  StudioSettings, Task, TeamMember,
+  ActivityLogItem, AppRole, BOQTemplate, BOQVersion, ChangeOrder, ChecklistItem, Client, CreditNote, Expense,
+  FeeStage, FeeStageKind, FeeStageStatus, FeeTemplate, Invoice, InvoiceStatus, ItemLibraryItem, MaterialOption,
+  Message, Notification, Payment, ProfileKind, Project, ProjectFile, ProjectUpdate, Snag, StudioSettings,
+  Task, TeamMember,
 } from "@/types";
 
 export type UrlFor = (pathOrUrl: string | null | undefined) => string | undefined;
@@ -39,6 +40,12 @@ export function mapProject(r: ProjectRow): Project {
     estimated_end_date: opt(r.estimated_end_date),
     actual_end_date: opt(r.actual_end_date),
     total_budget: opt(r.total_budget),
+    engagement_type: opt(r.engagement_type),
+    discipline: opt(r.discipline),
+    fee_basis: opt(r.fee_basis),
+    fee_rate: opt(r.fee_rate),
+    fee_amount: opt(r.fee_amount),
+    estimated_construction_cost: opt(r.estimated_construction_cost),
     portal_slug: r.portal_token,
     director_id: opt(r.director_id),
     manager_id: opt(r.manager_id),
@@ -74,6 +81,7 @@ export function mapClient(r: Tables<"clients">): Client {
     address: opt(r.address), source: opt(r.source), tags: r.tags,
     style_preferences: opt(r.style_preferences as Client["style_preferences"] | null),
     budget_min: opt(r.budget_min), budget_max: opt(r.budget_max), notes: opt(r.notes), created_at: r.created_at,
+    payment_terms_days: r.payment_terms_days,
   };
 }
 
@@ -152,12 +160,47 @@ export function mapTask(r: TaskRow): Task {
   };
 }
 
+export type FeeStageRow = {
+  id: string | null; project_id: string | null; kind: FeeStageKind | null; name: string | null; percent: number | null;
+  sort_order: number | null; status: FeeStageStatus | null; percent_complete: number | null; planned_start: string | null;
+  planned_end: string | null; completed_at: string | null; checklist: unknown; amount: number | null; earned: number | null; invoiced: number | null;
+};
+
+export function mapFeeStage(r: FeeStageRow): FeeStage {
+  return {
+    id: r.id!, project_id: r.project_id!, kind: r.kind!, name: r.name ?? "", percent: r.percent ?? 0,
+    sort_order: r.sort_order ?? 0, status: r.status ?? "not_started", percent_complete: r.percent_complete ?? 0,
+    planned_start: opt(r.planned_start), planned_end: opt(r.planned_end), completed_at: opt(r.completed_at),
+    checklist: (r.checklist as ChecklistItem[] | null) ?? [], amount: r.amount ?? 0, earned: r.earned ?? 0, invoiced: r.invoiced ?? 0,
+  };
+}
+
+export function mapFeeTemplate(r: Tables<"fee_templates">): FeeTemplate {
+  return { id: r.id, name: r.name, discipline: r.discipline, kind: r.kind, stages: r.stages as FeeTemplate["stages"] };
+}
+
+export function mapChangeOrder(r: Tables<"change_orders">): ChangeOrder {
+  return {
+    id: r.id, project_id: r.project_id, number: r.number, title: r.title, description: opt(r.description), reason: r.reason,
+    fee_impact: r.fee_impact, cost_impact: r.cost_impact, schedule_impact_days: r.schedule_impact_days, status: r.status,
+    submitted_at: opt(r.submitted_at), decided_at: opt(r.decided_at), decided_by: opt(r.decided_by),
+    decision_note: opt(r.decision_note), created_at: r.created_at,
+  };
+}
+
+export function mapCreditNote(r: Tables<"credit_notes">): CreditNote {
+  return { id: r.id, invoice_id: r.invoice_id, number: opt(r.number), amount: r.amount, reason: r.reason, issued_at: r.issued_at };
+}
+
 // Finance ---------------------------------------------------------------------
 export type InvoiceRow = Tables<"invoices"> & {
   project: { name: string; client: { full_name: string } | null } | null;
   items: Tables<"invoice_items">[];
 };
-export interface InvoiceSummary { id: string | null; amount_paid: number | null; amount_due: number | null; effective_status: string | null }
+export interface InvoiceSummary {
+  id: string | null; amount_paid: number | null; tds_amount: number | null; credited: number | null;
+  retention_held: number | null; amount_due: number | null; effective_status: string | null; last_payment_date: string | null;
+}
 
 export function mapInvoice(r: InvoiceRow, s: InvoiceSummary | undefined): Invoice {
   return {
@@ -165,14 +208,18 @@ export function mapInvoice(r: InvoiceRow, s: InvoiceSummary | undefined): Invoic
     invoice_number: opt(r.invoice_number), status: (s?.effective_status ?? r.status) as InvoiceStatus,
     issue_date: opt(r.issue_date), due_date: opt(r.due_date), subtotal: r.subtotal, discount: r.discount,
     gst_rate: r.gst_rate, gst_amount: r.gst_amount ?? 0, total_amount: r.total_amount ?? 0,
-    amount_paid: s?.amount_paid ?? 0, amount_due: s?.amount_due ?? r.total_amount ?? 0, notes: opt(r.notes),
+    amount_paid: s?.amount_paid ?? 0, amount_due: s?.amount_due ?? r.total_amount ?? 0,
+    tds_amount: s?.tds_amount ?? 0, credited: s?.credited ?? 0, retention_amount: r.retention_amount,
+    retention_held: s?.retention_held ?? r.retention_amount, retention_released_at: opt(r.retention_released_at),
+    last_payment_date: opt(s?.last_payment_date ?? null),
+    notes: opt(r.notes), fee_stage_id: opt(r.fee_stage_id), change_order_id: opt(r.change_order_id),
     items: r.items.map((i) => ({ id: i.id, invoice_id: i.invoice_id, description: i.description, quantity: i.quantity, unit_rate: i.unit_rate, amount: i.amount ?? 0 })),
   };
 }
 
 export function mapPayment(r: Tables<"payments"> & { recorder: { full_name: string } | null }): Payment {
   return {
-    id: r.id, invoice_id: r.invoice_id, amount: r.amount, payment_date: r.payment_date, mode: r.mode,
+    id: r.id, invoice_id: r.invoice_id, amount: r.amount, tds_amount: r.tds_amount, payment_date: r.payment_date, mode: r.mode,
     reference: opt(r.reference), notes: opt(r.notes), recorded_by_name: r.recorder?.full_name,
   };
 }

@@ -2,9 +2,10 @@ import "server-only";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { SessionProfile } from "@/types";
 import {
-  makeUrlFor, mapActivity, mapBoq, mapClient, mapExpense, mapFile, mapInvoice, mapLibraryItem, mapMaterial,
-  mapMessage, mapNotification, mapPayment, mapProject, mapSettings, mapSnag, mapTask, mapTeamMember, mapTemplate,
-  mapUpdate, withClientStats, withOutstanding,
+  makeUrlFor, mapActivity, mapBoq, mapChangeOrder, mapClient, mapCreditNote, mapExpense, mapFeeStage,
+  mapFeeTemplate, mapFile, mapInvoice, mapLibraryItem, mapMaterial, mapMessage, mapNotification,
+  mapPayment, mapProject, mapSettings, mapSnag, mapTask, mapTeamMember, mapTemplate, mapUpdate,
+  withClientStats, withOutstanding,
 } from "./mappers";
 import type { WorkspaceSnapshot } from "./snapshot";
 
@@ -17,6 +18,7 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
   const [
     settings, clients, team, projects, boqs, snags, tasks, invoices, summaries, payments, expenses,
     messages, updates, notifications, library, templates, materials, files, activity,
+    feeStages, feeTemplates, changeOrders, creditNotes,
   ] = await Promise.all([
     db.from("firm_settings").select("*").single(),
     db.from("clients").select("*").is("archived_at", null).order("created_at", { ascending: false }),
@@ -30,7 +32,7 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
       .order("created_at", { ascending: false }),
     db.from("tasks").select("*, project:projects(name), assignee:profiles!tasks_assigned_to_fkey(full_name)").order("due_date", { nullsFirst: false }),
     db.from("invoices").select("*, project:projects(name, client:clients(full_name)), items:invoice_items(*)").order("created_at", { ascending: false }),
-    db.from("invoice_summary").select("id, amount_paid, amount_due, effective_status"),
+    db.from("invoice_summary").select("id, amount_paid, tds_amount, credited, retention_held, amount_due, effective_status, last_payment_date"),
     db.from("payments").select("*, recorder:profiles(full_name)").order("payment_date", { ascending: false }),
     db.from("expenses").select("*, creator:profiles(full_name)").order("expense_date", { ascending: false }),
     db.from("messages").select("*, sender:profiles(full_name, kind)").order("created_at"),
@@ -41,10 +43,15 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
     db.from("material_options").select("*"),
     db.from("project_files").select("*, uploader:profiles(full_name)").order("created_at", { ascending: false }),
     db.from("activity_logs").select("*").order("created_at", { ascending: false }).limit(200),
+    db.from("fee_stage_summary").select("*").order("sort_order"),
+    db.from("fee_templates").select("*").order("name"),
+    db.from("change_orders").select("*").order("created_at", { ascending: false }),
+    db.from("credit_notes").select("*").order("issued_at", { ascending: false }),
   ]);
 
   const failed = [settings, clients, team, projects, boqs, snags, tasks, invoices, summaries, payments, expenses,
-    messages, updates, notifications, library, templates, materials, files, activity].find((r) => r.error);
+    messages, updates, notifications, library, templates, materials, files, activity,
+    feeStages, feeTemplates, changeOrders, creditNotes].find((r) => r.error);
   if (failed?.error) throw new Error(`Workspace load failed: ${failed.error.message}`);
 
   // Sign every storage path once.
@@ -72,6 +79,10 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
     studioSettings: mapSettings(settings.data!),
     clients: withClientStats((clients.data ?? []).map(mapClient), mappedProjects, mappedActivity),
     projects: mappedProjects,
+    feeStages: (feeStages.data ?? []).map(mapFeeStage),
+    feeTemplates: (feeTemplates.data ?? []).map(mapFeeTemplate),
+    changeOrders: (changeOrders.data ?? []).map(mapChangeOrder),
+    creditNotes: (creditNotes.data ?? []).map(mapCreditNote),
     boqs: (boqs.data ?? []).map(mapBoq),
     snags: (snags.data ?? []).map((s) => mapSnag(s, urlFor)),
     tasks: (tasks.data ?? []).map(mapTask),

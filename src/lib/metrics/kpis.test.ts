@@ -8,7 +8,8 @@ import type { BOQVersion, Expense, Invoice, Payment, Project, Snag, Task } from 
 const TODAY = "2026-10-09";
 const inv = (o: Partial<Invoice>): Invoice => ({
   id: "i", project_id: "p1", project_name: "", client_name: "", status: "sent", subtotal: 0, discount: 0,
-  gst_rate: 18, gst_amount: 0, total_amount: 0, amount_paid: 0, amount_due: 0, ...o,
+  gst_rate: 18, gst_amount: 0, total_amount: 0, amount_paid: 0, amount_due: 0,
+  tds_amount: 0, credited: 0, retention_amount: 0, retention_held: 0, ...o,
 });
 const proj = (o: Partial<Project>): Project => ({
   id: "p1", client_id: "c", client_name: "", name: "", reference_number: "", status: "design",

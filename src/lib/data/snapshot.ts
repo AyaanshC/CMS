@@ -1,7 +1,7 @@
 import type {
-  ActivityLogItem, BOQTemplate, BOQVersion, Client, Expense, Invoice, ItemLibraryItem, MaterialOption,
-  Message, Notification, Payment, Project, ProjectFile, ProjectUpdate, SessionProfile, Snag,
-  StudioSettings, Task, TeamMember,
+  ActivityLogItem, BOQTemplate, BOQVersion, ChangeOrder, Client, CreditNote, Expense, FeeStage, FeeTemplate,
+  Invoice, ItemLibraryItem, MaterialOption, Message, Notification, Payment, Project, ProjectFile, ProjectUpdate,
+  SessionProfile, Snag, StudioSettings, Task, TeamMember,
 } from "@/types";
 
 // Everything a signed-in user may see, already filtered by RLS.
@@ -11,6 +11,10 @@ export interface WorkspaceSnapshot {
   studioSettings: StudioSettings;
   clients: Client[];
   projects: Project[];
+  feeStages: FeeStage[];
+  feeTemplates: FeeTemplate[];
+  changeOrders: ChangeOrder[];
+  creditNotes: CreditNote[];
   boqs: BOQVersion[];
   snags: Snag[];
   tasks: Task[];
