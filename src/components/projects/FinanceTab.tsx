@@ -14,6 +14,7 @@ import { invoiceAmounts } from "@/lib/finance/money";
 import { canRecordPayments } from "@/lib/permissions";
 import { PAYMENT_MODE_LABELS, type PaymentMode } from "@/types";
 import type { Project, Invoice, Expense } from "@/types";
+import { CreditNoteDialog } from "@/components/finance/CreditNoteDialog";
 
 export default function FinanceTab({
   project,
@@ -24,7 +25,7 @@ export default function FinanceTab({
   invoices: Invoice[];
   expenses: Expense[];
 }) {
-  const { addInvoice, cancelInvoice, recordPayment, addExpense, studioSettings, me } = useAppStore();
+  const { addInvoice, cancelInvoice, recordPayment, addExpense, setRetention, releaseRetention, studioSettings, me } = useAppStore();
 
   const totalInvoiced = invoices.reduce((sum, inv) => sum + inv.total_amount, 0);
   const totalPaid = invoices.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0);
@@ -39,10 +40,12 @@ export default function FinanceTab({
     send: true,
   });
 
+  const [creditNoteInvoice, setCreditNoteInvoice] = useState<Invoice | null>(null);
   const [recordPaymentModalOpen, setRecordPaymentModalOpen] = useState(false);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState("");
   const [paymentForm, setPaymentForm] = useState({
     amount: 100000,
+    tds: 0,
     mode: "bank_transfer" as PaymentMode,
     reference: "",
     paymentDate: new Date().toISOString().slice(0, 10),
@@ -77,7 +80,8 @@ export default function FinanceTab({
       Number(paymentForm.amount),
       paymentForm.paymentDate,
       paymentForm.mode,
-      paymentForm.reference || undefined
+      paymentForm.reference || undefined,
+      Number(paymentForm.tds || 0)
     );
     if (r.ok) setRecordPaymentModalOpen(false);
   };
@@ -134,6 +138,10 @@ export default function FinanceTab({
                 <div className="text-right">
                   <p className="font-bold text-sm">{formatCurrency(inv.total_amount)}</p>
                   <p className="text-[10px] text-muted-foreground">Paid: {formatCurrency(inv.amount_paid || 0)}</p>
+                  {inv.tds_amount > 0 && <p className="text-[10px] text-muted-foreground">TDS: {formatCurrency(inv.tds_amount)}</p>}
+                  {inv.credited > 0 && <p className="text-[10px] text-muted-foreground">Credited: {formatCurrency(inv.credited)}</p>}
+                  {inv.retention_held > 0 && <p className="text-[10px] text-muted-foreground">Retention: {formatCurrency(inv.retention_held)}</p>}
+                  {inv.amount_due > 0 && <p className="text-[10px] font-semibold text-amber-600">Due: {formatCurrency(inv.amount_due)}</p>}
                 </div>
                 <div className="flex gap-2">
                   {canRecordPayments(me) && inv.amount_due > 0 && (
@@ -142,12 +150,22 @@ export default function FinanceTab({
                       variant="outline"
                       onClick={() => {
                         setSelectedInvoiceId(inv.id);
-                        setPaymentForm((prev) => ({ ...prev, amount: inv.amount_due }));
+                        setPaymentForm((prev) => ({ ...prev, amount: inv.amount_due, tds: 0 }));
                         setRecordPaymentModalOpen(true);
                       }}
                       className="text-xs text-emerald-600 border-emerald-300 hover:bg-emerald-50"
                     >
                       Record Payment
+                    </Button>
+                  )}
+                  {canRecordPayments(me) && (inv.status === "sent" || inv.status === "partial" || inv.status === "overdue") && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setCreditNoteInvoice(inv)}
+                      className="text-xs"
+                    >
+                      Credit note
                     </Button>
                   )}
                   {canRecordPayments(me) && inv.status === "sent" && (inv.amount_paid || 0) === 0 && (
@@ -166,6 +184,27 @@ export default function FinanceTab({
                   )}
                 </div>
               </div>
+              {project.engagement_type === "design_and_execution" && inv.status !== "draft" && (
+                <div className="w-full flex items-center gap-2 mt-2 pt-2 border-t text-xs">
+                  <label htmlFor={`ret-${inv.id}`} className="text-muted-foreground">Retention (₹):</label>
+                  <Input
+                    id={`ret-${inv.id}`}
+                    type="number"
+                    min="0"
+                    className="w-28 h-7 text-xs"
+                    defaultValue={inv.retention_amount}
+                    onBlur={(e) => setRetention(inv.id, Number(e.target.value) || 0)}
+                  />
+                  {inv.retention_held > 0 && !inv.retention_released_at && (
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => releaseRetention(inv.id)}>
+                      Release retention
+                    </Button>
+                  )}
+                  {inv.retention_released_at && (
+                    <Badge variant="outline" className="text-[10px]">Retention released</Badge>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -277,6 +316,15 @@ export default function FinanceTab({
               />
             </div>
             <div className="space-y-1">
+              <Label className="text-xs">TDS deducted (₹)</Label>
+              <Input 
+                type="number"
+                min="0"
+                value={paymentForm.tds} 
+                onChange={(e) => setPaymentForm({ ...paymentForm, tds: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+            <div className="space-y-1">
               <Label className="text-xs">Payment Date</Label>
               <Input 
                 type="date"
@@ -359,6 +407,14 @@ export default function FinanceTab({
           </form>
         </DialogContent>
       </Dialog>
+
+      {creditNoteInvoice && (
+        <CreditNoteDialog
+          invoice={creditNoteInvoice}
+          open={!!creditNoteInvoice}
+          onOpenChange={(o) => !o && setCreditNoteInvoice(null)}
+        />
+      )}
     </>
   );
 }

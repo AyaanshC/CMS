@@ -55,6 +55,50 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"alerts": {
+                  Row: {
+                    "acknowledged_at": string | null,"acknowledged_by": string | null,"body": string,"created_at": string,"dedupe_key": string,"email_error": string | null,"email_status": string,"id": string,"invoice_id": string | null,"kind": string,"link": string | null,"project_id": string | null,"recipient_email": string | null,"recipient_id": string | null,"title": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "acknowledged_at"?: string | null,"acknowledged_by"?: string | null,"body": string,"created_at"?: string,"dedupe_key": string,"email_error"?: string | null,"email_status"?: string,"id"?: string,"invoice_id"?: string | null,"kind": string,"link"?: string | null,"project_id"?: string | null,"recipient_email"?: string | null,"recipient_id"?: string | null,"title": string
+                  }
+                  Update: {
+                    "acknowledged_at"?: string | null,"acknowledged_by"?: string | null,"body"?: string,"created_at"?: string,"dedupe_key"?: string,"email_error"?: string | null,"email_status"?: string,"id"?: string,"invoice_id"?: string | null,"kind"?: string,"link"?: string | null,"project_id"?: string | null,"recipient_email"?: string | null,"recipient_id"?: string | null,"title"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "alerts_acknowledged_by_fkey"
+      columns: ["acknowledged_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "alerts_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "invoice_summary"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "alerts_invoice_id_fkey"
+      columns: ["invoice_id"]
+isOneToOne: false
+      referencedRelation: "invoices"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "alerts_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "alerts_recipient_id_fkey"
+      columns: ["recipient_id"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"audit_log": {
                   Row: {
                     "action": string,"actor_id": string | null,"created_at": string,"id": number,"new_data": Json | null,"old_data": Json | null,"row_id": string | null,"table_name": string
@@ -835,7 +879,10 @@ isOneToOne: false
                 }
           }
           Functions: {
-            "apply_fee_template":
+            "acknowledge_alert":
+{ Args: { "p_alert": string }; Returns: undefined
+                           },
+"apply_fee_template":
 { Args: { "p_project": string,"p_template": string }; Returns: number
                            },
 "boq_version_project":
@@ -879,6 +926,9 @@ isOneToOne: false
                            },
 "financial_year":
 { Args: { "d": string }; Returns: string
+                           },
+"generate_alerts":
+{ Args: { "p_today"?: string }; Returns: number
                            },
 "has_role":
 { Args: { "r": Database["public"]['Enums']["app_role"] }; Returns: boolean

@@ -577,3 +577,16 @@ export interface SessionProfile {
   roles: AppRole[];
 }
 
+export interface Alert {
+  id: string;
+  kind: string;
+  title: string;
+  body: string;
+  link?: string;
+  project_id?: string;
+  invoice_id?: string;
+  created_at: string;
+  acknowledged_at?: string;
+}
+
+

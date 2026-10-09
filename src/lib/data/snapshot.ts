@@ -1,5 +1,5 @@
 import type {
-  ActivityLogItem, BOQTemplate, BOQVersion, ChangeOrder, Client, CreditNote, Expense, FeeStage, FeeTemplate,
+  ActivityLogItem, Alert, BOQTemplate, BOQVersion, ChangeOrder, Client, CreditNote, Expense, FeeStage, FeeTemplate,
   Invoice, ItemLibraryItem, MaterialOption, Message, Notification, Payment, Project, ProjectFile, ProjectUpdate,
   SessionProfile, Snag, StudioSettings, Task, TeamMember,
 } from "@/types";
@@ -29,4 +29,5 @@ export interface WorkspaceSnapshot {
   materialOptions: MaterialOption[];
   files: ProjectFile[];
   activityLogs: ActivityLogItem[];
+  alerts: Alert[];
 }

@@ -2,7 +2,7 @@ import "server-only";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { SessionProfile } from "@/types";
 import {
-  makeUrlFor, mapActivity, mapBoq, mapChangeOrder, mapClient, mapCreditNote, mapExpense, mapFeeStage,
+  makeUrlFor, mapActivity, mapAlert, mapBoq, mapChangeOrder, mapClient, mapCreditNote, mapExpense, mapFeeStage,
   mapFeeTemplate, mapFile, mapInvoice, mapLibraryItem, mapMaterial, mapMessage, mapNotification,
   mapPayment, mapProject, mapSettings, mapSnag, mapTask, mapTeamMember, mapTemplate, mapUpdate,
   withClientStats, withOutstanding,
@@ -18,7 +18,7 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
   const [
     settings, clients, team, projects, boqs, snags, tasks, invoices, summaries, payments, expenses,
     messages, updates, notifications, library, templates, materials, files, activity,
-    feeStages, feeTemplates, changeOrders, creditNotes,
+    feeStages, feeTemplates, changeOrders, creditNotes, alerts,
   ] = await Promise.all([
     db.from("firm_settings").select("*").single(),
     db.from("clients").select("*").is("archived_at", null).order("created_at", { ascending: false }),
@@ -47,11 +47,12 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
     db.from("fee_templates").select("*").order("name"),
     db.from("change_orders").select("*").order("created_at", { ascending: false }),
     db.from("credit_notes").select("*").order("issued_at", { ascending: false }),
+    db.from("alerts").select("*").eq("recipient_id", me.id).is("acknowledged_at", null).order("created_at", { ascending: false }),
   ]);
 
   const failed = [settings, clients, team, projects, boqs, snags, tasks, invoices, summaries, payments, expenses,
     messages, updates, notifications, library, templates, materials, files, activity,
-    feeStages, feeTemplates, changeOrders, creditNotes].find((r) => r.error);
+    feeStages, feeTemplates, changeOrders, creditNotes, alerts].find((r) => r.error);
   if (failed?.error) throw new Error(`Workspace load failed: ${failed.error.message}`);
 
   // Sign every storage path once.
@@ -97,5 +98,6 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
     materialOptions: (materials.data ?? []).map((m) => mapMaterial(m, urlFor)),
     files: (files.data ?? []).map((f) => mapFile(f, urlFor)),
     activityLogs: mappedActivity,
+    alerts: (alerts.data ?? []).map(mapAlert),
   };
 }

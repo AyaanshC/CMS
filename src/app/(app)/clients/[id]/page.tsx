@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -42,7 +43,7 @@ export default function ClientProfilePage({ params }: { params: Promise<{ id: st
 
 function ClientProfileContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { clients, projects, invoices } = useAppStore();
+  const { clients, projects, invoices, updateClient } = useAppStore();
   
   const client = clients.find((c) => c.id === id);
   const clientProjects = projects.filter((p) => p.client_id === id);
@@ -157,6 +158,20 @@ function ClientProfileContent({ params }: { params: Promise<{ id: string }> }) {
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">How they found us</p>
                     <Badge variant="secondary" className="capitalize">{client.source}</Badge>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Payment terms</p>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min="0"
+                        max="180"
+                        className="w-24 h-8 text-sm"
+                        defaultValue={client.payment_terms_days}
+                        onBlur={(e) => updateClient(client.id, { payment_terms_days: Number(e.target.value) || 0 })}
+                      />
+                      <span className="text-sm text-muted-foreground">days</span>
+                    </div>
                   </div>
                   <div>
                     <p className="text-xs text-muted-foreground mb-1">Notes</p>

@@ -28,6 +28,7 @@ const clientFields = z.object({
   tags: z.array(z.string().trim().max(30)).max(20).default([]),
   budget_min: money.optional().nullable(),
   budget_max: money.optional().nullable(),
+  payment_terms_days: z.coerce.number().int().min(0).max(180).default(14),
   notes: optText(),
 });
 const budgetOrdered = (c: { budget_min?: number | null; budget_max?: number | null }) =>
@@ -147,6 +148,7 @@ export const invoiceInput = z
 export const paymentInput = z.object({
   invoice_id: id,
   amount: z.coerce.number().finite().positive().max(1e11),
+  tds_amount: money.default(0),
   payment_date: date,
   mode: z.enum(["bank_transfer", "upi", "cheque", "cash"]),
   reference: optText(100),
@@ -268,3 +270,8 @@ export const changeOrderUpdate = z.object({
 export const changeOrderDecision = z.object({
   id, approve: z.boolean(), signer: z.string().trim().max(120).default(""), note: z.string().trim().max(1000).optional().nullable(),
 });
+
+export const issueInvoiceInput = z.object({ id, due_date: optDate });
+export const creditNoteInput = z.object({ invoice_id: id, amount: z.coerce.number().finite().positive().max(1e11), reason: text(300) });
+export const retentionInput = z.object({ id, retention_amount: money });
+

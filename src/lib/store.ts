@@ -16,6 +16,8 @@ import * as commsActions from "@/app/actions/comms";
 import * as settingsActions from "@/app/actions/settings";
 import * as feeActions from "@/app/actions/fees";
 import * as coActions from "@/app/actions/change-orders";
+import * as recvActions from "@/app/actions/receivables";
+import * as alertActions from "@/app/actions/alerts";
 import type {
   BOQLineItem, BOQVersion, ChangeOrder, Client, Expense, FeeStage, Invoice, Message, Project, ProjectMilestone, ProjectRoom,
   ProjectStatus, ProjectUpdate, Snag, SnagComment, SnagStatus, Task, ItemLibraryItem, StudioSettings,
@@ -71,9 +73,15 @@ export interface AppActions {
 
   // Finance Actions
   addInvoice: (invoice: Partial<Invoice> & { send?: boolean }) => Promise<ActionResult>;
+  issueInvoice: (id: string, dueDate?: string) => Promise<ActionResult>;
+  deleteDraftInvoice: (id: string) => Promise<ActionResult>;
   cancelInvoice: (invoiceId: string) => Promise<ActionResult>;
-  recordPayment: (invoiceId: string, amount: number, paymentDate: string, mode: string, reference?: string) => Promise<ActionResult>;
+  recordPayment: (invoiceId: string, amount: number, paymentDate: string, mode: string, reference?: string, tdsAmount?: number) => Promise<ActionResult>;
+  addCreditNote: (invoiceId: string, amount: number, reason: string) => Promise<ActionResult>;
+  setRetention: (invoiceId: string, amount: number) => Promise<ActionResult>;
+  releaseRetention: (invoiceId: string) => Promise<ActionResult>;
   addExpense: (expense: Partial<Expense>) => Promise<ActionResult>;
+  acknowledgeAlert: (id: string) => Promise<ActionResult>;
 
   // Messages & Communication
   addMessage: (message: Partial<Message>) => Promise<ActionResult>;
@@ -162,10 +170,16 @@ export const createAppStore = (snapshot: WorkspaceSnapshot) =>
 
     // Finance Actions
     addInvoice: (invoice) => run(financeActions.createInvoice({ ...invoice, send: invoice.send ?? invoice.status !== "draft" })),
+    issueInvoice: (id, dueDate) => run(recvActions.issueInvoice({ id, due_date: dueDate })),
+    deleteDraftInvoice: (id) => run(recvActions.deleteDraftInvoice({ id })),
     cancelInvoice: (invoiceId) => run(financeActions.cancelInvoice({ id: invoiceId })),
-    recordPayment: (invoiceId, amount, paymentDate, mode, reference) =>
-      run(financeActions.recordPayment({ invoice_id: invoiceId, amount, payment_date: paymentDate, mode, reference })),
+    recordPayment: (invoiceId, amount, paymentDate, mode, reference, tdsAmount = 0) =>
+      run(financeActions.recordPayment({ invoice_id: invoiceId, amount, payment_date: paymentDate, mode, reference, tds_amount: tdsAmount })),
+    addCreditNote: (invoiceId, amount, reason) => run(recvActions.addCreditNote({ invoice_id: invoiceId, amount, reason })),
+    setRetention: (invoiceId, amount) => run(recvActions.setRetention({ id: invoiceId, retention_amount: amount })),
+    releaseRetention: (invoiceId) => run(recvActions.releaseRetention({ id: invoiceId })),
     addExpense: (expense) => run(financeActions.addExpense(expense)),
+    acknowledgeAlert: (id) => run(alertActions.acknowledgeAlert({ id })),
 
     // Communication & Files
     addFile: (file) => run(fileActions.createFileRecord(file)),

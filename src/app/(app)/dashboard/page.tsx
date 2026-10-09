@@ -22,6 +22,7 @@ import { useAppStore } from "@/lib/store";
 import { dashboardKpis, monthlySeries, stageDistribution } from "@/lib/metrics/kpis";
 import { NotEnoughData } from "@/components/metrics/NotEnoughData";
 import { MetricInfo } from "@/components/metrics/MetricInfo";
+import { ActionItems } from "@/components/dashboard/ActionItems";
 import type { ProjectStatus } from "@/types";
 
 const STAGE_COLORS: Record<ProjectStatus, string> = {
@@ -151,6 +152,7 @@ export default function DashboardPage() {
         subtitle={`Welcome back, ${me.full_name.split(" ")[0]}`}
       />
       <div className="p-6 space-y-6">
+        <ActionItems />
         {/* KPI Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {cards.map((kpi) => (

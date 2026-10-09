@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  changeOrderInput, clientInput, feeStageUpdate, feeTermsInput, invoiceInput, lineItemInput, messageInput,
-  paymentInput, projectInput, taskInput,
+  changeOrderInput, clientInput, creditNoteInput, feeStageUpdate, feeTermsInput, invoiceInput, issueInvoiceInput,
+  lineItemInput, messageInput, paymentInput, projectInput, taskInput,
 } from "./schemas";
 
 const P = "a1000000-0000-4000-8000-000000000001";
@@ -65,3 +65,17 @@ describe("phase 1 schemas", () => {
     expect(changeOrderInput.safeParse({ project_id: P, title: "x", reason: "design_error", fee_impact: 10 }).success).toBe(false);
   });
 });
+
+describe("receivables schemas", () => {
+  it("accepts TDS on payments and defaults it to 0", () => {
+    expect(paymentInput.parse({ invoice_id: P, amount: 100, payment_date: "2026-10-09", mode: "upi" }).tds_amount).toBe(0);
+    expect(paymentInput.safeParse({ invoice_id: P, amount: 100, tds_amount: -1, payment_date: "2026-10-09", mode: "upi" }).success).toBe(false);
+  });
+  it("requires a credit note reason", () => {
+    expect(creditNoteInput.safeParse({ invoice_id: P, amount: 100, reason: " " }).success).toBe(false);
+  });
+  it("allows issuing without a due date (client terms apply)", () => {
+    expect(issueInvoiceInput.safeParse({ id: P }).success).toBe(true);
+  });
+});
+

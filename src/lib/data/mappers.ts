@@ -1,7 +1,7 @@
 import { boqTotals, lineTotal } from "@/lib/finance/money";
 import type { Tables } from "@/lib/supabase/database.types";
 import type {
-  ActivityLogItem, AppRole, BOQTemplate, BOQVersion, ChangeOrder, ChecklistItem, Client, CreditNote, Expense,
+  ActivityLogItem, Alert, AppRole, BOQTemplate, BOQVersion, ChangeOrder, ChecklistItem, Client, CreditNote, Expense,
   FeeStage, FeeStageKind, FeeStageStatus, FeeTemplate, Invoice, InvoiceStatus, ItemLibraryItem, MaterialOption,
   Message, Notification, Payment, ProfileKind, Project, ProjectFile, ProjectUpdate, Snag, StudioSettings,
   Task, TeamMember,
@@ -307,3 +307,9 @@ export function mapTeamMember(r: {
     avatar_url: opt(r.avatar_url), active: r.active, roles: r.user_roles.map((x) => x.role),
   };
 }
+
+export function mapAlert(r: Tables<"alerts">): Alert {
+  return { id: r.id, kind: r.kind, title: r.title, body: r.body, link: opt(r.link), project_id: opt(r.project_id),
+    invoice_id: opt(r.invoice_id), created_at: r.created_at, acknowledged_at: opt(r.acknowledged_at) };
+}
+
