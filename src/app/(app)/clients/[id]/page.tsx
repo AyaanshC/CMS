@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { use, Suspense } from "react";
 import { TopBar } from "@/components/layout/AppSidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -9,14 +8,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import {
-  Phone, Mail, MapPin, Tag, Send, Edit2, ExternalLink,
-  FolderKanban, IndianRupee, MessageSquare, Clock,
+  Phone, Mail, MapPin, Send, Edit2, ExternalLink,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { formatCurrency, formatDate, formatRelativeTime, getInitials, getStatusColor, cn } from "@/lib/utils";
 import Link from "next/link";
+import { PortalAccessCard } from "@/components/clients/PortalAccessCard";
 
 const TAG_COLORS: Record<string, string> = {
   VIP: "bg-amber-100 text-amber-700",
@@ -166,24 +164,27 @@ function ClientProfileContent({ params }: { params: Promise<{ id: string }> }) {
                   </div>
                 </CardContent>
               </Card>
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold">Activity Timeline</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="timeline-line space-y-4">
-                    {ACTIVITY_FEED.map((item, i) => (
-                      <div key={i} className="flex items-start gap-3 pl-5 relative">
-                        <div className="absolute left-0 top-1.5 w-3.5 h-3.5 bg-card border-2 border-indigo-400 rounded-full z-10" />
-                        <div>
-                          <p className="text-sm text-foreground">{item.text}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeTime(item.date)}</p>
+              <div className="space-y-4">
+                <PortalAccessCard client={client} />
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-semibold">Activity Timeline</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="timeline-line space-y-4">
+                      {ACTIVITY_FEED.map((item, i) => (
+                        <div key={i} className="flex items-start gap-3 pl-5 relative">
+                          <div className="absolute left-0 top-1.5 w-3.5 h-3.5 bg-card border-2 border-indigo-400 rounded-full z-10" />
+                          <div>
+                            <p className="text-sm text-foreground">{item.text}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeTime(item.date)}</p>
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </TabsContent>
 
