@@ -42,11 +42,67 @@ export interface Client {
   budget_max?: number;
   notes?: string;
   portal_user_id?: string;
+  payment_terms_days?: number;
   created_at: string;
   // computed
   active_projects?: number;
   total_value?: number;
   last_activity?: string;
+}
+
+// --- Fees & Billing Types ---
+
+export type EngagementType = 'design_only' | 'design_and_execution';
+export type FeeBasis = 'percent_of_cost' | 'lump_sum' | 'per_sqft' | 'hourly';
+export type Discipline = 'architecture' | 'interiors' | 'both';
+export type FeeStageKind = 'design_fee' | 'execution';
+export type FeeStageStatus = 'not_started' | 'in_progress' | 'complete';
+
+export const ENGAGEMENT_LABELS: Record<EngagementType, string> = {
+  design_only: 'Design only (fee)',
+  design_and_execution: 'Design + execution (turnkey)',
+};
+export const FEE_BASIS_LABELS: Record<FeeBasis, string> = {
+  percent_of_cost: '% of construction cost',
+  lump_sum: 'Lump sum',
+  per_sqft: 'Rate per sqft',
+  hourly: 'Hourly (billed from timesheets)',
+};
+
+export interface ChecklistItem { label: string; done: boolean }
+
+export interface FeeStage {
+  id: string;
+  project_id: string;
+  kind: FeeStageKind;
+  name: string;
+  percent: number;
+  sort_order: number;
+  status: FeeStageStatus;
+  percent_complete: number;
+  planned_start?: string;
+  planned_end?: string;
+  completed_at?: string;
+  checklist: ChecklistItem[];
+  amount: number;     // from fee_stage_summary
+  earned: number;
+  invoiced: number;
+}
+
+export interface FeeTemplate {
+  id: string;
+  name: string;
+  discipline: Discipline;
+  kind: FeeStageKind;
+  stages: { name: string; percent: number; checklist: string[] }[];
+}
+
+export interface FeeTerms {
+  fee_basis?: FeeBasis;
+  fee_rate?: number;
+  fee_amount?: number;
+  estimated_construction_cost?: number;
+  area_sqft?: number;
 }
 
 // --- Projects ---
@@ -95,6 +151,12 @@ export interface Project {
   actual_end_date?: string;
   total_budget?: number;
   portal_slug: string;
+  engagement_type?: EngagementType;
+  discipline?: Discipline;
+  fee_basis?: FeeBasis;
+  fee_rate?: number;
+  fee_amount?: number;
+  estimated_construction_cost?: number;
   director_id?: string;
   manager_id?: string;
   created_at: string;
