@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Plus, ThumbsUp, Heart } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { formatDate } from "@/lib/utils";
+import { PhotoInput } from "@/components/files/PhotoInput";
 import type { Project, ProjectUpdate } from "@/types";
 
 export default function UpdatesTab({
@@ -25,25 +26,21 @@ export default function UpdatesTab({
   const [updateForm, setUpdateForm] = useState({
     title: "",
     content: "",
-    photoUrl: "https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800&auto=format&fit=crop&q=80"
+    photoUrl: "",
   });
 
-  const handlePostUpdate = (e: React.FormEvent) => {
+  const handlePostUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
-    addProjectUpdate({
-      id: 'upd-' + Date.now(),
+    const r = await addProjectUpdate({
       project_id: project.id,
-      posted_by: 'user-1',
-      posted_by_name: 'Priya Sharma',
       title: updateForm.title,
       content: updateForm.content,
       photos: updateForm.photoUrl ? [updateForm.photoUrl] : [],
-      created_at: new Date().toISOString(),
-      likes: 1,
-      loved: 0
     });
-    setUpdateForm({ title: "", content: "", photoUrl: "" });
-    setPostUpdateModalOpen(false);
+    if (r.ok) {
+      setUpdateForm({ title: "", content: "", photoUrl: "" });
+      setPostUpdateModalOpen(false);
+    }
   };
 
   return (
@@ -105,11 +102,10 @@ export default function UpdatesTab({
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Photo URL</Label>
-              <Input 
-                value={updateForm.photoUrl} 
-                onChange={(e) => setUpdateForm({ ...updateForm, photoUrl: e.target.value })}
-                placeholder="https://images.unsplash.com/..."
+              <PhotoInput
+                projectId={project.id}
+                label="Site photo"
+                onUploaded={(p) => setUpdateForm({ ...updateForm, photoUrl: p })}
               />
             </div>
             <div className="space-y-1">

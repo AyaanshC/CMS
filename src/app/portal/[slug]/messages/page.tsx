@@ -21,7 +21,7 @@ export default function PortalMessagesPage({ params }: { params: Promise<{ slug:
 
 function PortalMessagesContent({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const { projects, messages, clients, studioSettings, addMessage } = useAppStore();
+  const { projects, messages, clients, studioSettings, addMessage, me } = useAppStore();
 
   const project = projects.find((p) => p.portal_slug === slug);
   const client = clients.find((c) => c.id === project?.client_id);
@@ -38,16 +38,10 @@ function PortalMessagesContent({ params }: { params: Promise<{ slug: string }> }
     e.preventDefault();
     if (!inputContent.trim()) return;
 
-    const newMsg: Message = {
-      id: `msg_${Date.now()}`,
+    addMessage({
       project_id: project.id,
-      sender_name: client?.full_name || "Client",
-      sender_role: "client",
       content: inputContent.trim(),
-      created_at: new Date().toISOString(),
-    };
-
-    addMessage(newMsg);
+    });
     setInputContent("");
   };
 
@@ -57,18 +51,12 @@ function PortalMessagesContent({ params }: { params: Promise<{ slug: string }> }
 
     const fileUrl = URL.createObjectURL(file);
     
-    const newMsg: Message = {
-      id: `msg_${Date.now()}`,
+    addMessage({
       project_id: project.id,
-      sender_name: client?.full_name || "Client",
-      sender_role: "client",
       content: "",
       file_url: fileUrl,
       file_name: file.name,
-      created_at: new Date().toISOString(),
-    };
-
-    addMessage(newMsg);
+    });
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -112,7 +100,7 @@ function PortalMessagesContent({ params }: { params: Promise<{ slug: string }> }
           </div>
 
           {projectMessages.map((msg) => {
-            const isClient = msg.sender_role === "client";
+            const isClient = msg.sender_id === me.id;
             return (
               <div
                 key={msg.id}

@@ -11,10 +11,17 @@ import * as boqActions from "@/app/actions/boq";
 import * as snagActions from "@/app/actions/snags";
 import * as taskActions from "@/app/actions/tasks";
 import * as financeActions from "@/app/actions/finance";
+import * as fileActions from "@/app/actions/files";
+import * as commsActions from "@/app/actions/comms";
 import type {
   BOQLineItem, BOQVersion, Client, Expense, Invoice, Message, Project, ProjectMilestone, ProjectRoom,
   ProjectStatus, ProjectUpdate, Snag, SnagComment, SnagStatus, Task, ItemLibraryItem, StudioSettings, ProjectFile,
 } from "@/types";
+
+export type NewFileRecord = {
+  project_id: string; folder?: string; file_name: string; storage_path: string;
+  file_type: string; file_size_bytes: number; is_client_visible: boolean;
+};
 
 export interface AppActions {
   // Client Actions
@@ -53,25 +60,25 @@ export interface AppActions {
   addExpense: (expense: Partial<Expense>) => Promise<ActionResult>;
 
   // Messages & Communication
-  addMessage: (message: Message) => Promise<ActionResult> | void;
-  addProjectUpdate: (update: ProjectUpdate) => Promise<ActionResult> | void;
-  toggleUpdateReaction: (updateId: string, type: 'like' | 'love') => Promise<ActionResult> | void;
+  addMessage: (message: Partial<Message>) => Promise<ActionResult>;
+  addProjectUpdate: (update: Partial<ProjectUpdate>) => Promise<ActionResult>;
+  toggleUpdateReaction: (updateId: string, type: "like" | "love") => Promise<ActionResult>;
 
   // Files
-  addFile: (file: ProjectFile) => Promise<ActionResult> | void;
-  toggleFileVisibility: (fileId: string) => Promise<ActionResult> | void;
-  deleteFile: (fileId: string) => Promise<ActionResult> | void;
+  addFile: (file: NewFileRecord) => Promise<ActionResult>;
+  toggleFileVisibility: (fileId: string) => Promise<ActionResult>;
+  deleteFile: (fileId: string) => Promise<ActionResult>;
 
   // Item Library & Materials
   addItemToLibrary: (item: Omit<ItemLibraryItem, 'id' | 'created_at'>) => Promise<ActionResult> | void;
   updateLibraryItem: (id: string, updates: Partial<ItemLibraryItem>) => Promise<ActionResult> | void;
   deleteLibraryItem: (id: string) => Promise<ActionResult> | void;
-  toggleMaterialSelection: (materialId: string) => Promise<ActionResult> | void;
+  toggleMaterialSelection: (materialId: string) => Promise<ActionResult>;
 
   // Settings & Activity
   updateStudioSettings: (settings: Partial<StudioSettings>) => Promise<ActionResult> | void;
-  markNotificationRead: (id: string) => Promise<ActionResult> | void;
-  markAllNotificationsRead: () => Promise<ActionResult> | void;
+  markNotificationRead: (id: string) => Promise<ActionResult>;
+  markAllNotificationsRead: () => Promise<ActionResult>;
 }
 
 export type AppState = WorkspaceSnapshot & AppActions;
@@ -132,42 +139,22 @@ export const createAppStore = (snapshot: WorkspaceSnapshot) =>
       run(financeActions.recordPayment({ invoice_id: invoiceId, amount, payment_date: paymentDate, mode, reference })),
     addExpense: (expense) => run(financeActions.addExpense(expense)),
 
-  // Communication
-  addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
-
-  addProjectUpdate: (update) => set((state) => ({
-    projectUpdates: [update, ...state.projectUpdates],
-    notifications: [{
-      id: 'notif-' + Date.now(),
-      user_id: 'client-1',
-      type: 'project_update',
-      title: update.title || 'New Project Update',
-      body: update.content.slice(0, 80) + '...',
-      is_read: false,
-      created_at: new Date().toISOString()
-    }, ...state.notifications]
-  })),
-
-  toggleUpdateReaction: (updateId, type) => set((state) => ({
-    projectUpdates: state.projectUpdates.map(u => {
-      if (u.id !== updateId) return u;
-      if (type === 'love') {
-        return { ...u, loved: (u.loved || 0) + 1 };
-      }
-      return { ...u, likes: (u.likes || 0) + 1 };
-    })
-  })),
-
-  // Files
-  addFile: (file) => set((state) => ({ files: [file, ...state.files] })),
-
-  toggleFileVisibility: (fileId) => set((state) => ({
-    files: state.files.map(f => f.id === fileId ? { ...f, is_client_visible: !f.is_client_visible } : f)
-  })),
-
-  deleteFile: (fileId) => set((state) => ({
-    files: state.files.filter(f => f.id !== fileId)
-  })),
+    // Communication & Files
+    addFile: (file) => run(fileActions.createFileRecord(file)),
+    toggleFileVisibility: (fileId) => {
+      const f = get().files.find((x) => x.id === fileId);
+      return run(fileActions.setFileVisibility({ id: fileId, is_client_visible: !f?.is_client_visible }));
+    },
+    deleteFile: (fileId) => run(fileActions.deleteFile({ id: fileId })),
+    addMessage: (m) => run(commsActions.sendMessage(m)),
+    addProjectUpdate: (u) => run(commsActions.postUpdate(u)),
+    toggleUpdateReaction: (updateId, kind) => run(commsActions.reactToUpdate({ id: updateId, kind })),
+    toggleMaterialSelection: (materialId) => {
+      const m = get().materialOptions.find((x) => x.id === materialId);
+      return run(commsActions.setMaterialSelected({ id: materialId, is_selected: !m?.is_selected }));
+    },
+    markNotificationRead: (id) => run(commsActions.markNotificationRead({ id })),
+    markAllNotificationsRead: () => run(commsActions.markAllNotificationsRead()),
 
   // Item Library & Materials
   addItemToLibrary: (itemData) => set((state) => {
@@ -187,21 +174,9 @@ export const createAppStore = (snapshot: WorkspaceSnapshot) =>
     itemLibrary: state.itemLibrary.filter(item => item.id !== id)
   })),
 
-  toggleMaterialSelection: (materialId) => set((state) => ({
-    materialOptions: state.materialOptions.map(m => m.id === materialId ? { ...m, is_selected: !m.is_selected } : m)
-  })),
-
   // Settings & Activity
   updateStudioSettings: (settingsUpdates) => set((state) => ({
     studioSettings: { ...state.studioSettings, ...settingsUpdates }
-  })),
-
-  markNotificationRead: (id) => set((state) => ({
-    notifications: state.notifications.map(n => n.id === id ? { ...n, is_read: true } : n)
-  })),
-
-  markAllNotificationsRead: () => set((state) => ({
-    notifications: state.notifications.map(n => ({ ...n, is_read: true }))
   })),
   }));
 

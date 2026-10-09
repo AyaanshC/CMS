@@ -14,21 +14,15 @@ import { useAppStore } from "@/lib/store";
 export default function MessagesTab({ projectId, messages }: { projectId: string; messages: Message[] }) {
   const [newMessage, setNewMessage] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { addMessage } = useAppStore();
+  const { addMessage, me } = useAppStore();
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim()) return;
-    const msg: Message = {
-      id: 'msg-' + Date.now(),
+    addMessage({
       project_id: projectId,
-      sender_id: 'user-1', // Mock designer id
-      sender_name: 'Priya Sharma', // Mock designer name
-      sender_role: 'staff',
       content: newMessage.trim(),
-      created_at: new Date().toISOString(),
-    };
-    addMessage(msg);
+    });
     setNewMessage("");
   };
 
@@ -38,18 +32,12 @@ export default function MessagesTab({ projectId, messages }: { projectId: string
 
     const fileUrl = URL.createObjectURL(file);
     
-    const msg: Message = {
-      id: 'msg-' + Date.now(),
+    addMessage({
       project_id: projectId,
-      sender_id: 'user-1', // Mock designer id
-      sender_name: 'Priya Sharma',
-      sender_role: 'staff',
       content: "",
       file_url: fileUrl,
       file_name: file.name,
-      created_at: new Date().toISOString(),
-    };
-    addMessage(msg);
+    });
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -60,7 +48,7 @@ export default function MessagesTab({ projectId, messages }: { projectId: string
       {/* Chat messages area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50/50">
         {messages.map((msg) => {
-          const isMe = msg.sender_role === "staff"; // Assuming we are logged in as designer
+          const isMe = msg.sender_id === me.id;
           return (
             <div key={msg.id} className={cn("flex w-full", isMe ? "justify-end" : "justify-start")}>
               <div className={cn("flex max-w-[75%] gap-2", isMe ? "flex-row-reverse" : "flex-row")}>
