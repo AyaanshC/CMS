@@ -125,3 +125,36 @@ insert into public.boq_templates (name, category, description, sections) values
 
 insert into public.material_options (project_id, room_name, category, product_name, brand, approx_cost, image_url, description) values
   ('a1000000-0000-4000-8000-000000000001', 'Living & Dining', 'Flooring', 'Italian marble, Botticino', 'Classic Marble Co', 450, 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600', 'Per sqft, polished');
+
+insert into public.fee_templates (name, discipline, kind, stages) values
+('Architecture (standard)', 'architecture', 'design_fee', '[
+  {"name":"Concept","percent":10,"checklist":["Concept presentation shared","Client sign-off on concept"]},
+  {"name":"Schematic Design","percent":15,"checklist":["Schematic drawings issued","Client sign-off"]},
+  {"name":"Design Development","percent":20,"checklist":["DD drawing set issued","Consultant coordination done"]},
+  {"name":"Working Drawings & Tender","percent":25,"checklist":["GFC drawings issued","Tender documents issued"]},
+  {"name":"Statutory Approvals","percent":10,"checklist":["Applications submitted","Approvals received"]},
+  {"name":"Site Supervision","percent":20,"checklist":["Final site inspection done","Completion certificate issued"]}]'),
+('Interiors (standard)', 'interiors', 'design_fee', '[
+  {"name":"Concept & Moodboard","percent":15,"checklist":["Moodboard presented","Client sign-off"]},
+  {"name":"Design & 3D","percent":25,"checklist":["3D views shared","Client sign-off on design"]},
+  {"name":"BOQ & Specifications","percent":15,"checklist":["BOQ submitted","Specifications issued"]},
+  {"name":"Execution Supervision","percent":35,"checklist":["Site work complete","Snag list closed"]},
+  {"name":"Handover","percent":10,"checklist":["Handover walkthrough done","Handover document signed"]}]'),
+('Execution (standard)', 'both', 'execution', '[
+  {"name":"Advance on BOQ approval","percent":40,"checklist":["BOQ approved by client"]},
+  {"name":"Carcass / structure complete","percent":40,"checklist":["Carcass work inspected"]},
+  {"name":"Handover","percent":20,"checklist":["Handover signed"]}]');
+
+update public.projects set engagement_type = 'design_and_execution', discipline = 'interiors', fee_basis = 'lump_sum', fee_amount = 300000
+  where id = 'a1000000-0000-4000-8000-000000000001';
+update public.projects set engagement_type = 'design_only', discipline = 'architecture', fee_basis = 'percent_of_cost', fee_rate = 6, estimated_construction_cost = 15000000
+  where id = 'a1000000-0000-4000-8000-000000000002';
+
+insert into public.project_fee_stages (project_id, kind, name, percent, sort_order, status, percent_complete, completed_at, checklist)
+select 'a1000000-0000-4000-8000-000000000001', 'design_fee', s->>'name', (s->>'percent')::numeric, ord::int,
+       case when ord <= 2 then 'complete'::fee_stage_status when ord = 3 then 'in_progress' else 'not_started' end,
+       case when ord <= 2 then 100 when ord = 3 then 50 else 0 end,
+       case when ord <= 2 then now() - interval '30 days' end,
+       (select coalesce(jsonb_agg(jsonb_build_object('label', c, 'done', ord <= 2)), '[]') from jsonb_array_elements_text(s->'checklist') c)
+from public.fee_templates t, jsonb_array_elements(t.stages) with ordinality as x(s, ord)
+where t.name = 'Interiors (standard)';
