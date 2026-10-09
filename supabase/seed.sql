@@ -158,3 +158,47 @@ select 'a1000000-0000-4000-8000-000000000001', 'design_fee', s->>'name', (s->>'p
        (select coalesce(jsonb_agg(jsonb_build_object('label', c, 'done', ord <= 2)), '[]') from jsonb_array_elements_text(s->'checklist') c)
 from public.fee_templates t, jsonb_array_elements(t.stages) with ordinality as x(s, ord)
 where t.name = 'Interiors (standard)';
+
+insert into public.rate_bands (name, blended_rate) values
+  ('Principal', 3500), ('Director', 2800), ('Project Manager', 1800), ('Senior Architect', 1500),
+  ('Architect', 1100), ('Site Supervisor', 800), ('Support', 600);
+
+update public.profiles p set rate_band_id = b.id, billable_target_percent = t.target
+from (values
+  ('00000000-0000-4000-8000-000000000001'::uuid, 'Principal', 40),
+  ('00000000-0000-4000-8000-000000000002'::uuid, 'Director', 40),
+  ('00000000-0000-4000-8000-000000000003'::uuid, 'Project Manager', 60),
+  ('00000000-0000-4000-8000-000000000004'::uuid, 'Architect', 75),
+  ('00000000-0000-4000-8000-000000000005'::uuid, 'Site Supervisor', 75),
+  ('00000000-0000-4000-8000-000000000006'::uuid, 'Support', 0),
+  ('00000000-0000-4000-8000-000000000007'::uuid, 'Support', 0),
+  ('00000000-0000-4000-8000-000000000008'::uuid, 'Support', 50)
+) as t(id, band, target)
+join public.rate_bands b on b.name = t.band
+where p.id = t.id;
+
+insert into public.staff_cost_rates (profile_id, effective_from, cost_rate) values
+  ('00000000-0000-4000-8000-000000000001', '2026-04-01', 3000),
+  ('00000000-0000-4000-8000-000000000002', '2026-04-01', 2600),
+  ('00000000-0000-4000-8000-000000000003', '2026-04-01', 1700),
+  ('00000000-0000-4000-8000-000000000004', '2026-04-01', 1000),
+  ('00000000-0000-4000-8000-000000000004', '2026-10-01', 1150),
+  ('00000000-0000-4000-8000-000000000005', '2026-04-01', 750);
+
+-- Two weeks of approved time on Sharma Residence (weeks starting 2026-09-21 and 2026-09-28).
+insert into public.timesheet_entries (profile_id, work_date, project_id, fee_stage_id, activity, hours, status, submitted_at, decided_by, decided_at)
+select u.id, d::date, 'a1000000-0000-4000-8000-000000000001',
+       (select id from public.project_fee_stages where project_id = 'a1000000-0000-4000-8000-000000000001' and name = 'BOQ & Specifications'),
+       u.activity::public.timesheet_activity, u.hours, 'approved', now(), '00000000-0000-4000-8000-000000000003', now()
+from (values
+  ('00000000-0000-4000-8000-000000000004'::uuid, 'drafting', 7),
+  ('00000000-0000-4000-8000-000000000005'::uuid, 'site_visit', 4)) as u(id, activity, hours)
+cross join generate_series('2026-09-21'::date, '2026-10-02'::date, interval '1 day') d
+where extract(isodow from d) <= 5;
+
+insert into public.timesheet_entries (profile_id, work_date, project_id, fee_stage_id, activity, hours, status, submitted_at, decided_by, decided_at)
+select '00000000-0000-4000-8000-000000000003', d::date, 'a1000000-0000-4000-8000-000000000001',
+       (select id from public.project_fee_stages where project_id = 'a1000000-0000-4000-8000-000000000001' and name = 'BOQ & Specifications'),
+       'coordination', 3, 'approved', now(), '00000000-0000-4000-8000-000000000002', now()
+from generate_series('2026-09-21'::date, '2026-10-02'::date, interval '1 day') d where extract(isodow from d) <= 5;
+
