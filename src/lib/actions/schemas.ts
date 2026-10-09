@@ -119,6 +119,7 @@ export const snagStatusInput = z.object({
   status: z.enum(["raised", "assigned", "in_progress", "fixed", "verified", "closed"]),
   after_photo_url: path.optional().nullable(),
 });
+export const snagVendorInput = z.object({ id, vendor_id: optId });
 export const snagCommentInput = z
   .object({ snag_id: id, content: optText(), photo_url: path.optional().nullable() })
   .refine((c) => c.content || c.photo_url, { message: "Write a comment or attach a photo" });

@@ -18,7 +18,7 @@ import { AssigneeSelect } from "@/components/team/AssigneeSelect";
 import { PhotoInput } from "@/components/files/PhotoInput";
 
 export default function SnagTab({ projectId, snags, rooms }: { projectId: string; snags: Snag[]; rooms: ProjectRoom[] }) {
-  const { addSnag, updateSnagStatus, addSnagComment, studioSettings, projects, me, team } = useAppStore();
+  const { addSnag, updateSnagStatus, assignSnagVendor, addSnagComment, studioSettings, projects, me, team, vendors } = useAppStore();
   const leadDesigner = team.find(m => m.id === project?.director_id) ?? team.find(m => m.roles.includes("architect") || m.roles.includes("owner"));
   const project = projects.find(p => p.id === projectId);
 
@@ -37,6 +37,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
     location_detail: "",
     priority: "major" as SnagPriority,
     assigned_to: "",
+    vendor_id: "",
     due_date: "",
     before_photo_url: ""
   });
@@ -63,6 +64,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
       location_detail: newSnagForm.location_detail,
       priority: newSnagForm.priority,
       assigned_to: newSnagForm.assigned_to || undefined,
+      vendor_id: newSnagForm.vendor_id || undefined,
       due_date: newSnagForm.due_date || undefined,
       before_photo_url: newSnagForm.before_photo_url || undefined,
     });
@@ -74,6 +76,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
       location_detail: "",
       priority: "major",
       assigned_to: "",
+      vendor_id: "",
       due_date: "",
       before_photo_url: "",
     });
@@ -192,6 +195,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
                   <span className="font-medium text-foreground">{snag.room_name}</span>
                   <span className="text-[10px]">·</span>
                   <span className="truncate">{snag.location_detail}</span>
+                  {snag.vendor_name && <span className="text-primary truncate">· {snag.vendor_name}</span>}
                 </p>
 
                 <div className="mt-auto flex items-center justify-between">
@@ -297,6 +301,19 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
               </div>
             </div>
             <div className="space-y-1">
+              <Label className="text-xs">Responsible vendor/contractor</Label>
+              <select
+                value={newSnagForm.vendor_id}
+                onChange={(e) => setNewSnagForm({ ...newSnagForm, vendor_id: e.target.value })}
+                className="w-full h-9 px-2 text-xs rounded border border-input bg-card"
+              >
+                <option value="">None</option>
+                {vendors.filter((v) => v.status !== "blacklisted").map((v) => (
+                  <option key={v.id} value={v.id}>{v.name} ({v.category})</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
               <PhotoInput 
                 projectId={projectId} 
                 label="Before photo" 
@@ -393,6 +410,21 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
               <div className="space-y-1">
                 <PhotoInput projectId={projectId} label="After photo" onUploaded={setAfterPhotoPath} />
               </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs">Responsible vendor/contractor</Label>
+                <select
+                  value={selectedSnag.vendor_id || ""}
+                  onChange={(e) => assignSnagVendor(selectedSnag.id, e.target.value || null)}
+                  className="w-full h-9 px-2 text-xs rounded border border-input bg-card"
+                >
+                  <option value="">None</option>
+                  {vendors.filter((v) => v.status !== "blacklisted").map((v) => (
+                    <option key={v.id} value={v.id}>{v.name} ({v.category})</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Action Buttons for advancing status */}
               <div className="flex flex-wrap items-center justify-between p-3 bg-muted/20 border rounded-lg gap-2">
                 <span className="text-xs text-muted-foreground">Quick Action Controls:</span>

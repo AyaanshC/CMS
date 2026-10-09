@@ -11,10 +11,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { useAppStore } from "@/lib/store";
 import { formatCurrency, formatDate, getStatusColor, cn } from "@/lib/utils";
 import { invoiceAmounts } from "@/lib/finance/money";
-import { canRecordPayments } from "@/lib/permissions";
-import { PAYMENT_MODE_LABELS, type PaymentMode } from "@/types";
+import { canRecordPayments, hasAnyRole } from "@/lib/permissions";
+import { PAYMENT_MODE_LABELS, type PaymentMode, type CostType } from "@/types";
 import type { Project, Invoice, Expense } from "@/types";
 import { CreditNoteDialog } from "@/components/finance/CreditNoteDialog";
+import { toast } from "@/components/ui/toast";
+import { uploadToProject } from "@/lib/supabase/upload";
 
 export default function FinanceTab({
   project,
@@ -25,7 +27,19 @@ export default function FinanceTab({
   invoices: Invoice[];
   expenses: Expense[];
 }) {
-  const { addInvoice, cancelInvoice, recordPayment, addExpense, setRetention, releaseRetention, studioSettings, me } = useAppStore();
+  const {
+    addInvoice,
+    cancelInvoice,
+    recordPayment,
+    addExpense,
+    setRetention,
+    releaseRetention,
+    studioSettings,
+    me,
+    vendors,
+    costControl,
+    decideExpense,
+  } = useAppStore();
 
   const totalInvoiced = invoices.reduce((sum, inv) => sum + inv.total_amount, 0);
   const totalPaid = invoices.reduce((sum, inv) => sum + (inv.amount_paid || 0), 0);
@@ -51,12 +65,19 @@ export default function FinanceTab({
     paymentDate: new Date().toISOString().slice(0, 10),
   });
 
+  const isFinance = hasAnyRole(me, ["owner", "finance"]);
+  const projectCostRows = costControl.filter((r) => r.project_id === project.id);
+
   const [addExpenseModalOpen, setAddExpenseModalOpen] = useState(false);
   const [expenseForm, setExpenseForm] = useState({
     category: "Materials",
     description: "",
     amount: 15000,
+    vendor_id: "",
+    boq_line_item_id: "",
+    cost_type: "design" as CostType,
   });
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
 
   const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -88,15 +109,35 @@ export default function FinanceTab({
 
   const handleAddExpense = async (e: React.FormEvent) => {
     e.preventDefault();
+    let receipt_url: string | undefined;
+    if (receiptFile) {
+      try {
+        receipt_url = await uploadToProject(project.id, receiptFile);
+      } catch (err) {
+        return toast.add({ title: "Upload failed", description: (err as Error).message, type: "error" });
+      }
+    }
     const r = await addExpense({
       project_id: project.id,
       category: expenseForm.category,
       description: expenseForm.description,
       amount: Number(expenseForm.amount),
       expense_date: new Date().toISOString().slice(0, 10),
+      vendor_id: expenseForm.vendor_id || undefined,
+      boq_line_item_id: expenseForm.boq_line_item_id || undefined,
+      cost_type: expenseForm.cost_type,
+      receipt_url,
     });
     if (r.ok) {
-      setExpenseForm({ category: "Materials", description: "", amount: 15000 });
+      setExpenseForm({
+        category: "Materials",
+        description: "",
+        amount: 15000,
+        vendor_id: "",
+        boq_line_item_id: "",
+        cost_type: "design",
+      });
+      setReceiptFile(null);
       setAddExpenseModalOpen(false);
     }
   };
@@ -220,18 +261,71 @@ export default function FinanceTab({
                 <th className="p-2.5">Date</th>
                 <th className="p-2.5">Category</th>
                 <th className="p-2.5">Description</th>
+                <th className="p-2.5">Status</th>
                 <th className="p-2.5 text-right">Amount</th>
+                {isFinance && <th className="p-2.5 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y">
-              {expenses.map(exp => (
-                <tr key={exp.id}>
-                  <td className="p-2.5">{formatDate(exp.expense_date)}</td>
-                  <td className="p-2.5 font-medium">{exp.category}</td>
-                  <td className="p-2.5 text-muted-foreground">{exp.description}</td>
-                  <td className="p-2.5 text-right font-semibold text-rose-600">{formatCurrency(exp.amount)}</td>
-                </tr>
-              ))}
+              {expenses.map((exp) => {
+                const vendor = vendors.find((v) => v.id === exp.vendor_id);
+                return (
+                  <tr key={exp.id}>
+                    <td className="p-2.5">{formatDate(exp.expense_date)}</td>
+                    <td className="p-2.5 font-medium">
+                      {exp.category}
+                      {exp.cost_type && <span className="block text-[10px] text-muted-foreground capitalize">{exp.cost_type}</span>}
+                    </td>
+                    <td className="p-2.5 text-muted-foreground">
+                      <div>{exp.description}</div>
+                      {vendor && <div className="text-[10px] text-foreground font-medium">Vendor: {vendor.name}</div>}
+                      {exp.receipt_url && (
+                        <a href={exp.receipt_url} target="_blank" rel="noreferrer" className="text-[11px] text-primary hover:underline">
+                          View receipt
+                        </a>
+                      )}
+                    </td>
+                    <td className="p-2.5">
+                      {exp.status === "pending" ? (
+                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                          Pending approval
+                        </Badge>
+                      ) : exp.status === "approved" ? (
+                        <Badge variant="outline" className="text-emerald-700">
+                          Approved
+                        </Badge>
+                      ) : exp.status === "rejected" ? (
+                        <Badge variant="outline" className="text-rose-700">
+                          Rejected
+                        </Badge>
+                      ) : null}
+                    </td>
+                    <td className="p-2.5 text-right font-semibold text-rose-600">{formatCurrency(exp.amount)}</td>
+                    {isFinance && (
+                      <td className="p-2.5 text-right">
+                        {exp.status === "pending" && (
+                          <div className="flex items-center justify-end gap-1">
+                            <Button size="sm" className="h-7 text-xs" onClick={() => decideExpense(exp.id, true)}>
+                              Approve
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={() => {
+                                const note = window.prompt("Reason for rejecting expense?");
+                                if (note !== null) decideExpense(exp.id, false, note || undefined);
+                              }}
+                            >
+                              Reject
+                            </Button>
+                          </div>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </Card>
@@ -363,7 +457,7 @@ export default function FinanceTab({
 
       {/* MODAL: Add Expense */}
       <Dialog open={addExpenseModalOpen} onOpenChange={setAddExpenseModalOpen}>
-        <DialogContent className="max-w-sm">
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Log Project Expense</DialogTitle>
           </DialogHeader>
@@ -398,6 +492,52 @@ export default function FinanceTab({
                 required 
                 value={expenseForm.amount} 
                 onChange={(e) => setExpenseForm({ ...expenseForm, amount: parseFloat(e.target.value) || 0 })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Vendor (optional)</Label>
+              <select
+                value={expenseForm.vendor_id}
+                onChange={(e) => setExpenseForm({ ...expenseForm, vendor_id: e.target.value })}
+                className="w-full h-9 px-2 text-xs rounded border border-input bg-card"
+              >
+                <option value="">None</option>
+                {vendors.filter((v) => v.status !== "blacklisted").map((v) => (
+                  <option key={v.id} value={v.id}>{v.name} ({v.category})</option>
+                ))}
+              </select>
+            </div>
+            {projectCostRows.length > 0 && (
+              <div className="space-y-1">
+                <Label className="text-xs">BOQ line (optional)</Label>
+                <select
+                  value={expenseForm.boq_line_item_id}
+                  onChange={(e) => {
+                    const lineId = e.target.value;
+                    setExpenseForm({
+                      ...expenseForm,
+                      boq_line_item_id: lineId,
+                      cost_type: lineId ? "execution" : expenseForm.cost_type,
+                    });
+                  }}
+                  className="w-full h-9 px-2 text-xs rounded border border-input bg-card"
+                >
+                  <option value="">None (general expense)</option>
+                  {projectCostRows.map((r) => (
+                    <option key={r.line_item_id} value={r.line_item_id}>
+                      {r.category} · {r.description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="space-y-1">
+              <Label className="text-xs">Receipt scan (PDF/image)</Label>
+              <Input
+                type="file"
+                accept="application/pdf,image/*"
+                className="text-xs h-9"
+                onChange={(e) => setReceiptFile(e.target.files?.[0] ?? null)}
               />
             </div>
             <DialogFooter>

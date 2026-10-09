@@ -16,6 +16,7 @@ import FinanceTab from "@/components/projects/FinanceTab";
 import UpdatesTab from "@/components/projects/UpdatesTab";
 import MaterialsTab from "@/components/projects/MaterialsTab";
 import MessagesTab from "@/components/projects/MessagesTab";
+import ProcurementTab from "@/components/projects/ProcurementTab";
 
 export default function ProjectDetailPage({ params }: { params: Promise<{ id: string }> }) {
   return (
@@ -57,6 +58,9 @@ function ProjectDetailContent({ params }: { params: Promise<{ id: string }> }) {
             <TabsTrigger value="fees">Fees & Stages</TabsTrigger>
             <TabsTrigger value="changes">Change Orders</TabsTrigger>
             <TabsTrigger value="boq">BOQ ({boq.length} Versions)</TabsTrigger>
+            {project.engagement_type === "design_and_execution" && (
+              <TabsTrigger value="procurement">Procurement</TabsTrigger>
+            )}
             <TabsTrigger value="snags">
               Snags {openSnags > 0 && <span className="ml-1 w-4 h-4 bg-red-100 text-red-600 rounded-full text-[10px] flex items-center justify-center font-bold">{openSnags}</span>}
             </TabsTrigger>
@@ -71,6 +75,9 @@ function ProjectDetailContent({ params }: { params: Promise<{ id: string }> }) {
           <TabsContent value="fees" className="mt-4"><FeesTab project={project} /></TabsContent>
           <TabsContent value="changes" className="mt-4"><ChangeOrdersTab project={project} /></TabsContent>
           <TabsContent value="boq" className="mt-4"><BOQTab projectId={id} boqVersions={boq} /></TabsContent>
+          {project.engagement_type === "design_and_execution" && (
+            <TabsContent value="procurement" className="mt-4"><ProcurementTab project={project} /></TabsContent>
+          )}
           <TabsContent value="snags" className="mt-4"><SnagTab projectId={id} snags={projectSnags} rooms={project.rooms || []} /></TabsContent>
           <TabsContent value="tasks" className="mt-4 space-y-4"><TasksTab project={project} tasks={projectTasks} /></TabsContent>
           <TabsContent value="files" className="mt-4 space-y-4"><FilesTab project={project} files={projectFiles} /></TabsContent>

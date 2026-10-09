@@ -79,6 +79,7 @@ export interface AppActions {
   // Snag Actions
   addSnag: (snag: Partial<Snag>) => Promise<ActionResult>;
   updateSnagStatus: (snagId: string, status: SnagStatus, actorName?: string, afterPhotoUrl?: string) => Promise<ActionResult>;
+  assignSnagVendor: (snagId: string, vendorId?: string | null) => Promise<ActionResult>;
   addSnagComment: (snagId: string, comment: Omit<SnagComment, "id" | "snag_id" | "created_at">) => Promise<ActionResult>;
 
   // Task Actions
@@ -198,6 +199,7 @@ export const createAppStore = (snapshot: WorkspaceSnapshot) =>
       run(get().me.kind === "client" && status === "closed"
         ? snagActions.closeSnagAsClient({ id: snagId })
         : snagActions.setSnagStatus({ id: snagId, status, after_photo_url: afterPhotoPath })),
+    assignSnagVendor: (snagId, vendorId) => run(snagActions.assignSnagVendor({ id: snagId, vendor_id: vendorId ?? null })),
     addSnagComment: (snagId, comment) => run(snagActions.addSnagComment({ ...comment, snag_id: snagId })),
     addTask: (task) => run(taskActions.createTask(task)),
     updateTaskStatus: (taskId, status) => run(taskActions.setTaskStatus({ id: taskId, status })),
