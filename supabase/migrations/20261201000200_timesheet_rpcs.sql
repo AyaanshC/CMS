@@ -38,7 +38,7 @@ end $$;
 create function public.can_approve_entry(p_entry uuid) returns boolean
 language sql stable security definer set search_path = public as $$
   select e.profile_id <> auth.uid() and (
-           has_role('owner')
+           public.has_role('owner'::app_role)
         or (p.manager_id = auth.uid())
         or (p.director_id = auth.uid() and (p.manager_id is null or p.manager_id = e.profile_id)))
   from timesheet_entries e join projects p on p.id = e.project_id

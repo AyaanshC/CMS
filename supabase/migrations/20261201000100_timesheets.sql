@@ -18,11 +18,11 @@ alter table public.profiles
 grant update (weekly_capacity_hours, billable_target_percent, rate_band_id) on public.profiles to authenticated;
 
 -- Capacity, targets and rate band are set by the owner, not by the person.
-create function public.guard_staff_terms() returns trigger language plpgsql as $$
+create function public.guard_staff_terms() returns trigger language plpgsql security definer set search_path = public as $$
 begin
   if (new.weekly_capacity_hours, new.billable_target_percent, new.rate_band_id)
      is distinct from (old.weekly_capacity_hours, old.billable_target_percent, old.rate_band_id)
-     and auth.uid() is not null and not has_role('owner') then
+     and auth.uid() is not null and not public.has_role('owner'::public.app_role) then
     raise exception 'Only the owner can change capacity, targets or rate bands';
   end if;
   return new;
