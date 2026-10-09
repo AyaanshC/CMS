@@ -12,13 +12,11 @@ import {
   Building2, ArrowRight, ArrowLeft, Check, Sparkles, Home, Layers,
   CheckCircle2, Compass, Palette, IndianRupee, Heart, ShieldCheck
 } from "lucide-react";
-import { useAppStore } from "@/lib/store";
-import { Client, Project } from "@/types";
+import { submitOnboarding } from "@/app/actions/onboarding";
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const { studioSettings, addClient, addProject } = useAppStore();
-
+  
   const [step, setStep] = useState(1);
   const totalSteps = 4;
 
@@ -40,7 +38,8 @@ export default function OnboardingPage() {
   const [budgetTier, setBudgetTier] = useState("Premium (₹15L - ₹25L)");
 
   // Submitted project portal slug
-  const [portalSlug, setPortalSlug] = useState("");
+  const [submitted, setSubmitted] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const toggleRoom = (room: string) => {
     setSelectedRooms((prev) =>
@@ -77,71 +76,18 @@ export default function OnboardingPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
-    const clientId = `cli_${Date.now()}`;
-    const projectId = `proj_${Date.now()}`;
-    const slug = fullName.toLowerCase().replace(/[^a-z0-9]/g, "-") + "-residence";
-
-    const newClient: Client = {
-      id: clientId,
-      full_name: fullName.trim(),
-      phone: phone.trim(),
-      email: email.trim(),
-      address: address.trim(),
-      tags: ["New", "Residential"],
-      source: "website",
-      notes: `Style: ${selectedStyle}. Tier: ${budgetTier}. Selected Scope: ${selectedRooms.join(", ")}.`,
-      created_at: new Date().toISOString(),
-    };
-
-    const newProject: Project = {
-      id: projectId,
-      reference_number: `PRJ-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
-      name: `${fullName.trim()} Residence`,
-      client_id: clientId,
-      client_name: fullName.trim(),
-      status: "consultation",
-      property_type: "residential",
-      property_address: address.trim(),
-      area_sqft: carpetArea,
-      total_budget: budgetTier.includes("25L") ? 2200000 : 1400000,
-      progress_percent: 5,
-      start_date: new Date().toISOString().split("T")[0],
-      portal_slug: slug,
-      created_at: new Date().toISOString(),
-      rooms: selectedRooms.map((r, idx) => ({
-        id: `rm_${idx}`,
-        project_id: projectId,
-        name: r,
-        room_type: "other",
-      })),
-      milestones: [
-        {
-          id: `m_1`,
-          project_id: projectId,
-          title: "Initial Consultation & Site Measurements",
-          due_date: new Date().toISOString(),
-          completed_at: new Date().toISOString(),
-        },
-        {
-          id: `m_2`,
-          project_id: projectId,
-          title: "2D Layout & Concept Presentation",
-          due_date: new Date(Date.now() + 7 * 86400000).toISOString(),
-        },
-        {
-          id: `m_3`,
-          project_id: projectId,
-          title: "3D Renders & Material Selection",
-          due_date: new Date(Date.now() + 15 * 86400000).toISOString(),
-        },
-      ],
-    };
-
-    addClient(newClient);
-    addProject(newProject);
-    setPortalSlug(slug);
-    setStep(5); // Success step
+    const budgetEstimate = budgetTier.includes("25L") ? 2200000 : budgetTier.includes("15L") ? 1400000 : undefined;
+    submitOnboarding({
+      full_name: fullName, phone, email, address, property_type: propertyType, area_sqft: carpetArea,
+      budget_label: budgetTier, budget_estimate: budgetEstimate, style: selectedStyle, rooms: selectedRooms,
+    }).then((r) => {
+      if (r.ok) {
+        setSubmitted(r.reference);
+        setStep(5);
+      } else {
+        setError(r.error);
+      }
+    });
   };
 
   return (
@@ -154,7 +100,7 @@ export default function OnboardingPage() {
               <Building2 className="w-5 h-5" />
             </div>
             <div>
-              <p className="font-bold text-foreground text-sm">{studioSettings.name}</p>
+              <p className="font-bold text-foreground text-sm">our studio</p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Client Design Intake</p>
             </div>
           </div>
@@ -443,6 +389,7 @@ export default function OnboardingPage() {
                 <Button variant="outline" onClick={() => setStep(3)} className="gap-1.5">
                   <ArrowLeft className="w-4 h-4" /> Back
                 </Button>
+                {error && <p role="alert" className="text-sm text-destructive mb-2">{error}</p>}
                 <Button onClick={handleSubmit} className="gradient-primary border-0 text-white gap-2 shadow-sm">
                   <Sparkles className="w-4 h-4" /> Submit & Create Client Portal
                 </Button>
@@ -452,7 +399,7 @@ export default function OnboardingPage() {
         )}
 
         {/* STEP 5: Success & Portal Created */}
-        {step === 5 && (
+        {submitted && (
           <Card className="shadow-lg border-emerald-200 bg-white text-center p-8">
             <CardContent className="space-y-5">
               <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto shadow-sm">
@@ -461,30 +408,15 @@ export default function OnboardingPage() {
 
               <div>
                 <Badge className="bg-emerald-600 text-white border-0 text-xs mb-2">
-                  Project Portal Activated
+                  Enquiry Submitted
                 </Badge>
                 <h2 className="text-2xl font-bold text-foreground">Welcome aboard, {fullName}!</h2>
                 <p className="text-sm text-muted-foreground mt-1 max-w-md mx-auto">
-                  Your interior design project has been initialized at {studioSettings.name}. Your dedicated client portal is live.
-                </p>
-              </div>
-
-              <div className="p-4 bg-slate-50 rounded-xl border border-border max-w-md mx-auto text-left text-xs space-y-1">
-                <p className="font-bold text-foreground mb-1">Your Private Portal Link:</p>
-                <p className="font-mono text-indigo-600 bg-white p-2 rounded border border-border truncate">
-                  /portal/{portalSlug}
-                </p>
-                <p className="text-[11px] text-muted-foreground pt-1">
-                  You can bookmark this page to view live site photos, approve 3D designs, review BOQ estimates, and report touch-ups.
+                  Thank you. Your reference is {submitted}. Our team will call you within one working day.
                 </p>
               </div>
 
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
-                <Link href={`/portal/${portalSlug}`}>
-                  <Button className="gradient-primary border-0 text-white gap-2 shadow-sm px-6">
-                    Enter My Client Portal <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
                 <Link href="/projects">
                   <Button variant="outline">
                     Return to CRM Projects
@@ -498,7 +430,7 @@ export default function OnboardingPage() {
 
       {/* Footer */}
       <footer className="border-t border-border bg-white py-4 text-center text-xs text-muted-foreground">
-        Powered by {studioSettings.name} · Interior Designer Client Management System
+        Powered by our studio · Interior Designer Client Management System
       </footer>
     </div>
   );

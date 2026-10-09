@@ -1,112 +1,85 @@
-import { create } from 'zustand';
-import { 
-  MOCK_CLIENTS, MOCK_PROJECTS, MOCK_BOQ, MOCK_SNAGS, 
-  MOCK_TASKS, MOCK_INVOICES, MOCK_MESSAGES, MOCK_NOTIFICATIONS,
-  MOCK_UPDATES, MOCK_EXPENSES, MOCK_ITEM_LIBRARY, MOCK_BOQ_TEMPLATES,
-  MOCK_MATERIAL_OPTIONS, MOCK_STUDIO_SETTINGS, MOCK_FILES, MOCK_ACTIVITY_LOGS 
-} from './mock-data';
-import { 
-  Client, Project, ProjectStatus, BOQVersion, BOQSection, BOQLineItem,
-  Snag, SnagStatus, SnagComment, Task, Invoice, Expense, Message, 
-  ProjectUpdate, Notification, ItemLibraryItem, BOQTemplate, 
-  MaterialOption, StudioSettings, ProjectFile, ActivityLogItem, ProjectRoom, ProjectMilestone 
-} from '@/types';
+"use client";
 
-interface AppState {
-  clients: Client[];
-  projects: Project[];
-  boqs: BOQVersion[];
-  snags: Snag[];
-  tasks: Task[];
-  invoices: Invoice[];
-  messages: Message[];
-  notifications: Notification[];
-  projectUpdates: ProjectUpdate[];
-  expenses: Expense[];
-  itemLibrary: ItemLibraryItem[];
-  boqTemplates: BOQTemplate[];
-  materialOptions: MaterialOption[];
-  studioSettings: StudioSettings;
-  files: ProjectFile[];
-  activityLogs: ActivityLogItem[];
+import { createContext, use } from "react";
+import { createStore, useStore, type StoreApi } from "zustand";
+import { toast } from "@/components/ui/toast";
+import type { ActionResult } from "@/lib/actions/result";
+import type { WorkspaceSnapshot } from "@/lib/data/snapshot";
+import type {
+  BOQLineItem, BOQVersion, Client, Expense, Invoice, Message, Project, ProjectMilestone, ProjectRoom,
+  ProjectStatus, ProjectUpdate, Snag, SnagComment, SnagStatus, Task, ItemLibraryItem, StudioSettings, ProjectFile,
+} from "@/types";
 
+export interface AppActions {
   // Client Actions
-  addClient: (client: Client) => void;
-  updateClient: (id: string, updates: Partial<Client>) => void;
+  addClient: (client: Client) => Promise<ActionResult> | void;
+  updateClient: (id: string, updates: Partial<Client>) => Promise<ActionResult> | void;
 
   // Project Actions
-  addProject: (project: Project) => void;
-  advanceProjectStage: (projectId: string, stage: ProjectStatus) => void;
-  addRoomToProject: (projectId: string, room: Omit<ProjectRoom, 'id' | 'project_id'>) => void;
-  addMilestoneToProject: (projectId: string, milestone: Omit<ProjectMilestone, 'id' | 'project_id'>) => void;
-  toggleMilestone: (projectId: string, milestoneId: string) => void;
+  advanceProjectStage: (projectId: string, stage: ProjectStatus) => Promise<ActionResult> | void;
+  addRoomToProject: (projectId: string, room: Omit<ProjectRoom, 'id' | 'project_id'>) => Promise<ActionResult> | void;
+  addMilestoneToProject: (projectId: string, milestone: Omit<ProjectMilestone, 'id' | 'project_id'>) => Promise<ActionResult> | void;
+  toggleMilestone: (projectId: string, milestoneId: string) => Promise<ActionResult> | void;
 
   // BOQ Actions
-  addBOQVersion: (boq: BOQVersion) => void;
-  updateBOQVersion: (versionId: string, updates: Partial<BOQVersion>) => void;
-  approveBOQVersion: (versionId: string, clientName: string, note?: string) => void;
-  rejectBOQVersion: (versionId: string, clientName: string, reason: string) => void;
-  addLineItemToBOQ: (boqVersionId: string, sectionId: string, item: Omit<BOQLineItem, 'id' | 'section_id'>) => void;
-  deleteLineItemFromBOQ: (boqVersionId: string, sectionId: string, itemId: string) => void;
+  addBOQVersion: (boq: BOQVersion) => Promise<ActionResult> | void;
+  updateBOQVersion: (versionId: string, updates: Partial<BOQVersion>) => Promise<ActionResult> | void;
+  approveBOQVersion: (versionId: string, clientName: string, note?: string) => Promise<ActionResult> | void;
+  rejectBOQVersion: (versionId: string, clientName: string, reason: string) => Promise<ActionResult> | void;
+  addLineItemToBOQ: (boqVersionId: string, sectionId: string, item: Omit<BOQLineItem, 'id' | 'section_id'>) => Promise<ActionResult> | void;
+  deleteLineItemFromBOQ: (boqVersionId: string, sectionId: string, itemId: string) => Promise<ActionResult> | void;
 
   // Snag Actions
-  addSnag: (snag: Snag) => void;
-  updateSnagStatus: (snagId: string, status: SnagStatus, actorName?: string, afterPhotoUrl?: string) => void;
-  addSnagComment: (snagId: string, comment: Omit<SnagComment, 'id' | 'snag_id' | 'created_at'>) => void;
+  addSnag: (snag: Snag) => Promise<ActionResult> | void;
+  updateSnagStatus: (snagId: string, status: SnagStatus, actorName?: string, afterPhotoUrl?: string) => Promise<ActionResult> | void;
+  addSnagComment: (snagId: string, comment: Omit<SnagComment, 'id' | 'snag_id' | 'created_at'>) => Promise<ActionResult> | void;
 
   // Task Actions
-  addTask: (task: Task) => void;
-  updateTaskStatus: (taskId: string, status: Task['status']) => void;
-  deleteTask: (taskId: string) => void;
+  addTask: (task: Task) => Promise<ActionResult> | void;
+  updateTaskStatus: (taskId: string, status: Task['status']) => Promise<ActionResult> | void;
+  deleteTask: (taskId: string) => Promise<ActionResult> | void;
 
   // Finance Actions
-  addInvoice: (invoice: Invoice) => void;
-  recordPayment: (invoiceId: string, amount: number, paymentDate: string, mode: string, reference?: string) => void;
-  addExpense: (expense: Expense) => void;
+  addInvoice: (invoice: Invoice) => Promise<ActionResult> | void;
+  recordPayment: (invoiceId: string, amount: number, paymentDate: string, mode: string, reference?: string) => Promise<ActionResult> | void;
+  addExpense: (expense: Expense) => Promise<ActionResult> | void;
 
   // Messages & Communication
-  addMessage: (message: Message) => void;
-  addProjectUpdate: (update: ProjectUpdate) => void;
-  toggleUpdateReaction: (updateId: string, type: 'like' | 'love') => void;
+  addMessage: (message: Message) => Promise<ActionResult> | void;
+  addProjectUpdate: (update: ProjectUpdate) => Promise<ActionResult> | void;
+  toggleUpdateReaction: (updateId: string, type: 'like' | 'love') => Promise<ActionResult> | void;
 
   // Files
-  addFile: (file: ProjectFile) => void;
-  toggleFileVisibility: (fileId: string) => void;
-  deleteFile: (fileId: string) => void;
+  addFile: (file: ProjectFile) => Promise<ActionResult> | void;
+  toggleFileVisibility: (fileId: string) => Promise<ActionResult> | void;
+  deleteFile: (fileId: string) => Promise<ActionResult> | void;
 
   // Item Library & Materials
-  addItemToLibrary: (item: Omit<ItemLibraryItem, 'id' | 'created_at'>) => void;
-  updateLibraryItem: (id: string, updates: Partial<ItemLibraryItem>) => void;
-  deleteLibraryItem: (id: string) => void;
-  toggleMaterialSelection: (materialId: string) => void;
+  addItemToLibrary: (item: Omit<ItemLibraryItem, 'id' | 'created_at'>) => Promise<ActionResult> | void;
+  updateLibraryItem: (id: string, updates: Partial<ItemLibraryItem>) => Promise<ActionResult> | void;
+  deleteLibraryItem: (id: string) => Promise<ActionResult> | void;
+  toggleMaterialSelection: (materialId: string) => Promise<ActionResult> | void;
 
   // Settings & Activity
-  updateStudioSettings: (settings: Partial<StudioSettings>) => void;
-  addActivityLog: (log: Omit<ActivityLogItem, 'id' | 'created_at'>) => void;
-  markNotificationRead: (id: string) => void;
-  markAllNotificationsRead: () => void;
+  updateStudioSettings: (settings: Partial<StudioSettings>) => Promise<ActionResult> | void;
+  markNotificationRead: (id: string) => Promise<ActionResult> | void;
+  markAllNotificationsRead: () => Promise<ActionResult> | void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  clients: [...MOCK_CLIENTS],
-  projects: [...MOCK_PROJECTS],
-  boqs: [...MOCK_BOQ],
-  snags: [...MOCK_SNAGS],
-  tasks: [...MOCK_TASKS],
-  invoices: [...MOCK_INVOICES],
-  messages: [...MOCK_MESSAGES],
-  notifications: [...MOCK_NOTIFICATIONS],
-  projectUpdates: [...MOCK_UPDATES],
-  expenses: [...MOCK_EXPENSES],
-  itemLibrary: [...MOCK_ITEM_LIBRARY],
-  boqTemplates: [...MOCK_BOQ_TEMPLATES],
-  materialOptions: [...MOCK_MATERIAL_OPTIONS],
-  studioSettings: { ...MOCK_STUDIO_SETTINGS },
-  files: [...MOCK_FILES],
-  activityLogs: [...MOCK_ACTIVITY_LOGS],
+export type AppState = WorkspaceSnapshot & AppActions;
 
-  // Client Actions
-  addClient: (client) => set((state) => ({ 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+async function run(p: Promise<ActionResult>): Promise<ActionResult> {
+  const r = await p;
+  if (!r.ok) toast.add({ title: "Could not save", description: r.error, type: "error" });
+  return r;
+}
+
+export const createAppStore = (snapshot: WorkspaceSnapshot) =>
+  createStore<AppState>()((set, _get) => ({
+    ...snapshot,
+
+    addClient: (client) => set((state) => ({ 
     clients: [client, ...state.clients],
     activityLogs: [{
       id: 'act-' + Date.now(),
@@ -123,19 +96,6 @@ export const useAppStore = create<AppState>((set) => ({
   })),
 
   // Project Actions
-  addProject: (project) => set((state) => ({ 
-    projects: [project, ...state.projects],
-    activityLogs: [{
-      id: 'act-' + Date.now(),
-      project_id: project.id,
-      client_id: project.client_id,
-      title: 'Project Initialized',
-      description: `Project ${project.name} created under ${project.type} type.`,
-      type: 'stage_change',
-      created_at: new Date().toISOString()
-    }, ...state.activityLogs]
-  })),
-
   advanceProjectStage: (projectId, stage) => set((state) => {
     const project = state.projects.find(p => p.id === projectId);
     return {
@@ -479,14 +439,6 @@ export const useAppStore = create<AppState>((set) => ({
     studioSettings: { ...state.studioSettings, ...settingsUpdates }
   })),
 
-  addActivityLog: (log) => set((state) => ({
-    activityLogs: [{
-      id: 'act-' + Date.now(),
-      created_at: new Date().toISOString(),
-      ...log
-    }, ...state.activityLogs]
-  })),
-
   markNotificationRead: (id) => set((state) => ({
     notifications: state.notifications.map(n => n.id === id ? { ...n, is_read: true } : n)
   })),
@@ -494,4 +446,14 @@ export const useAppStore = create<AppState>((set) => ({
   markAllNotificationsRead: () => set((state) => ({
     notifications: state.notifications.map(n => ({ ...n, is_read: true }))
   })),
-}));
+  }));
+
+export const AppStoreContext = createContext<StoreApi<AppState> | null>(null);
+
+export function useAppStore(): AppState;
+export function useAppStore<T>(selector: (s: AppState) => T): T;
+export function useAppStore<T>(selector?: (s: AppState) => T) {
+  const store = use(AppStoreContext);
+  if (!store) throw new Error("useAppStore must be used inside <AppStoreProvider>");
+  return useStore(store, selector ?? ((s) => s as T));
+}
