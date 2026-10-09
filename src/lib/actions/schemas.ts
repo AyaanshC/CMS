@@ -291,4 +291,22 @@ export const weekInput = z.object({ week_start: date.refine(isMonday, "Week must
 export const timesheetDecisionInput = z.object({ ids: z.array(id).min(1).max(500), approve: z.boolean(), note: optText(500) })
   .refine((d) => d.approve || !!d.note, { message: "Say why the time is being sent back", path: ["note"] });
 
+export const staffTermsInput = z.object({
+  id,
+  weekly_capacity_hours: z.coerce.number().min(0).max(80),
+  billable_target_percent: z.coerce.number().int().min(0).max(100),
+  rate_band_id: optId,
+});
+export const rateBandInput = z.object({ id: id.optional(), name: text(60), blended_rate: money });
+export const costRateInput = z.object({ profile_id: id, effective_from: date, cost_rate: money });
+const weight = z.coerce.number().min(0).max(100);
+export const riskSettingsInput = z.object({
+  risk_weights: z.object({
+    fee_burn: weight, overdue: weight, schedule: weight, cost_variance: weight,
+    approvals: weight, critical_snags: weight, pending_changes: weight,
+  }),
+  monthly_billing_target: money.optional().nullable(),
+});
+
+
 

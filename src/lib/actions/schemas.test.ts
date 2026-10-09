@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
-  changeOrderInput, clientInput, creditNoteInput, feeStageUpdate, feeTermsInput, invoiceInput, issueInvoiceInput,
-  lineItemInput, messageInput, paymentInput, projectInput, taskInput, timesheetWeekInput,
+  changeOrderInput, clientInput, costRateInput, creditNoteInput, feeStageUpdate, feeTermsInput, invoiceInput, issueInvoiceInput,
+  lineItemInput, messageInput, paymentInput, projectInput, riskSettingsInput, staffTermsInput, taskInput, timesheetWeekInput,
 } from "./schemas";
 
 const P = "a1000000-0000-4000-8000-000000000001";
@@ -88,6 +88,19 @@ describe("timesheetWeekInput", () => {
   });
   it("rejects negative or >24 hour cells", () => {
     expect(timesheetWeekInput.safeParse({ week_start: "2026-10-05", rows: [{ ...row, hours: [25, 0, 0, 0, 0, 0, 0] }] }).success).toBe(false);
+  });
+});
+
+describe("staff and risk settings", () => {
+  it("bounds capacity and targets", () => {
+    expect(staffTermsInput.safeParse({ id: P, weekly_capacity_hours: 90, billable_target_percent: 75 }).success).toBe(false);
+    expect(staffTermsInput.safeParse({ id: P, weekly_capacity_hours: 45, billable_target_percent: 101 }).success).toBe(false);
+  });
+  it("requires a non-negative cost rate with an effective date", () => {
+    expect(costRateInput.safeParse({ profile_id: P, effective_from: "2026-04-01", cost_rate: -1 }).success).toBe(false);
+  });
+  it("requires all seven risk weights", () => {
+    expect(riskSettingsInput.safeParse({ risk_weights: { fee_burn: 25 } }).success).toBe(false);
   });
 });
 

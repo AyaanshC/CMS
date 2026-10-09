@@ -14,14 +14,16 @@ import {
 } from "@/components/ui/dialog";
 import {
   Building2, Layers, Users, Sliders, Bell, Plus, Trash2, Check,
-  Copy, ExternalLink, Save, Search, FileText, Phone, Mail, IndianRupee
+  Copy, ExternalLink, Save, Search, FileText, Phone, Mail, IndianRupee, ShieldAlert
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { formatCurrency, cn } from "@/lib/utils";
+import { formatCurrency, cn, localToday } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/permissions";
 import { toast } from "@/components/ui/toast";
 import { inviteStaff, setStaffRoles, setStaffActive } from "@/app/actions/team";
-import type { AppRole, TeamMember } from "@/types";
+import { setStaffTerms as setStaffTermsAction, upsertRateBand, addCostRate, updateRiskSettings } from "@/app/actions/staff";
+import { DEFAULT_RISK_WEIGHTS } from "@/lib/metrics/risk";
+import type { AppRole, RateBand, RiskWeights, TeamMember } from "@/types";
 
 const ROLE_LABELS: Record<AppRole, string> = {
   owner: "Owner",
@@ -55,9 +57,13 @@ export default function SettingsPage() {
     boqTemplates,
     me,
     team,
+    rateBands,
+    costRates,
   } = useAppStore();
 
   const isOwner = hasAnyRole(me, ["owner"]);
+  const isFinance = hasAnyRole(me, ["finance"]);
+  const canSeeRates = isOwner || isFinance;
 
   // Studio Settings form state
   const [studioForm, setStudioForm] = useState({ ...studioSettings });
@@ -83,6 +89,88 @@ export default function SettingsPage() {
 
   // Role Editor state
   const [editingMemberRoles, setEditingMemberRoles] = useState<{ user: TeamMember; roles: AppRole[] } | null>(null);
+
+  // Rates & Bands state
+  const [newBandName, setNewBandName] = useState("");
+  const [newBandRate, setNewBandRate] = useState<number | string>("");
+  const [creatingBand, setCreatingBand] = useState(false);
+
+  // Private Cost Rates state
+  const [newCostMemberId, setNewCostMemberId] = useState("");
+  const [newCostEffectiveFrom, setNewCostEffectiveFrom] = useState(() => localToday());
+  const [newCostRate, setNewCostRate] = useState<number | string>("");
+  const [savingCostRate, setSavingCostRate] = useState(false);
+
+  // Risk & Targets state
+  const [riskWeights, setRiskWeights] = useState<RiskWeights>(() => studioSettings.risk_weights ?? DEFAULT_RISK_WEIGHTS);
+  const [billingTarget, setBillingTarget] = useState<string>(() => studioSettings.monthly_billing_target ? String(studioSettings.monthly_billing_target) : "");
+  const [savingRisk, setSavingRisk] = useState(false);
+  const [savedRiskSuccess, setSavedRiskSuccess] = useState(false);
+
+  // Staff Terms state (for capacity, billable target, rate band)
+  const [staffTerms, setStaffTerms] = useState<Record<string, { capacity: number; target: number; rate_band_id: string }>>(() => {
+    const init: Record<string, { capacity: number; target: number; rate_band_id: string }> = {};
+    for (const m of team) {
+      init[m.id] = {
+        capacity: m.weekly_capacity_hours ?? 45,
+        target: m.billable_target_percent ?? 75,
+        rate_band_id: m.rate_band_id ?? "",
+      };
+    }
+    return init;
+  });
+
+  const handleCreateRateBand = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newBandName.trim() || !newBandRate) return;
+    setCreatingBand(true);
+    const r = await upsertRateBand({ name: newBandName.trim(), blended_rate: Number(newBandRate) });
+    setCreatingBand(false);
+    if (!r.ok) {
+      toast.add({ title: "Could not create rate band", description: r.error, type: "error" });
+    } else {
+      toast.add({ title: "Rate band created", description: `Added ${newBandName.trim()}`, type: "success" });
+      setNewBandName("");
+      setNewBandRate("");
+    }
+  };
+
+  const handleAddCostRateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newCostMemberId || !newCostRate || !newCostEffectiveFrom) return;
+    setSavingCostRate(true);
+    const r = await addCostRate({
+      profile_id: newCostMemberId,
+      effective_from: newCostEffectiveFrom,
+      cost_rate: Number(newCostRate),
+    });
+    setSavingCostRate(false);
+    if (!r.ok) {
+      toast.add({ title: "Could not save cost rate", description: r.error, type: "error" });
+    } else {
+      toast.add({ title: "Cost rate saved", description: "Updated staff cost rate successfully.", type: "success" });
+      setNewCostRate("");
+    }
+  };
+
+  const handleSaveRiskSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingRisk(true);
+    const r = await updateRiskSettings({
+      risk_weights: riskWeights,
+      monthly_billing_target: billingTarget ? Number(billingTarget) : null,
+    });
+    setSavingRisk(false);
+    if (!r.ok) {
+      toast.add({ title: "Could not save risk settings", description: r.error, type: "error" });
+    } else {
+      setSavedRiskSuccess(true);
+      setTimeout(() => setSavedRiskSuccess(false), 2500);
+      toast.add({ title: "Risk & target settings saved", description: "Studio risk weights and targets updated.", type: "success" });
+    }
+  };
+
+  const weightSum = Object.values(riskWeights).reduce((a, b) => a + (Number(b) || 0), 0);
 
   // Public Onboarding Link State
   const [copiedLink, setCopiedLink] = useState(false);
@@ -200,9 +288,19 @@ export default function SettingsPage() {
             <TabsTrigger value="studio" className="gap-1.5 text-xs py-2 px-3">
               <Building2 className="w-3.5 h-3.5" /> Studio Profile
             </TabsTrigger>
-            <TabsTrigger value="rates" className="gap-1.5 text-xs py-2 px-3">
-              <IndianRupee className="w-3.5 h-3.5" /> Rate Master & Items ({itemLibrary.length})
+            <TabsTrigger value="items" className="gap-1.5 text-xs py-2 px-3">
+              <Layers className="w-3.5 h-3.5" /> Item Library ({itemLibrary.length})
             </TabsTrigger>
+            {canSeeRates && (
+              <TabsTrigger value="rates" className="gap-1.5 text-xs py-2 px-3">
+                <IndianRupee className="w-3.5 h-3.5" /> Staff Rates ({rateBands.length})
+              </TabsTrigger>
+            )}
+            {isOwner && (
+              <TabsTrigger value="risk" className="gap-1.5 text-xs py-2 px-3">
+                <ShieldAlert className="w-3.5 h-3.5" /> Risk & Targets
+              </TabsTrigger>
+            )}
             <TabsTrigger value="templates" className="gap-1.5 text-xs py-2 px-3">
               <Layers className="w-3.5 h-3.5" /> BOQ Templates ({boqTemplates.length})
             </TabsTrigger>
@@ -400,8 +498,8 @@ export default function SettingsPage() {
             </Card>
           </TabsContent>
 
-          {/* TAB 2: Rate Master & Item Library */}
-          <TabsContent value="rates" className="space-y-4">
+          {/* TAB 2: Item Library */}
+          <TabsContent value="items" className="space-y-4">
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div className="flex flex-1 items-center gap-2 max-w-md">
                 <div className="relative flex-1">
@@ -581,23 +679,110 @@ export default function SettingsPage() {
                       )}
                     </div>
                     {isOwner && (
-                      <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs h-7 px-2"
-                          onClick={() => setEditingMemberRoles({ user: member, roles: [...member.roles] })}
-                        >
-                          Edit Roles
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant={member.active ? "destructive" : "secondary"}
-                          className="text-xs h-7 px-2"
-                          onClick={() => handleToggleActive(member)}
-                        >
-                          {member.active ? "Deactivate" : "Reactivate"}
-                        </Button>
+                      <div className="pt-2 border-t border-border space-y-2 text-xs">
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="text-[11px] font-semibold text-muted-foreground block mb-0.5">Capacity (h/w)</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="80"
+                              className="h-7 text-xs px-2"
+                              value={staffTerms[member.id]?.capacity ?? member.weekly_capacity_hours ?? 45}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setStaffTerms((prev) => ({
+                                  ...prev,
+                                  [member.id]: { ...(prev[member.id] || { capacity: member.weekly_capacity_hours ?? 45, target: member.billable_target_percent ?? 75, rate_band_id: member.rate_band_id ?? "" }), capacity: val }
+                                }));
+                              }}
+                              onBlur={async () => {
+                                const current = staffTerms[member.id] || { capacity: member.weekly_capacity_hours ?? 45, target: member.billable_target_percent ?? 75, rate_band_id: member.rate_band_id ?? "" };
+                                const r = await setStaffTermsAction({
+                                  id: member.id,
+                                  weekly_capacity_hours: Number(current.capacity),
+                                  billable_target_percent: Number(current.target),
+                                  rate_band_id: current.rate_band_id || undefined,
+                                });
+                                if (!r.ok) toast.add({ title: "Failed to update staff terms", description: r.error, type: "error" });
+                              }}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-semibold text-muted-foreground block mb-0.5">Target %</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              className="h-7 text-xs px-2"
+                              value={staffTerms[member.id]?.target ?? member.billable_target_percent ?? 75}
+                              onChange={(e) => {
+                                const val = Number(e.target.value);
+                                setStaffTerms((prev) => ({
+                                  ...prev,
+                                  [member.id]: { ...(prev[member.id] || { capacity: member.weekly_capacity_hours ?? 45, target: member.billable_target_percent ?? 75, rate_band_id: member.rate_band_id ?? "" }), target: val }
+                                }));
+                              }}
+                              onBlur={async () => {
+                                const current = staffTerms[member.id] || { capacity: member.weekly_capacity_hours ?? 45, target: member.billable_target_percent ?? 75, rate_band_id: member.rate_band_id ?? "" };
+                                const r = await setStaffTermsAction({
+                                  id: member.id,
+                                  weekly_capacity_hours: Number(current.capacity),
+                                  billable_target_percent: Number(current.target),
+                                  rate_band_id: current.rate_band_id || undefined,
+                                });
+                                if (!r.ok) toast.add({ title: "Failed to update staff terms", description: r.error, type: "error" });
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="text-[11px] font-semibold text-muted-foreground block mb-0.5">Rate Band</label>
+                          <select
+                            className="w-full h-7 text-xs border border-input rounded px-2 bg-background"
+                            value={staffTerms[member.id]?.rate_band_id ?? member.rate_band_id ?? ""}
+                            onChange={async (e) => {
+                              const newBandId = e.target.value;
+                              setStaffTerms((prev) => ({
+                                ...prev,
+                                [member.id]: { ...(prev[member.id] || { capacity: member.weekly_capacity_hours ?? 45, target: member.billable_target_percent ?? 75, rate_band_id: member.rate_band_id ?? "" }), rate_band_id: newBandId }
+                              }));
+                              const current = staffTerms[member.id] || { capacity: member.weekly_capacity_hours ?? 45, target: member.billable_target_percent ?? 75, rate_band_id: member.rate_band_id ?? "" };
+                              const r = await setStaffTermsAction({
+                                id: member.id,
+                                weekly_capacity_hours: Number(current.capacity),
+                                billable_target_percent: Number(current.target),
+                                rate_band_id: newBandId || undefined,
+                              });
+                              if (!r.ok) toast.add({ title: "Failed to update rate band", description: r.error, type: "error" });
+                            }}
+                          >
+                            <option value="">No rate band (costed at ₹0)</option>
+                            {rateBands.map((b) => (
+                              <option key={b.id} value={b.id}>
+                                {b.name} ({formatCurrency(b.blended_rate)}/h)
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-xs h-7 px-2"
+                            onClick={() => setEditingMemberRoles({ user: member, roles: [...member.roles] })}
+                          >
+                            Edit Roles
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={member.active ? "destructive" : "secondary"}
+                            className="text-xs h-7 px-2"
+                            onClick={() => handleToggleActive(member)}
+                          >
+                            {member.active ? "Deactivate" : "Reactivate"}
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </CardContent>
@@ -605,6 +790,271 @@ export default function SettingsPage() {
               ))}
             </div>
           </TabsContent>
+
+          {/* TAB: Staff Rates & Rate Bands */}
+          {canSeeRates && (
+            <TabsContent value="rates" className="space-y-6">
+              {/* Blended Rate Bands */}
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <CardTitle className="text-base font-bold">Blended Rate Bands</CardTitle>
+                  <CardDescription className="text-xs">
+                    Standard hourly billing and cost bands used for project labour costing. Visible across the studio without exposing individual salaries.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-xs text-muted-foreground text-left bg-slate-50/70">
+                          <th className="py-2.5 px-4">Band Name</th>
+                          <th className="py-2.5 px-4 text-right">Blended Hourly Rate</th>
+                          {isOwner && <th className="py-2.5 px-4 text-center w-24">Action</th>}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {rateBands.map((band) => (
+                          <RateBandRow key={band.id} band={band} isOwner={isOwner} onSave={upsertRateBand} />
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {isOwner && (
+                    <form onSubmit={handleCreateRateBand} className="flex flex-wrap items-center gap-3 pt-2 border-t">
+                      <Input
+                        placeholder="New band name (e.g. Senior Architect)"
+                        value={newBandName}
+                        onChange={(e) => setNewBandName(e.target.value)}
+                        className="h-8 max-w-xs text-xs"
+                      />
+                      <div className="relative max-w-xs">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
+                        <Input
+                          type="number"
+                          placeholder="Blended rate (₹/h)"
+                          value={newBandRate}
+                          onChange={(e) => setNewBandRate(e.target.value)}
+                          className="h-8 pl-6 text-xs w-40"
+                        />
+                      </div>
+                      <Button size="sm" type="submit" disabled={creatingBand || !newBandName.trim() || !newBandRate} className="gap-1.5 text-xs h-8">
+                        <Plus className="w-3.5 h-3.5" /> Add Rate Band
+                      </Button>
+                    </form>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Private Cost Rates */}
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base font-bold flex items-center gap-2">
+                        Private Cost Rates
+                        <Badge variant="outline" className="text-[10px] text-amber-700 bg-amber-50 border-amber-200">
+                          Owner & Finance Only
+                        </Badge>
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        Individual staff hourly cost rates used for actual margin calculation. Visible only to the owner and finance. Others see blended band rates.
+                      </CardDescription>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-xs text-muted-foreground text-left bg-slate-50/70">
+                          <th className="py-2.5 px-4">Team Member</th>
+                          <th className="py-2.5 px-4">Current Hourly Cost</th>
+                          <th className="py-2.5 px-4">Effective Since</th>
+                          <th className="py-2.5 px-4">Rate History</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {team.map((member) => {
+                          const memberRates = costRates
+                            .filter((c) => c.profile_id === member.id)
+                            .sort((a, b) => b.effective_from.localeCompare(a.effective_from));
+                          const today = localToday();
+                          const activeRate = memberRates.find((c) => c.effective_from <= today) ?? memberRates[0];
+
+                          return (
+                            <tr key={member.id} className="hover:bg-slate-50/50">
+                              <td className="py-2.5 px-4 font-medium">
+                                {member.full_name}
+                                <span className="block text-xs text-muted-foreground">{member.title || "Team Member"}</span>
+                              </td>
+                              <td className="py-2.5 px-4 font-bold">
+                                {activeRate ? formatCurrency(activeRate.cost_rate) + "/h" : <span className="text-muted-foreground text-xs font-normal">None set</span>}
+                              </td>
+                              <td className="py-2.5 px-4 text-xs text-muted-foreground">
+                                {activeRate ? activeRate.effective_from : "—"}
+                              </td>
+                              <td className="py-2.5 px-4 text-xs text-muted-foreground">
+                                {memberRates.length > 1 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {memberRates.slice(1).map((r) => (
+                                      <Badge key={r.id} variant="secondary" className="text-[10px]">
+                                        {formatCurrency(r.cost_rate)} ({r.effective_from})
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                ) : "—"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Add / Update Cost Rate Form */}
+                  <div className="pt-4 border-t space-y-3">
+                    <p className="text-xs font-bold text-foreground">Add New Cost Rate</p>
+                    <form onSubmit={handleAddCostRateSubmit} className="flex flex-wrap items-center gap-3">
+                      <select
+                        value={newCostMemberId}
+                        onChange={(e) => setNewCostMemberId(e.target.value)}
+                        className="h-8 text-xs border border-input rounded px-2.5 bg-background"
+                        required
+                      >
+                        <option value="">Select team member…</option>
+                        {team.map((m) => (
+                          <option key={m.id} value={m.id}>{m.full_name}</option>
+                        ))}
+                      </select>
+                      <Input
+                        type="date"
+                        value={newCostEffectiveFrom}
+                        onChange={(e) => setNewCostEffectiveFrom(e.target.value)}
+                        className="h-8 text-xs w-36"
+                        required
+                      />
+                      <div className="relative">
+                        <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
+                        <Input
+                          type="number"
+                          placeholder="Cost rate (₹/h)"
+                          value={newCostRate}
+                          onChange={(e) => setNewCostRate(e.target.value)}
+                          className="h-8 pl-6 text-xs w-36"
+                          required
+                          min="0"
+                        />
+                      </div>
+                      <Button size="sm" type="submit" disabled={savingCostRate || !newCostMemberId || !newCostRate} className="gap-1.5 text-xs h-8">
+                        <Plus className="w-3.5 h-3.5" /> Save Rate
+                      </Button>
+                    </form>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+
+          {/* TAB: Risk & Targets */}
+          {isOwner && (
+            <TabsContent value="risk" className="space-y-4">
+              <Card className="shadow-sm">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-base font-bold flex items-center gap-2">
+                        <ShieldAlert className="w-4 h-4 text-indigo-600" /> Project Risk Weights & Billing Targets
+                      </CardTitle>
+                      <CardDescription className="text-xs">
+                        Configure weights used in portfolio risk scoring and studio monthly billing targets.
+                      </CardDescription>
+                    </div>
+                    {savedRiskSuccess && (
+                      <Badge className="bg-emerald-600 text-white border-0 text-xs gap-1">
+                        <Check className="w-3.5 h-3.5" /> Saved!
+                      </Badge>
+                    )}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleSaveRiskSettings} className="space-y-6">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                          Risk Scoring Weights (0–100)
+                        </h4>
+                        <Badge variant="outline" className={cn("text-xs", weightSum === 100 ? "border-emerald-300 text-emerald-700 bg-emerald-50" : "border-amber-300 text-amber-700 bg-amber-50")}>
+                          Sum: {weightSum} / 100
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mb-4">
+                        Factors without data yet are left out automatically during score calculation.
+                      </p>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {[
+                          { key: "fee_burn" as const, label: "Fee Burn vs Progress", desc: "Penalizes stages where labour cost outpaces completion %" },
+                          { key: "overdue" as const, label: "Overdue Milestones", desc: "Penalizes past-due project milestone commitments" },
+                          { key: "schedule" as const, label: "Schedule Delay", desc: "Penalizes projects running past their estimated end date" },
+                          { key: "cost_variance" as const, label: "Cost Variance", desc: "Flags stages where labour exceeds the design fee" },
+                          { key: "approvals" as const, label: "Pending Approvals", desc: "Penalizes unapproved change orders or BOQ versions" },
+                          { key: "critical_snags" as const, label: "Critical Snags", desc: "Weights high or critical severity defects on site" },
+                          { key: "pending_changes" as const, label: "Pending Changes", desc: "Penalizes scope changes awaiting client decision" },
+                        ].map((factor) => (
+                          <div key={factor.key} className="p-3 border rounded-lg bg-slate-50/50 space-y-1.5">
+                            <label className="text-xs font-semibold text-foreground block">
+                              {factor.label}
+                            </label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="100"
+                              value={riskWeights[factor.key] ?? 0}
+                              onChange={(e) => setRiskWeights({ ...riskWeights, [factor.key]: Number(e.target.value) })}
+                              className="h-8 text-xs bg-white"
+                            />
+                            <p className="text-[11px] text-muted-foreground">{factor.desc}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-border">
+                      <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">
+                        Revenue Goals
+                      </h4>
+                      <div className="max-w-xs space-y-1.5">
+                        <label className="text-xs font-semibold text-foreground block">
+                          Monthly Billing Target (₹)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">₹</span>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="e.g. 500000"
+                            value={billingTarget}
+                            onChange={(e) => setBillingTarget(e.target.value)}
+                            className="h-8 pl-6 text-xs"
+                          />
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Shown on owner dashboard alongside month-to-date invoiced volume.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <Button type="submit" disabled={savingRisk} className="gradient-primary border-0 text-white gap-2 shadow-sm">
+                        <Save className="w-4 h-4" /> Save Risk & Target Settings
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
 
           {/* TAB 5: Client Onboarding Intake Form */}
           <TabsContent value="onboarding" className="space-y-4">
@@ -921,5 +1371,72 @@ export default function SettingsPage() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+function RateBandRow({
+  band,
+  isOwner,
+  onSave,
+}: {
+  band: RateBand;
+  isOwner: boolean;
+  onSave: (input: unknown) => Promise<{ ok: boolean; error?: string }>;
+}) {
+  const [rate, setRate] = useState(band.blended_rate);
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    const r = await onSave({ id: band.id, name: band.name, blended_rate: Number(rate) });
+    setSaving(false);
+    if (!r.ok) {
+      toast.add({ title: "Could not update rate band", description: r.error, type: "error" });
+    } else {
+      toast.add({ title: "Rate band updated", description: `${band.name} updated to ₹${rate}/h.`, type: "success" });
+      setEditing(false);
+    }
+  };
+
+  return (
+    <tr className="hover:bg-slate-50/50">
+      <td className="py-3 px-4 font-semibold text-foreground">{band.name}</td>
+      <td className="py-3 px-4 text-right">
+        {editing ? (
+          <div className="flex items-center justify-end gap-1">
+            <span className="text-xs text-muted-foreground">₹</span>
+            <Input
+              type="number"
+              min="0"
+              value={rate}
+              onChange={(e) => setRate(Number(e.target.value))}
+              className="h-7 w-28 text-xs text-right"
+            />
+            <span className="text-xs text-muted-foreground">/h</span>
+          </div>
+        ) : (
+          <span className="font-bold text-foreground">{formatCurrency(band.blended_rate)}/h</span>
+        )}
+      </td>
+      {isOwner && (
+        <td className="py-3 px-4 text-center">
+          {editing ? (
+            <div className="flex items-center justify-center gap-1">
+              <Button size="sm" className="h-6 text-[11px] px-2" disabled={saving} onClick={handleSave}>
+                Save
+              </Button>
+              <Button size="sm" variant="ghost" className="h-6 text-[11px] px-1" onClick={() => { setRate(band.blended_rate); setEditing(false); }}>
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => setEditing(true)}>
+              Edit
+            </Button>
+          )}
+        </td>
+      )}
+    </tr>
   );
 }
