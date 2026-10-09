@@ -301,10 +301,16 @@ export function mapSettings(r: Tables<"firm_settings">): StudioSettings {
 export function mapTeamMember(r: {
   id: string; full_name: string; email: string; phone: string | null; title: string | null;
   avatar_url: string | null; active: boolean; user_roles: { role: AppRole }[];
+  weekly_capacity_hours?: number | null;
+  billable_target_percent?: number | null;
+  rate_band_id?: string | null;
 }): TeamMember {
   return {
     id: r.id, full_name: r.full_name, email: r.email, phone: opt(r.phone), title: opt(r.title),
     avatar_url: opt(r.avatar_url), active: r.active, roles: r.user_roles.map((x) => x.role),
+    weekly_capacity_hours: Number(r.weekly_capacity_hours ?? 45),
+    billable_target_percent: Number(r.billable_target_percent ?? 75),
+    rate_band_id: opt(r.rate_band_id),
   };
 }
 

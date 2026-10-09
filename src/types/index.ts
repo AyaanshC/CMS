@@ -18,6 +18,47 @@ export interface TeamMember {
   avatar_url?: string;
   roles: AppRole[];
   active: boolean;
+  weekly_capacity_hours: number;
+  billable_target_percent: number;
+  rate_band_id?: string;
+}
+
+// --- Timesheets & Time Tracking ---
+
+export type TimesheetActivity =
+  | 'design' | 'drafting' | 'visualisation' | 'site_visit' | 'client_meeting' | 'coordination'
+  | 'approvals' | 'admin' | 'business_development' | 'training' | 'leave';
+export type TimesheetStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
+
+export const ACTIVITY_LABELS: Record<TimesheetActivity, string> = {
+  design: 'Design', drafting: 'Drafting', visualisation: '3D / visualisation', site_visit: 'Site visit',
+  client_meeting: 'Client meeting', coordination: 'Coordination', approvals: 'Approvals work', admin: 'Admin',
+  business_development: 'Business development', training: 'Training', leave: 'Leave',
+};
+export const NON_PROJECT_ACTIVITIES: TimesheetActivity[] = ['admin', 'business_development', 'training', 'leave'];
+
+export interface TimesheetEntry {
+  id: string;
+  profile_id: string;
+  profile_name?: string;
+  work_date: string;
+  project_id?: string;
+  project_name?: string;
+  fee_stage_id?: string;
+  activity: TimesheetActivity;
+  hours: number;
+  billable: boolean;
+  notes?: string;
+  status: TimesheetStatus;
+  decision_note?: string;
+}
+
+export interface RateBand { id: string; name: string; blended_rate: number }
+export interface CostRate { id: string; profile_id: string; effective_from: string; cost_rate: number }
+export interface StaffWeekHours { profile_id: string; week_start: string; total_hours: number; billable_hours: number; submitted: boolean }
+export interface ProjectCostRow {
+  project_id: string; fee_stage_id?: string; hours: number; billable_hours: number; unrated_hours: number;
+  blended_cost: number; actual_cost?: number;
 }
 
 // --- Clients ---
