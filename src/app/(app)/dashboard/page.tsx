@@ -23,6 +23,10 @@ import { dashboardKpis, monthlySeries, stageDistribution } from "@/lib/metrics/k
 import { NotEnoughData } from "@/components/metrics/NotEnoughData";
 import { MetricInfo } from "@/components/metrics/MetricInfo";
 import { ActionItems } from "@/components/dashboard/ActionItems";
+import { OwnerDashboard } from "@/components/dashboard/OwnerDashboard";
+import { DirectorDashboard } from "@/components/dashboard/DirectorDashboard";
+import { PmDashboard } from "@/components/dashboard/PmDashboard";
+import { MyWeekDashboard } from "@/components/dashboard/MyWeekDashboard";
 import type { ProjectStatus } from "@/types";
 
 const STAGE_COLORS: Record<ProjectStatus, string> = {
@@ -153,8 +157,16 @@ export default function DashboardPage() {
       />
       <div className="p-6 space-y-6">
         <ActionItems />
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        {me.roles.includes("owner") ? <OwnerDashboard />
+          : me.roles.includes("director") ? <DirectorDashboard />
+          : me.roles.includes("project_manager") ? <PmDashboard />
+          : <MyWeekDashboard />}
+        {(me.roles.includes("director") || me.roles.includes("project_manager")) && <MyWeekDashboard />}
+
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Operations</h3>
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {cards.map((kpi) => (
             <Link key={kpi.title} href={kpi.href}>
               <Card className="card-hover border-border cursor-pointer h-full">
@@ -359,6 +371,7 @@ export default function DashboardPage() {
               </CardContent>
             </Card>
           </div>
+        </div>
         </div>
       </div>
     </div>
