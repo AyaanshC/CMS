@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { use, Suspense } from "react";
 import { useAppStore } from "@/lib/store";
+import { PhotoInput } from "@/components/files/PhotoInput";
 import { formatDate, getPriorityColor, getStatusColor, cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -40,7 +41,7 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
   const [room, setRoom] = useState(project?.rooms?.[0]?.name || "Living Room");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<SnagPriority>("major");
-  const [photoUrl, setPhotoUrl] = useState("https://images.unsplash.com/photo-1513694203232-719a280e022f?w=600&auto=format&fit=crop&q=60");
+  const [photoUrl, setPhotoUrl] = useState("");
 
   if (!project) {
     return <div className="p-8 text-center text-muted-foreground">Project not found.</div>;
@@ -61,31 +62,18 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
     e.preventDefault();
     if (!description.trim()) return;
 
-    const newSnag: Snag = {
-      id: `snag_${Date.now()}`,
+    const roomObj = project.rooms?.find(r => r.name === room);
+    addSnag({
       project_id: project.id,
-      room_name: room,
+      room_id: roomObj?.id,
       title: description.slice(0, 50),
       description,
       priority,
-      status: "raised",
-      raised_by_name: "Client",
-      created_at: new Date().toISOString(),
       before_photo_url: photoUrl || undefined,
-      comments: [
-        {
-          id: `c_${Date.now()}`,
-          snag_id: `snag_${Date.now()}`,
-          author_name: "Client",
-          author_role: "client",
-          content: "Reported via client portal.",
-          created_at: new Date().toISOString(),
-        },
-      ],
-    };
+    });
 
-    addSnag(newSnag);
     setDescription("");
+    setPhotoUrl("");
     setShowReportModal(false);
   };
 
@@ -316,12 +304,7 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
             </div>
 
             <div>
-              <label className="text-xs font-semibold text-foreground block mb-1">Photo URL (Optional)</label>
-              <Input
-                value={photoUrl}
-                onChange={(e) => setPhotoUrl(e.target.value)}
-                placeholder="https://..."
-              />
+              <PhotoInput projectId={project.id} label="Photo of the issue" onUploaded={setPhotoUrl} />
             </div>
 
             <DialogFooter className="gap-2 sm:gap-0 pt-2">

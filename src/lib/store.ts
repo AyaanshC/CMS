@@ -8,6 +8,8 @@ import type { WorkspaceSnapshot } from "@/lib/data/snapshot";
 import * as clientActions from "@/app/actions/clients";
 import * as projectActions from "@/app/actions/projects";
 import * as boqActions from "@/app/actions/boq";
+import * as snagActions from "@/app/actions/snags";
+import * as taskActions from "@/app/actions/tasks";
 import type {
   BOQLineItem, BOQVersion, Client, Expense, Invoice, Message, Project, ProjectMilestone, ProjectRoom,
   ProjectStatus, ProjectUpdate, Snag, SnagComment, SnagStatus, Task, ItemLibraryItem, StudioSettings, ProjectFile,
@@ -34,14 +36,14 @@ export interface AppActions {
   deleteLineItemFromBOQ: (boqVersionId: string, sectionId: string, itemId: string) => Promise<ActionResult>;
 
   // Snag Actions
-  addSnag: (snag: Snag) => Promise<ActionResult> | void;
-  updateSnagStatus: (snagId: string, status: SnagStatus, actorName?: string, afterPhotoUrl?: string) => Promise<ActionResult> | void;
-  addSnagComment: (snagId: string, comment: Omit<SnagComment, 'id' | 'snag_id' | 'created_at'>) => Promise<ActionResult> | void;
+  addSnag: (snag: Partial<Snag>) => Promise<ActionResult>;
+  updateSnagStatus: (snagId: string, status: SnagStatus, actorName?: string, afterPhotoUrl?: string) => Promise<ActionResult>;
+  addSnagComment: (snagId: string, comment: Omit<SnagComment, "id" | "snag_id" | "created_at">) => Promise<ActionResult>;
 
   // Task Actions
-  addTask: (task: Task) => Promise<ActionResult> | void;
-  updateTaskStatus: (taskId: string, status: Task['status']) => Promise<ActionResult> | void;
-  deleteTask: (taskId: string) => Promise<ActionResult> | void;
+  addTask: (task: Partial<Task>) => Promise<ActionResult>;
+  updateTaskStatus: (taskId: string, status: Task["status"]) => Promise<ActionResult>;
+  deleteTask: (taskId: string) => Promise<ActionResult>;
 
   // Finance Actions
   addInvoice: (invoice: Invoice) => Promise<ActionResult> | void;
@@ -80,7 +82,7 @@ async function run(p: Promise<ActionResult>): Promise<ActionResult> {
 }
 
 export const createAppStore = (snapshot: WorkspaceSnapshot) =>
-  createStore<AppState>()((set, _get) => ({
+  createStore<AppState>()((set, get) => ({
     ...snapshot,
 
     addClient: (client) => run(clientActions.createClient(client)),
@@ -110,77 +112,16 @@ export const createAppStore = (snapshot: WorkspaceSnapshot) =>
     addLineItemToBOQ: (_versionId, sectionId, item) => run(boqActions.addLineItem({ ...item, section_id: sectionId })),
     deleteLineItemFromBOQ: (_versionId, _sectionId, itemId) => run(boqActions.deleteLineItem({ id: itemId })),
 
-  // Snag Actions
-  addSnag: (snag) => set((state) => ({ 
-    snags: [snag, ...state.snags],
-    activityLogs: [{
-      id: 'act-' + Date.now(),
-      project_id: snag.project_id,
-      title: `Snag Raised: ${snag.title}`,
-      description: `Priority ${snag.priority} snag raised in ${snag.room_name || 'general'}.`,
-      type: 'snag_raised',
-      created_at: new Date().toISOString()
-    }, ...state.activityLogs],
-    notifications: [{
-      id: 'notif-' + Date.now(),
-      user_id: 'user-1',
-      type: 'snag_raised',
-      title: `New Snag: ${snag.title}`,
-      body: `Priority: ${snag.priority.toUpperCase()} · ${snag.room_name || 'Site'}`,
-      is_read: false,
-      created_at: new Date().toISOString()
-    }, ...state.notifications]
-  })),
-
-  updateSnagStatus: (snagId, status, actorName, afterPhotoUrl) => set((state) => {
-    const snag = state.snags.find(s => s.id === snagId);
-    return {
-      snags: state.snags.map(s => s.id === snagId ? {
-        ...s,
-        status,
-        after_photo_url: afterPhotoUrl || s.after_photo_url,
-        designer_verified_at: status === 'verified' ? new Date().toISOString() : s.designer_verified_at,
-        client_closed_at: status === 'closed' ? new Date().toISOString() : s.client_closed_at,
-        updated_at: new Date().toISOString()
-      } : s),
-      activityLogs: [{
-        id: 'act-' + Date.now(),
-        project_id: snag?.project_id,
-        title: `Snag Status: ${status.replace('_', ' ').toUpperCase()}`,
-        description: `Snag "${snag?.title}" moved to ${status} by ${actorName || 'User'}.`,
-        type: status === 'closed' ? 'snag_closed' : 'note',
-        created_at: new Date().toISOString()
-      }, ...state.activityLogs]
-    };
-  }),
-
-  addSnagComment: (snagId, comment) => set((state) => ({
-    snags: state.snags.map(s => {
-      if (s.id !== snagId) return s;
-      const comments = s.comments || [];
-      const newComment: SnagComment = {
-        id: 'comm-' + Date.now(),
-        snag_id: snagId,
-        author_id: comment.author_id,
-        author_name: comment.author_name,
-        content: comment.content,
-        photo_url: comment.photo_url,
-        created_at: new Date().toISOString()
-      };
-      return { ...s, comments: [...comments, newComment] };
-    })
-  })),
-
-  // Task Actions
-  addTask: (task) => set((state) => ({ tasks: [task, ...state.tasks] })),
-
-  updateTaskStatus: (taskId, status) => set((state) => ({
-    tasks: state.tasks.map(t => t.id === taskId ? { ...t, status } : t)
-  })),
-
-  deleteTask: (taskId) => set((state) => ({
-    tasks: state.tasks.filter(t => t.id !== taskId)
-  })),
+    // Snag Actions
+    addSnag: (snag) => run(snagActions.createSnag(snag)),
+    updateSnagStatus: (snagId, status, _actorName, afterPhotoPath) =>
+      run(get().me.kind === "client" && status === "closed"
+        ? snagActions.closeSnagAsClient({ id: snagId })
+        : snagActions.setSnagStatus({ id: snagId, status, after_photo_url: afterPhotoPath })),
+    addSnagComment: (snagId, comment) => run(snagActions.addSnagComment({ ...comment, snag_id: snagId })),
+    addTask: (task) => run(taskActions.createTask(task)),
+    updateTaskStatus: (taskId, status) => run(taskActions.setTaskStatus({ id: taskId, status })),
+    deleteTask: (taskId) => run(taskActions.deleteTask({ id: taskId })),
 
   // Finance Actions
   addInvoice: (invoice) => set((state) => ({ 

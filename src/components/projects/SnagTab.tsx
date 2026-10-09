@@ -14,6 +14,8 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { formatRelativeTime, formatDate, formatShortDate, getStatusColor, getPriorityColor, getInitials, cn } from "@/lib/utils";
 import { AlertCircle, Camera, Check, Clock, Plus, ArrowRight, MessageSquare, ShieldCheck, Printer, CheckCircle2 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { AssigneeSelect } from "@/components/team/AssigneeSelect";
+import { PhotoInput } from "@/components/files/PhotoInput";
 
 export default function SnagTab({ projectId, snags, rooms }: { projectId: string; snags: Snag[]; rooms: ProjectRoom[] }) {
   const { addSnag, updateSnagStatus, addSnagComment, studioSettings, projects } = useAppStore();
@@ -21,7 +23,9 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
 
   const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
   const [raiseModalOpen, setRaiseModalOpen] = useState(false);
-  const [selectedSnag, setSelectedSnag] = useState<Snag | null>(null);
+  const [selectedSnagId, setSelectedSnagId] = useState<string | null>(null);
+  const selectedSnag = snags.find((s) => s.id === selectedSnagId) ?? null;
+  const [afterPhotoPath, setAfterPhotoPath] = useState("");
   const [handoverModalOpen, setHandoverModalOpen] = useState(false);
 
   // Form for raising snag
@@ -31,9 +35,9 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
     room_id: rooms[0]?.id || "",
     location_detail: "",
     priority: "major" as SnagPriority,
-    assigned_to_name: "Suresh (Contractor)",
-    due_date: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
-    before_photo_url: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=60"
+    assigned_to: "",
+    due_date: "",
+    before_photo_url: ""
   });
 
   // State for adding a comment
@@ -50,36 +54,17 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
 
   const handleRaiseSnagSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const room = rooms.find(r => r.id === newSnagForm.room_id) || rooms[0];
-    const newSnag: Snag = {
-      id: 'snag-' + Date.now(),
+    addSnag({
       project_id: projectId,
-      room_id: room?.id,
-      room_name: room?.name || "General",
+      room_id: newSnagForm.room_id || undefined,
       title: newSnagForm.title,
       description: newSnagForm.description,
       location_detail: newSnagForm.location_detail,
       priority: newSnagForm.priority,
-      status: 'raised',
-      raised_by: 'user-1',
-      raised_by_name: 'Priya Sharma (Designer)',
-      assigned_to_name: newSnagForm.assigned_to_name,
-      due_date: newSnagForm.due_date,
-      before_photo_url: newSnagForm.before_photo_url,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      comments: [
-        {
-          id: 'comm-1',
-          snag_id: 'snag-' + Date.now(),
-          author_id: 'user-1',
-          author_name: 'Priya Sharma',
-          content: 'Snag logged during morning site visit.',
-          created_at: new Date().toISOString()
-        }
-      ]
-    };
-    addSnag(newSnag);
+      assigned_to: newSnagForm.assigned_to || undefined,
+      due_date: newSnagForm.due_date || undefined,
+      before_photo_url: newSnagForm.before_photo_url || undefined,
+    });
     setRaiseModalOpen(false);
     setNewSnagForm({
       title: "",
@@ -87,16 +72,14 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
       room_id: rooms[0]?.id || "",
       location_detail: "",
       priority: "major",
-      assigned_to_name: "Suresh (Contractor)",
-      due_date: new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0],
-      before_photo_url: "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600&auto=format&fit=crop&q=60"
+      assigned_to: "",
+      due_date: "",
+      before_photo_url: "",
     });
   };
 
   const handleStatusChange = (snag: Snag, nextStatus: SnagStatus) => {
-    const defaultAfterPhoto = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&auto=format&fit=crop&q=60";
-    updateSnagStatus(snag.id, nextStatus, 'Priya Sharma', nextStatus === 'fixed' ? defaultAfterPhoto : undefined);
-    setSelectedSnag(prev => prev ? { ...prev, status: nextStatus, after_photo_url: nextStatus === 'fixed' ? defaultAfterPhoto : prev.after_photo_url } : null);
+    updateSnagStatus(snag.id, nextStatus, undefined, nextStatus === "fixed" ? afterPhotoPath || undefined : undefined);
   };
 
   const handleAddComment = (e: React.FormEvent) => {
@@ -175,7 +158,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
         {filteredSnags.map((snag) => (
           <Card 
             key={snag.id} 
-            onClick={() => setSelectedSnag(snag)} 
+            onClick={() => setSelectedSnagId(snag.id)} 
             className="card-hover cursor-pointer border-border hover:border-primary/50 transition-all"
           >
             <CardContent className="p-4 flex gap-4">
@@ -297,11 +280,10 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label className="text-xs">Assignee (Vendor / Team)</Label>
-                <Input 
-                  value={newSnagForm.assigned_to_name} 
-                  onChange={(e) => setNewSnagForm({ ...newSnagForm, assigned_to_name: e.target.value })}
-                  placeholder="e.g. Suresh (Tiler)"
+                <Label className="text-xs">Assignee</Label>
+                <AssigneeSelect 
+                  value={newSnagForm.assigned_to} 
+                  onChange={(v) => setNewSnagForm({ ...newSnagForm, assigned_to: v })} 
                 />
               </div>
               <div className="space-y-1">
@@ -314,11 +296,10 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
               </div>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Before Photo (URL / Upload)</Label>
-              <Input 
-                value={newSnagForm.before_photo_url} 
-                onChange={(e) => setNewSnagForm({ ...newSnagForm, before_photo_url: e.target.value })}
-                placeholder="Image URL"
+              <PhotoInput 
+                projectId={projectId} 
+                label="Before photo" 
+                onUploaded={(p) => setNewSnagForm({ ...newSnagForm, before_photo_url: p })} 
               />
             </div>
             <div className="space-y-1">
@@ -340,7 +321,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
 
       {/* MODAL: Snag Detail & Status Progression */}
       {selectedSnag && (
-        <Dialog open={!!selectedSnag} onOpenChange={() => setSelectedSnag(null)}>
+        <Dialog open={!!selectedSnag} onOpenChange={() => setSelectedSnagId(null)}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <div className="flex items-center justify-between">
@@ -408,6 +389,9 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
                 </div>
               </div>
 
+              <div className="space-y-1">
+                <PhotoInput projectId={projectId} label="After photo" onUploaded={setAfterPhotoPath} />
+              </div>
               {/* Action Buttons for advancing status */}
               <div className="flex flex-wrap items-center justify-between p-3 bg-muted/20 border rounded-lg gap-2">
                 <span className="text-xs text-muted-foreground">Quick Action Controls:</span>
@@ -468,7 +452,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setSelectedSnag(null)}>Close</Button>
+              <Button variant="outline" onClick={() => setSelectedSnagId(null)}>Close</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

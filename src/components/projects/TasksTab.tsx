@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { AssigneeSelect } from "@/components/team/AssigneeSelect";
 import { formatShortDate, cn, isOverdue } from "@/lib/utils";
 import type { Project, Task, TaskPriority } from "@/types";
 
@@ -18,26 +19,21 @@ export default function TasksTab({ project, tasks }: { project: Project; tasks: 
   const [taskForm, setTaskForm] = useState({
     title: "",
     priority: "medium" as TaskPriority,
-    due_date: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
-    assigned_to_name: "Priya Sharma",
+    due_date: "",
+    assigned_to: "",
   });
 
   const handleAddTask = (e: React.FormEvent) => {
     e.preventDefault();
     addTask({
-      id: 'task-' + Date.now(),
       project_id: project.id,
-      project_name: project.name,
       title: taskForm.title,
-      status: 'todo',
       priority: taskForm.priority,
-      assigned_to_name: taskForm.assigned_to_name,
-      due_date: taskForm.due_date,
+      assigned_to: taskForm.assigned_to || undefined,
+      due_date: taskForm.due_date || undefined,
       is_internal: true,
-      created_by: 'user-1',
-      created_at: new Date().toISOString()
     });
-    setTaskForm({ title: "", priority: "medium", due_date: "", assigned_to_name: "Priya Sharma" });
+    setTaskForm({ title: "", priority: "medium", due_date: "", assigned_to: "" });
     setAddTaskModalOpen(false);
   };
 
@@ -138,9 +134,9 @@ export default function TasksTab({ project, tasks }: { project: Project; tasks: 
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Assignee</Label>
-              <Input 
-                value={taskForm.assigned_to_name} 
-                onChange={(e) => setTaskForm({ ...taskForm, assigned_to_name: e.target.value })}
+              <AssigneeSelect 
+                value={taskForm.assigned_to} 
+                onChange={(v) => setTaskForm({ ...taskForm, assigned_to: v })} 
               />
             </div>
             <DialogFooter>

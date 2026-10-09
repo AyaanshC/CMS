@@ -16,6 +16,7 @@ import {
 import { useAppStore } from "@/lib/store";
 import { formatShortDate, getPriorityColor, isOverdue, cn } from "@/lib/utils";
 import { Task, TaskPriority, TaskStatus } from "@/types";
+import { AssigneeSelect } from "@/components/team/AssigneeSelect";
 
 export default function TasksPage() {
   const { tasks, projects, addTask, updateTaskStatus, deleteTask } = useAppStore();
@@ -29,7 +30,7 @@ export default function TasksPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskProject, setTaskProject] = useState(projects[0]?.id || "");
-  const [taskAssignee, setTaskAssignee] = useState("Aarav Mehta");
+  const [taskAssignee, setTaskAssignee] = useState("");
   const [taskPriority, setTaskPriority] = useState<TaskPriority>("medium");
   const [taskDueDate, setTaskDueDate] = useState("");
 
@@ -58,24 +59,18 @@ export default function TasksPage() {
     e.preventDefault();
     if (!taskTitle.trim()) return;
 
-    const proj = projects.find((p) => p.id === taskProject);
-
-    const newTask: Task = {
-      id: `task_${Date.now()}`,
+    addTask({
       project_id: taskProject,
-      project_name: proj?.name || "General Task",
       title: taskTitle.trim(),
-      assigned_to: taskAssignee,
+      assigned_to: taskAssignee || undefined,
       priority: taskPriority,
-      status: "todo",
-      due_date: taskDueDate ? new Date(taskDueDate).toISOString() : undefined,
+      due_date: taskDueDate || undefined,
       is_internal: true,
-      created_by: 'user-1',
-      created_at: new Date().toISOString(),
-    };
+    });
 
-    addTask(newTask);
     setTaskTitle("");
+    setTaskDueDate("");
+    setTaskAssignee("");
     setShowAddModal(false);
   };
 
@@ -316,10 +311,9 @@ export default function TasksPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-foreground block mb-1">Assignee</label>
-                <Input
+                <AssigneeSelect
                   value={taskAssignee}
-                  onChange={(e) => setTaskAssignee(e.target.value)}
-                  placeholder="Designer or supervisor name"
+                  onChange={setTaskAssignee}
                 />
               </div>
               <div>
