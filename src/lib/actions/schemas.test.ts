@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  changeOrderInput, clientInput, costRateInput, creditNoteInput, feeStageUpdate, feeTermsInput, invoiceInput, issueInvoiceInput,
-  lineItemInput, messageInput, paymentInput, projectInput, riskSettingsInput, staffTermsInput, taskInput, timesheetWeekInput,
+  billInput, changeOrderInput, clientInput, costRateInput, creditNoteInput, feeStageUpdate, feeTermsInput, invoiceInput, issueInvoiceInput,
+  lineItemInput, messageInput, paymentInput, poInput, projectInput, receiptInput, riskSettingsInput, staffTermsInput, taskInput, timesheetWeekInput,
+  vendorPaymentInput,
 } from "./schemas";
 
 const P = "a1000000-0000-4000-8000-000000000001";
@@ -103,5 +104,24 @@ describe("staff and risk settings", () => {
     expect(riskSettingsInput.safeParse({ risk_weights: { fee_burn: 25 } }).success).toBe(false);
   });
 });
+
+describe("procurement schemas", () => {
+  const line = { description: "Cable", unit: "m", quantity: 10, rate: 50, gst_rate: 18 };
+  it("requires PO lines", () => {
+    expect(poInput.safeParse({ project_id: P, vendor_id: P, lines: [] }).success).toBe(false);
+    expect(poInput.safeParse({ project_id: P, vendor_id: P, lines: [line] }).success).toBe(true);
+  });
+  it("rejects more rejected than received", () => {
+    expect(receiptInput.safeParse({ po_id: P, received_on: "2026-10-09", lines: [{ po_line_id: P, quantity_received: 5, quantity_rejected: 6 }] }).success).toBe(false);
+  });
+  it("requires a bill number and lines", () => {
+    expect(billInput.safeParse({ vendor_id: P, project_id: P, bill_number: "", bill_date: "2026-10-09", lines: [line] }).success).toBe(false);
+  });
+  it("requires a bill unless the payment is an advance", () => {
+    expect(vendorPaymentInput.safeParse({ vendor_id: P, project_id: P, amount: 100, paid_on: "2026-10-09", mode: "upi", is_advance: false }).success).toBe(false);
+    expect(vendorPaymentInput.safeParse({ vendor_id: P, project_id: P, amount: 100, paid_on: "2026-10-09", mode: "upi", is_advance: true }).success).toBe(true);
+  });
+});
+
 
 

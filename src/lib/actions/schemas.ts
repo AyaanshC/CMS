@@ -110,6 +110,7 @@ export const snagInput = z.object({
   location_detail: optText(200),
   priority: z.enum(["critical", "major", "minor"]),
   assigned_to: optId,
+  vendor_id: optId,
   due_date: optDate,
   before_photo_url: path.optional().nullable(),
 });
@@ -161,6 +162,9 @@ export const expenseInput = z.object({
   amount: z.coerce.number().finite().positive().max(1e10),
   expense_date: date,
   receipt_url: path.optional().nullable(),
+  vendor_id: optId,
+  boq_line_item_id: optId,
+  cost_type: z.enum(["design", "execution"]).default("design"),
 });
 
 // Communication & files ---------------------------------------------------------
@@ -186,6 +190,7 @@ export const materialSelectInput = z.object({ id, is_selected: z.boolean() });
 export const libraryItemInput = z.object({
   item_name: text(150), category: text(60), unit: text(20), standard_rate: money,
   description: optText(500), specifications: optText(1000),
+  standard_cost_rate: money.optional().nullable(),
 });
 export const libraryItemUpdate = libraryItemInput.partial().extend({ id });
 export const settingsInput = z.object({
@@ -307,6 +312,45 @@ export const riskSettingsInput = z.object({
   }),
   monthly_billing_target: money.optional().nullable(),
 });
+
+// Phase 3 ---------------------------------------------------------------------------
+const gst = z.coerce.number().min(0).max(28).default(18);
+export const vendorInput = z.object({
+  name: text(150), category: text(60), gstin: optText(15), pan: optText(10), phone: optText(30),
+  email: z.union([z.email(), z.literal("")]).optional().nullable().transform((v) => v || null),
+  address: optText(300), payment_terms_days: z.coerce.number().int().min(0).max(180).default(30),
+  status: z.enum(["active", "preferred", "blacklisted"]).default("active"), notes: optText(1000),
+});
+export const vendorUpdate = vendorInput.partial().extend({ id });
+export const lineCostInput = z.object({ line_item_id: id, cost_rate: money });
+export const quoteInput = z.object({
+  project_id: id, vendor_id: id, boq_line_item_id: optId, package_name: optText(120), description: optText(500),
+  quantity: z.coerce.number().positive(), rate: money, valid_until: optDate,
+}).refine((q) => q.boq_line_item_id || q.package_name, { message: "Link a BOQ line or name the package", path: ["package_name"] });
+const poLine = z.object({ boq_line_item_id: optId, description: text(300), unit: text(20), quantity: z.coerce.number().positive(), rate: money, gst_rate: gst });
+export const poInput = z.object({
+  project_id: id, vendor_id: id, order_date: optDate, expected_delivery: optDate, notes: optText(1000), lines: z.array(poLine).min(1).max(200),
+});
+export const cancelPoInput = z.object({ id, reason: text(300) });
+export const receiptInput = z.object({
+  po_id: id, received_on: date, notes: optText(500), photo_url: path.optional().nullable(),
+  lines: z.array(z.object({
+    po_line_id: id, quantity_received: z.coerce.number().positive(), quantity_rejected: z.coerce.number().min(0).default(0), condition_note: optText(300),
+  }).refine((l) => l.quantity_rejected <= l.quantity_received, { message: "Rejected cannot exceed received", path: ["quantity_rejected"] })).min(1),
+});
+export const billInput = z.object({
+  vendor_id: id, project_id: id, po_id: optId, bill_number: text(60), bill_date: date, due_date: optDate, notes: optText(500),
+  file_path: path.optional().nullable(),
+  lines: z.array(z.object({ po_line_id: optId, description: text(300), quantity: z.coerce.number().positive(), rate: money, gst_rate: gst })).min(1).max(200),
+});
+export const billDecisionInput = z.object({ id, approve: z.boolean(), note: optText(500) })
+  .refine((d) => d.approve || !!d.note, { message: "Give a reason for the dispute", path: ["note"] });
+export const vendorPaymentInput = z.object({
+  vendor_id: id, project_id: id, bill_id: optId, amount: z.coerce.number().positive(), tds_amount: money.default(0), paid_on: date,
+  mode: z.enum(["bank_transfer", "upi", "cheque", "cash"]), reference: optText(100), is_advance: z.boolean().default(false),
+}).refine((p) => p.is_advance || !!p.bill_id, { message: "Choose the bill, or mark this as an advance", path: ["bill_id"] });
+export const expenseDecisionInput = billDecisionInput;
+
 
 
 

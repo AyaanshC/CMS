@@ -19,9 +19,13 @@ import * as coActions from "@/app/actions/change-orders";
 import * as recvActions from "@/app/actions/receivables";
 import * as alertActions from "@/app/actions/alerts";
 import * as tsActions from "@/app/actions/timesheets";
+import * as vendorActions from "@/app/actions/vendors";
+import * as procActions from "@/app/actions/procurement";
+import * as billActions from "@/app/actions/bills";
 import type {
-  BOQLineItem, BOQVersion, ChangeOrder, Client, Expense, FeeStage, Invoice, Message, Project, ProjectMilestone, ProjectRoom,
-  ProjectStatus, ProjectUpdate, Snag, SnagComment, SnagStatus, Task, ItemLibraryItem, StudioSettings, TimesheetActivity,
+  BOQLineItem, BOQVersion, ChangeOrder, Client, Expense, FeeStage, Invoice, Message, PoLine, Project, ProjectMilestone, ProjectRoom,
+  ProjectStatus, ProjectUpdate, Snag, SnagComment, SnagStatus, Task, ItemLibraryItem, StudioSettings, TimesheetActivity, Vendor,
+  VendorPayment,
 } from "@/types";
 
 export interface WeekRow {
@@ -31,6 +35,12 @@ export interface WeekRow {
 export type NewFileRecord = {
   project_id: string; folder?: string; file_name: string; storage_path: string;
   file_type: string; file_size_bytes: number; is_client_visible: boolean;
+};
+
+export type NewVendorBill = {
+  vendor_id: string; project_id: string; po_id?: string; bill_number: string; bill_date: string;
+  due_date?: string; notes?: string; file_path?: string;
+  lines: { po_line_id?: string; description: string; quantity: number; rate: number; gst_rate: number }[];
 };
 
 export interface AppActions {
@@ -113,6 +123,21 @@ export interface AppActions {
   saveTimesheetWeek: (weekStart: string, rows: WeekRow[]) => Promise<ActionResult>;
   submitTimesheetWeek: (weekStart: string) => Promise<ActionResult>;
   decideTimesheetEntries: (ids: string[], approve: boolean, note?: string) => Promise<ActionResult>;
+
+  // Procurement & Cost Control
+  saveVendor: (v: Partial<Vendor>) => Promise<ActionResult>;
+  setLineCost: (lineItemId: string, costRate: number) => Promise<ActionResult>;
+  addQuote: (q: { project_id: string; vendor_id: string; boq_line_item_id?: string; package_name?: string; description?: string; quantity: number; rate: number; valid_until?: string }) => Promise<ActionResult>;
+  createPurchaseOrder: (po: { project_id: string; vendor_id: string; order_date?: string; expected_delivery?: string; notes?: string; lines: Partial<PoLine>[] }) => Promise<ActionResult>;
+  submitPurchaseOrder: (id: string) => Promise<ActionResult>;
+  approvePurchaseOrder: (id: string) => Promise<ActionResult>;
+  issuePurchaseOrder: (id: string) => Promise<ActionResult>;
+  cancelPurchaseOrder: (id: string, reason: string) => Promise<ActionResult>;
+  recordReceipt: (r: { po_id: string; received_on: string; notes?: string; photo_url?: string; lines: { po_line_id: string; quantity_received: number; quantity_rejected: number; condition_note?: string }[] }) => Promise<ActionResult>;
+  recordVendorBill: (b: NewVendorBill) => Promise<ActionResult>;
+  decideVendorBill: (id: string, approve: boolean, note?: string) => Promise<ActionResult>;
+  recordVendorPayment: (p: Partial<VendorPayment>) => Promise<ActionResult>;
+  decideExpense: (id: string, approve: boolean, note?: string) => Promise<ActionResult>;
 }
 
 export type AppState = WorkspaceSnapshot & AppActions;
@@ -220,6 +245,21 @@ export const createAppStore = (snapshot: WorkspaceSnapshot) =>
     saveTimesheetWeek: (weekStart, rows) => run(tsActions.saveTimesheetWeek({ week_start: weekStart, rows })),
     submitTimesheetWeek: (weekStart) => run(tsActions.submitTimesheetWeek({ week_start: weekStart })),
     decideTimesheetEntries: (ids, approve, note) => run(tsActions.decideTimesheetEntries({ ids, approve, note })),
+
+    // Procurement & Cost Control
+    saveVendor: (v) => run(v.id ? vendorActions.updateVendor(v) : vendorActions.createVendor(v)),
+    setLineCost: (lineItemId, costRate) => run(vendorActions.setLineCost({ line_item_id: lineItemId, cost_rate: costRate })),
+    addQuote: (q) => run(procActions.addQuote(q)),
+    createPurchaseOrder: (po) => run(procActions.createPurchaseOrder(po)),
+    submitPurchaseOrder: (id) => run(procActions.submitPurchaseOrder({ id })),
+    approvePurchaseOrder: (id) => run(procActions.approvePurchaseOrder({ id })),
+    issuePurchaseOrder: (id) => run(procActions.issuePurchaseOrder({ id })),
+    cancelPurchaseOrder: (id, reason) => run(procActions.cancelPurchaseOrder({ id, reason })),
+    recordReceipt: (r) => run(procActions.recordReceipt(r)),
+    recordVendorBill: (b) => run(billActions.recordVendorBill(b)),
+    decideVendorBill: (id, approve, note) => run(billActions.decideVendorBill({ id, approve, note })),
+    recordVendorPayment: (p) => run(billActions.recordVendorPayment(p)),
+    decideExpense: (id, approve, note) => run(billActions.decideExpense({ id, approve, note })),
   }));
 
 export const AppStoreContext = createContext<StoreApi<AppState> | null>(null);

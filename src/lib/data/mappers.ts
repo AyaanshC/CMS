@@ -1,7 +1,7 @@
 import { boqTotals, lineTotal, round2 } from "@/lib/finance/money";
 import type { Tables } from "@/lib/supabase/database.types";
 import type {
-  ActivityLogItem, Alert, AppRole, BOQTemplate, BOQVersion, ChangeOrder, ChecklistItem, Client, CostControlRow, CostRate, CostType, CreditNote, Expense,
+  ActivityLogItem, Alert, AppRole, BOQTemplate, BOQVersion, ChangeOrder, ChecklistItem, Client, CostControlRow, CostType, CreditNote, Expense,
   ExpenseStatus, FeeStage, FeeStageKind, FeeStageStatus, FeeTemplate, GoodsReceipt, Invoice, InvoiceStatus, ItemLibraryItem, MaterialOption,
   Message, Notification, Payment, ProfileKind, Project, ProjectCostRow, ProjectFile, ProjectUpdate, PurchaseOrder, Snag, StaffWeekHours, StudioSettings,
   Task, TeamMember, TimesheetEntry, Vendor, VendorBill, VendorPayment, VendorQuote,
