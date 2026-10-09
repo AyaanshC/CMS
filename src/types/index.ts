@@ -105,6 +105,35 @@ export interface FeeTerms {
   area_sqft?: number;
 }
 
+// --- Change Orders ---
+
+export type ChangeOrderReason = 'client_request' | 'site_condition' | 'regulatory' | 'design_error';
+export type ChangeOrderStatus = 'draft' | 'submitted' | 'approved' | 'rejected';
+export const CHANGE_ORDER_REASON_LABELS: Record<ChangeOrderReason, string> = {
+  client_request: 'Client request',
+  site_condition: 'Site condition',
+  regulatory: 'Regulatory requirement',
+  design_error: 'Internal design error (no charge)',
+};
+
+export interface ChangeOrder {
+  id: string;
+  project_id: string;
+  number: string;
+  title: string;
+  description?: string;
+  reason: ChangeOrderReason;
+  fee_impact: number;
+  cost_impact: number;
+  schedule_impact_days: number;
+  status: ChangeOrderStatus;
+  submitted_at?: string;
+  decided_at?: string;
+  decided_by?: string;
+  decision_note?: string;
+  created_at: string;
+}
+
 // --- Projects ---
 
 export type ProjectType = 'residential' | 'commercial' | 'office';
@@ -322,6 +351,8 @@ export interface Invoice {
   amount_paid: number;
   amount_due: number;
   notes?: string;
+  fee_stage_id?: string;
+  change_order_id?: string;
   items?: InvoiceLineItem[];
 }
 
