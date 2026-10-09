@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(9);
+select plan(17);
 
 create function pg_temp.act_as(uid uuid) returns void language plpgsql as $$
 begin perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true); end $$;
@@ -29,6 +29,54 @@ reset role;
 select pg_temp.act_as('00000000-0000-4000-8000-000000000002');   -- Director Vikram
 set local role authenticated;
 select lives_ok($$ update projects set fee_amount = 320000 where id = 'a1000000-0000-4000-8000-000000000001' $$, 'director can change fee');
+reset role;
+
+-- Restore P2's fee terms changed by the assertions above: 6% of 1.5 crore = 9,00,000.
+update projects set fee_basis = 'percent_of_cost', fee_rate = 6, estimated_construction_cost = 15000000
+  where id = 'a1000000-0000-4000-8000-000000000002';
+
+-- apply_fee_template
+select pg_temp.act_as('00000000-0000-4000-8000-000000000001');   -- owner
+set local role authenticated;
+select is(apply_fee_template('a1000000-0000-4000-8000-000000000002', (select id from fee_templates where name = 'Architecture (standard)')),
+  6, 'six architecture stages created');
+select throws_like($$ select apply_fee_template('a1000000-0000-4000-8000-000000000002', (select id from fee_templates where name = 'Architecture (standard)')) $$,
+  '%already has%', 'template cannot be applied twice');
+reset role;
+
+-- percent_total_guard
+update project_fee_stages set percent = 11 where project_id = 'a1000000-0000-4000-8000-000000000002' and name = 'Concept';
+update project_fee_stages set checklist = '[]' where project_id = 'a1000000-0000-4000-8000-000000000002';
+select pg_temp.act_as('00000000-0000-4000-8000-000000000001');
+set local role authenticated;
+select throws_like($$ select complete_fee_stage((select id from project_fee_stages where project_id = 'a1000000-0000-4000-8000-000000000002' and name = 'Concept')) $$,
+  '%total 101%', 'stages must total 100');
+reset role;
+update project_fee_stages set percent = 10 where project_id = 'a1000000-0000-4000-8000-000000000002' and name = 'Concept';
+
+-- checklist guard + draft invoice
+update project_fee_stages set checklist = '[{"label":"Sign-off","done":false}]' where project_id = 'a1000000-0000-4000-8000-000000000002' and name = 'Concept';
+select pg_temp.act_as('00000000-0000-4000-8000-000000000001');
+set local role authenticated;
+select throws_like($$ select complete_fee_stage((select id from project_fee_stages where project_id = 'a1000000-0000-4000-8000-000000000002' and name = 'Concept')) $$,
+  '%checklist%', 'checklist must be complete');
+reset role;
+update project_fee_stages set checklist = '[{"label":"Sign-off","done":true}]' where project_id = 'a1000000-0000-4000-8000-000000000002' and name = 'Concept';
+select pg_temp.act_as('00000000-0000-4000-8000-000000000001');
+set local role authenticated;
+select isnt(complete_fee_stage((select id from project_fee_stages where project_id = 'a1000000-0000-4000-8000-000000000002' and name = 'Concept')),
+  null, 'completing returns draft invoice id');
+reset role;
+select is((select subtotal from invoices where fee_stage_id = (select id from project_fee_stages where project_id = 'a1000000-0000-4000-8000-000000000002' and name = 'Concept')),
+  90000.00::numeric, 'draft = 10% of 6% of 1.5 crore');
+select is((select progress_percent from projects where id = 'a1000000-0000-4000-8000-000000000002'), 10, 'progress follows stages');
+
+-- no_zero_invoice: execution stage with no approved BOQ on P3
+insert into project_fee_stages (project_id, kind, name, percent, sort_order) values ('a1000000-0000-4000-8000-000000000003', 'execution', 'Advance', 100, 1);
+select pg_temp.act_as('00000000-0000-4000-8000-000000000003');
+set local role authenticated;
+select is(complete_fee_stage((select id from project_fee_stages where project_id = 'a1000000-0000-4000-8000-000000000003' and name = 'Advance')),
+  null, 'no invoice when amount is zero');
 reset role;
 
 select * from finish();
