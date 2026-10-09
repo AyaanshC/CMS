@@ -3,10 +3,11 @@ import { addDays, weekStart } from "@/lib/time/weeks";
 import { createServerSupabase } from "@/lib/supabase/server";
 import type { SessionProfile } from "@/types";
 import {
-  makeUrlFor, mapActivity, mapAlert, mapBoq, mapChangeOrder, mapClient, mapCostRow, mapCreditNote, mapExpense, mapFeeStage,
-  mapFeeTemplate, mapFile, mapInvoice, mapLibraryItem, mapMaterial, mapMessage, mapNotification,
-  mapPayment, mapProject, mapSettings, mapSnag, mapTask, mapTeamMember, mapTemplate, mapTimesheetEntry, mapUpdate,
-  mapWeekHours, withClientStats, withOutstanding,
+  makeUrlFor, mapActivity, mapAlert, mapBoq, mapChangeOrder, mapClient, mapCostControlRow, mapCostRow, mapCreditNote,
+  mapExpense, mapFeeStage, mapFeeTemplate, mapFile, mapInvoice, mapLibraryItem, mapMaterial, mapMessage,
+  mapNotification, mapPayment, mapProject, mapPurchaseOrder, mapQuote, mapReceipt, mapSettings, mapSnag,
+  mapTask, mapTeamMember, mapTemplate, mapTimesheetEntry, mapUpdate, mapVendor, mapVendorBill,
+  mapVendorPayment, mapWeekHours, withClientStats, withOutstanding,
 } from "./mappers";
 import type { WorkspaceSnapshot } from "./snapshot";
 
@@ -22,6 +23,7 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
     messages, updates, notifications, library, templates, materials, files, activity,
     feeStages, feeTemplates, changeOrders, creditNotes, alerts,
     timesheets, projectCosts, staffHours, rateBands, costRates,
+    vendors, quotes, purchaseOrders, poLineProgress, receipts, vendorBills, vendorBillSummaries, vendorPayments, costControl,
   ] = await Promise.all([
     db.from("firm_settings").select("*").single(),
     db.from("clients").select("*").is("archived_at", null).order("created_at", { ascending: false }),
@@ -31,13 +33,13 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
       .is("archived_at", null).order("created_at", { ascending: false }),
     db.from("boq_versions").select("*, sections:boq_sections(*, room:project_rooms(name), items:boq_line_items(*))").order("version_number"),
     db.from("snags")
-      .select("*, room:project_rooms(name), raiser:profiles!snags_raised_by_fkey(full_name), assignee:profiles!snags_assigned_to_fkey(full_name), comments:snag_comments(*, author:profiles(full_name, kind))")
+      .select("*, room:project_rooms(name), vendor:vendors(name), raiser:profiles!snags_raised_by_fkey(full_name), assignee:profiles!snags_assigned_to_fkey(full_name), comments:snag_comments(*, author:profiles(full_name, kind))")
       .order("created_at", { ascending: false }),
     db.from("tasks").select("*, project:projects(name), assignee:profiles!tasks_assigned_to_fkey(full_name)").order("due_date", { nullsFirst: false }),
     db.from("invoices").select("*, project:projects(name, client:clients(full_name)), items:invoice_items(*)").order("created_at", { ascending: false }),
     db.from("invoice_summary").select("id, amount_paid, tds_amount, credited, retention_held, amount_due, effective_status, last_payment_date"),
     db.from("payments").select("*, recorder:profiles(full_name)").order("payment_date", { ascending: false }),
-    db.from("expenses").select("*, creator:profiles(full_name)").order("expense_date", { ascending: false }),
+    db.from("expenses").select("*, creator:profiles!expenses_created_by_fkey(full_name)").order("expense_date", { ascending: false }),
     db.from("messages").select("*, sender:profiles(full_name, kind)").order("created_at"),
     db.from("project_updates").select("*, poster:profiles(full_name)").order("created_at", { ascending: false }),
     db.from("notifications").select("*").eq("user_id", me.id).order("created_at", { ascending: false }).limit(100),
@@ -56,12 +58,24 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
     db.rpc("staff_week_hours", { p_from: from, p_to: addDays(from, 7 * 12 - 1) }),
     db.from("rate_bands").select("*").order("blended_rate", { ascending: false }),
     db.from("staff_cost_rates").select("*").order("effective_from", { ascending: false }),
+    db.from("vendors").select("*").order("name"),
+    db.from("vendor_quotes").select("*, vendor:vendors(name)").order("received_at", { ascending: false }),
+    db.from("purchase_orders").select("*, vendor:vendors(name), approver:profiles!purchase_orders_approved_by_fkey(full_name), lines:po_lines(*)").order("created_at", { ascending: false }),
+    db.from("po_line_progress").select("*"),
+    db.from("goods_receipts").select("*, receiver:profiles!goods_receipts_received_by_fkey(full_name), lines:grn_lines(*)").order("received_on", { ascending: false }),
+    db.from("vendor_bills").select("*, vendor:vendors(name), lines:vendor_bill_lines(*)").order("bill_date", { ascending: false }),
+    db.from("vendor_bill_summary").select("*"),
+    db.from("vendor_payments").select("*").order("paid_on", { ascending: false }),
+    db.rpc("boq_cost_control"),
   ]);
 
-  const failed = [settings, clients, team, projects, boqs, snags, tasks, invoices, summaries, payments, expenses,
+  const failed = [
+    settings, clients, team, projects, boqs, snags, tasks, invoices, summaries, payments, expenses,
     messages, updates, notifications, library, templates, materials, files, activity,
     feeStages, feeTemplates, changeOrders, creditNotes, alerts,
-    timesheets, projectCosts, staffHours, rateBands, costRates].find((r) => r.error);
+    timesheets, projectCosts, staffHours, rateBands, costRates,
+    vendors, quotes, purchaseOrders, poLineProgress, receipts, vendorBills, vendorBillSummaries, vendorPayments, costControl,
+  ].find((r) => r.error);
   if (failed?.error) throw new Error(`Workspace load failed: ${failed.error.message}`);
 
   // Sign every storage path once.
@@ -72,6 +86,8 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
     ...(messages.data ?? []).map((m) => m.file_url),
     ...(materials.data ?? []).map((m) => m.image_url),
     ...(expenses.data ?? []).map((e) => e.receipt_url),
+    ...(receipts.data ?? []).map((r) => r.photo_url),
+    ...(vendorBills.data ?? []).map((b) => b.file_path),
   ].filter((p): p is string => !!p && !isUrl(p));
   const unique = [...new Set(paths)];
   // ponytail: 1-hour signed URLs; pages left open longer show broken images until refresh.
@@ -82,6 +98,9 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
   const mappedInvoices = (invoices.data ?? []).map((i) => mapInvoice(i, summaryById.get(i.id)));
   const mappedActivity = (activity.data ?? []).map(mapActivity);
   const mappedProjects = withOutstanding((projects.data ?? []).map(mapProject), mappedInvoices);
+
+  const progress = new Map((poLineProgress.data ?? []).map((p) => [p.po_line_id!, p]));
+  const billSummary = new Map((vendorBillSummaries.data ?? []).map((b) => [b.id!, b]));
 
   return {
     me,
@@ -113,5 +132,12 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
     staffWeekHours: (staffHours.data ?? []).map(mapWeekHours),
     rateBands: (rateBands.data ?? []).map((b) => ({ id: b.id, name: b.name, blended_rate: Number(b.blended_rate) })),
     costRates: (costRates.data ?? []).map((c) => ({ id: c.id, profile_id: c.profile_id, effective_from: c.effective_from, cost_rate: Number(c.cost_rate) })),
+    vendors: (vendors.data ?? []).map(mapVendor),
+    quotes: (quotes.data ?? []).map(mapQuote),
+    purchaseOrders: (purchaseOrders.data ?? []).map((po) => mapPurchaseOrder(po, progress)),
+    receipts: (receipts.data ?? []).map((r) => mapReceipt(r, urlFor)),
+    vendorBills: (vendorBills.data ?? []).map((b) => mapVendorBill(b, billSummary.get(b.id), urlFor)),
+    vendorPayments: (vendorPayments.data ?? []).map(mapVendorPayment),
+    costControl: (costControl.data ?? []).map(mapCostControlRow),
   };
 }

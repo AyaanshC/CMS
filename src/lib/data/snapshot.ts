@@ -1,7 +1,7 @@
 import type {
-  ActivityLogItem, Alert, BOQTemplate, BOQVersion, ChangeOrder, Client, CostRate, CreditNote, Expense, FeeStage, FeeTemplate,
-  Invoice, ItemLibraryItem, MaterialOption, Message, Notification, Payment, Project, ProjectCostRow, ProjectFile, ProjectUpdate,
-  RateBand, SessionProfile, Snag, StaffWeekHours, StudioSettings, Task, TeamMember, TimesheetEntry,
+  ActivityLogItem, Alert, BOQTemplate, BOQVersion, ChangeOrder, Client, CostControlRow, CostRate, CreditNote, Expense, FeeStage, FeeTemplate,
+  GoodsReceipt, Invoice, ItemLibraryItem, MaterialOption, Message, Notification, Payment, Project, ProjectCostRow, ProjectFile, ProjectUpdate,
+  PurchaseOrder, RateBand, SessionProfile, Snag, StaffWeekHours, StudioSettings, Task, TeamMember, TimesheetEntry, Vendor, VendorBill, VendorPayment, VendorQuote,
 } from "@/types";
 
 // Everything a signed-in user may see, already filtered by RLS.
@@ -35,4 +35,11 @@ export interface WorkspaceSnapshot {
   staffWeekHours: StaffWeekHours[];
   rateBands: RateBand[];
   costRates: CostRate[];
+  vendors: Vendor[];
+  quotes: VendorQuote[];
+  purchaseOrders: PurchaseOrder[];
+  receipts: GoodsReceipt[];
+  vendorBills: VendorBill[];
+  vendorPayments: VendorPayment[];
+  costControl: CostControlRow[];
 }

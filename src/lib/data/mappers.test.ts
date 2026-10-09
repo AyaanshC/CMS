@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  makeUrlFor, mapBoq, mapCostRow, mapFeeStage, mapInvoice, mapMessage, mapProject, withClientStats, withOutstanding,
+  makeUrlFor, mapBoq, mapCostRow, mapFeeStage, mapInvoice, mapMessage, mapProject, mapPurchaseOrder, withClientStats, withOutstanding,
   type BoqRow, type InvoiceRow, type ProjectRow,
 } from "./mappers";
 import type { Client, Invoice, Project } from "@/types";
@@ -135,4 +135,19 @@ describe("mapCostRow", () => {
     expect(r.fee_stage_id).toBeUndefined();
   });
 });
+
+describe("mapPurchaseOrder", () => {
+  it("attaches line progress and totals", () => {
+    const po = mapPurchaseOrder(
+      { id: "o", project_id: "p", vendor_id: "v", number: "PO/26-27/0001", status: "issued", order_date: "2026-10-01", expected_delivery: null,
+        notes: null, approval_required_role: null, approved_by: null, approved_at: null, cancel_reason: null, created_by: "u", created_at: "2026-10-01T00:00:00Z",
+        vendor: { name: "Bright" }, approver: null,
+        lines: [{ id: "l", po_id: "o", boq_line_item_id: null, description: "Cable", unit: "m", quantity: 100, rate: 50, gst_rate: 18, amount: 5000 }] },
+      new Map([["l", { po_line_id: "l", received_qty: 60, rejected_qty: 5, billed_qty: 55 }]]),
+    );
+    expect(po).toMatchObject({ vendor_name: "Bright", total: 5000 });
+    expect(po.lines[0]).toMatchObject({ received_qty: 55, billed_qty: 55 });
+  });
+});
+
 

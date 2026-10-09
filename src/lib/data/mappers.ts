@@ -1,10 +1,10 @@
-import { boqTotals, lineTotal } from "@/lib/finance/money";
+import { boqTotals, lineTotal, round2 } from "@/lib/finance/money";
 import type { Tables } from "@/lib/supabase/database.types";
 import type {
-  ActivityLogItem, Alert, AppRole, BOQTemplate, BOQVersion, ChangeOrder, ChecklistItem, Client, CreditNote, Expense,
-  FeeStage, FeeStageKind, FeeStageStatus, FeeTemplate, Invoice, InvoiceStatus, ItemLibraryItem, MaterialOption,
-  Message, Notification, Payment, ProfileKind, Project, ProjectCostRow, ProjectFile, ProjectUpdate, Snag, StaffWeekHours, StudioSettings,
-  Task, TeamMember, TimesheetEntry,
+  ActivityLogItem, Alert, AppRole, BOQTemplate, BOQVersion, ChangeOrder, ChecklistItem, Client, CostControlRow, CostRate, CostType, CreditNote, Expense,
+  ExpenseStatus, FeeStage, FeeStageKind, FeeStageStatus, FeeTemplate, GoodsReceipt, Invoice, InvoiceStatus, ItemLibraryItem, MaterialOption,
+  Message, Notification, Payment, ProfileKind, Project, ProjectCostRow, ProjectFile, ProjectUpdate, PurchaseOrder, Snag, StaffWeekHours, StudioSettings,
+  Task, TeamMember, TimesheetEntry, Vendor, VendorBill, VendorPayment, VendorQuote,
 } from "@/types";
 
 export type UrlFor = (pathOrUrl: string | null | undefined) => string | undefined;
@@ -129,6 +129,7 @@ export type SnagRow = Tables<"snags"> & {
   room: { name: string } | null;
   raiser: { full_name: string } | null;
   assignee: { full_name: string } | null;
+  vendor?: { name: string } | null;
   comments: (Tables<"snag_comments"> & { author: { full_name: string; kind: ProfileKind } | null })[];
 };
 
@@ -140,6 +141,7 @@ export function mapSnag(r: SnagRow, urlFor: UrlFor): Snag {
     assigned_to_name: r.assignee?.full_name, due_date: opt(r.due_date), before_photo_url: urlFor(r.before_photo_url),
     after_photo_url: urlFor(r.after_photo_url), fixed_at: opt(r.fixed_at), client_closed_at: opt(r.client_closed_at),
     designer_verified_at: opt(r.designer_verified_at), created_at: r.created_at, updated_at: r.updated_at,
+    vendor_id: opt(r.vendor_id), vendor_name: opt(r.vendor?.name),
     comments: [...r.comments]
       .sort((a, b) => a.created_at.localeCompare(b.created_at))
       .map((c) => ({
@@ -228,6 +230,8 @@ export function mapExpense(r: Tables<"expenses"> & { creator: { full_name: strin
   return {
     id: r.id, project_id: r.project_id, category: r.category, description: r.description, amount: r.amount,
     receipt_url: urlFor(r.receipt_url), expense_date: r.expense_date, created_by_name: r.creator?.full_name,
+    vendor_id: opt(r.vendor_id), boq_line_item_id: opt(r.boq_line_item_id),
+    cost_type: r.cost_type as CostType, status: r.status as ExpenseStatus,
   };
 }
 
@@ -257,6 +261,7 @@ export function mapLibraryItem(r: Tables<"item_library">): ItemLibraryItem {
   return {
     id: r.id, item_name: r.item_name, category: r.category, unit: r.unit, standard_rate: r.standard_rate,
     description: opt(r.description), specifications: opt(r.specifications), created_at: r.created_at,
+    standard_cost_rate: opt(r.standard_cost_rate),
   };
 }
 
@@ -299,6 +304,7 @@ export function mapSettings(r: Tables<"firm_settings">): StudioSettings {
     alert_preferences: { ...DEFAULT_ALERTS, ...(r.alert_preferences as object) },
     risk_weights: { ...DEFAULT_RISK_WEIGHTS, ...(r.risk_weights as object) },
     monthly_billing_target: opt(r.monthly_billing_target != null ? Number(r.monthly_billing_target) : null),
+    approval_thresholds: (r.approval_thresholds as StudioSettings["approval_thresholds"]) ?? { po_director: 100000, po_owner: 500000, expense: 10000 },
   };
 }
 
@@ -345,4 +351,67 @@ export function mapTimesheetEntry(r: Tables<"timesheet_entries"> & { author: { f
     decision_note: opt(r.decision_note),
   };
 }
+
+// Procurement -----------------------------------------------------------------
+type Progress = { po_line_id: string | null; received_qty: number | null; rejected_qty: number | null; billed_qty: number | null };
+
+export function mapPurchaseOrder(
+  r: Tables<"purchase_orders"> & { vendor: { name: string } | null; approver: { full_name: string } | null; lines: Tables<"po_lines">[] },
+  progress: Map<string, Progress>,
+): PurchaseOrder {
+  const lines = r.lines.map((l) => {
+    const p = progress.get(l.id);
+    return {
+      id: l.id, po_id: l.po_id, boq_line_item_id: opt(l.boq_line_item_id), description: l.description, unit: l.unit,
+      quantity: l.quantity, rate: l.rate, gst_rate: l.gst_rate, amount: l.amount ?? 0,
+      received_qty: (p?.received_qty ?? 0) - (p?.rejected_qty ?? 0), billed_qty: p?.billed_qty ?? 0,
+    };
+  });
+  return {
+    id: r.id, project_id: r.project_id, vendor_id: r.vendor_id, vendor_name: r.vendor?.name ?? "", number: opt(r.number),
+    status: r.status, order_date: r.order_date, expected_delivery: opt(r.expected_delivery), notes: opt(r.notes),
+    approval_required_role: opt(r.approval_required_role), approved_by_name: r.approver?.full_name, approved_at: opt(r.approved_at),
+    created_by: opt(r.created_by), created_at: r.created_at, lines, total: round2(lines.reduce((s, l) => s + l.amount, 0)),
+  };
+}
+
+export function mapVendor(r: Tables<"vendors">): Vendor {
+  return { id: r.id, name: r.name, category: r.category, gstin: opt(r.gstin), pan: opt(r.pan), phone: opt(r.phone), email: opt(r.email),
+    address: opt(r.address), payment_terms_days: r.payment_terms_days, status: r.status, notes: opt(r.notes) };
+}
+
+export function mapQuote(r: Tables<"vendor_quotes"> & { vendor: { name: string } | null }): VendorQuote {
+  return { id: r.id, project_id: r.project_id, vendor_id: r.vendor_id, vendor_name: r.vendor?.name ?? "", boq_line_item_id: opt(r.boq_line_item_id),
+    package_name: opt(r.package_name), description: opt(r.description), quantity: r.quantity, rate: r.rate, valid_until: opt(r.valid_until), received_at: r.received_at };
+}
+
+export function mapReceipt(r: Tables<"goods_receipts"> & { receiver: { full_name: string } | null; lines: Tables<"grn_lines">[] }, urlFor: UrlFor): GoodsReceipt {
+  return { id: r.id, po_id: r.po_id, received_on: r.received_on, received_by_name: r.receiver?.full_name, notes: opt(r.notes), photo_url: urlFor(r.photo_url),
+    lines: r.lines.map((l) => ({ po_line_id: l.po_line_id, quantity_received: l.quantity_received, quantity_rejected: l.quantity_rejected, condition_note: opt(l.condition_note) })) };
+}
+
+type BillSummary = { id: string | null; subtotal: number | null; gst_amount: number | null; total: number | null; paid: number | null; outstanding: number | null; match_issues: string[] | null };
+
+export function mapVendorBill(r: Tables<"vendor_bills"> & { vendor: { name: string } | null; lines: Tables<"vendor_bill_lines">[] }, s: BillSummary | undefined, urlFor: UrlFor): VendorBill {
+  return {
+    id: r.id, vendor_id: r.vendor_id, vendor_name: r.vendor?.name ?? "", project_id: r.project_id, po_id: opt(r.po_id), bill_number: r.bill_number,
+    bill_date: r.bill_date, due_date: opt(r.due_date), status: r.status, notes: opt(r.notes), file_url: urlFor(r.file_path),
+    subtotal: s?.subtotal ?? 0, gst_amount: s?.gst_amount ?? 0, total: s?.total ?? 0, paid: s?.paid ?? 0, outstanding: s?.outstanding ?? 0,
+    match_issues: s?.match_issues ?? [],
+    lines: r.lines.map((l) => ({ id: l.id, po_line_id: opt(l.po_line_id), description: l.description, quantity: l.quantity, rate: l.rate, gst_rate: l.gst_rate, amount: l.amount ?? 0 })),
+  };
+}
+
+export function mapVendorPayment(r: Tables<"vendor_payments">): VendorPayment {
+  return { id: r.id, vendor_id: r.vendor_id, bill_id: opt(r.bill_id), project_id: r.project_id, amount: r.amount, tds_amount: r.tds_amount,
+    paid_on: r.paid_on, mode: r.mode, reference: opt(r.reference), is_advance: r.is_advance };
+}
+
+export function mapCostControlRow(r: {
+  project_id: string; line_item_id: string; category: string; description: string; unit: string; quantity: number; sell_rate: number;
+  cost_rate: number | null; sell_amount: number; budget: number | null; committed: number; actual: number;
+}): CostControlRow {
+  return { ...r, cost_rate: opt(r.cost_rate), budget: opt(r.budget) };
+}
+
 

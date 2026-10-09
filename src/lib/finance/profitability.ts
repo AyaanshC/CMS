@@ -9,8 +9,8 @@ export interface ProfitInput {
   invoices: Invoice[];
   costs: ProjectCostRow[];
   expenses: Expense[];
-  vendorBills: VendorBill[];
-  costRows: CostControlRow[];
+  vendorBills?: VendorBill[];
+  costRows?: CostControlRow[];
   useActual: boolean;
 }
 
