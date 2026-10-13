@@ -9,6 +9,7 @@ import {
   mapTask, mapTeamMember, mapTemplate, mapTimesheetEntry, mapUpdate, mapVendor, mapVendorBill,
   mapVendorPayment, mapWeekHours, withClientStats, withOutstanding,
 } from "./mappers";
+import { getMockWorkspaceSnapshot } from "./mock-workspace";
 import type { WorkspaceSnapshot } from "./snapshot";
 
 const isUrl = (p: string) => /^https?:\/\//.test(p);
@@ -16,8 +17,18 @@ const isUrl = (p: string) => /^https?:\/\//.test(p);
 // ponytail: loads the whole RLS-visible workspace per request (fine for ≤ 60 live
 // projects). Switch to per-page queries if load time exceeds ~500 ms.
 export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapshot> {
-  const from = addDays(weekStart(new Date().toISOString().slice(0, 10)), -77);
-  const db = await createServerSupabase();
+  try {
+    // Fast check if Supabase is reachable before attempting 36 concurrent database queries
+    const isLive = await fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/health`, {
+      signal: AbortSignal.timeout(800),
+    }).then((r) => r.ok || r.status < 500).catch(() => false);
+
+    if (!isLive) {
+      return getMockWorkspaceSnapshot(me);
+    }
+
+    const from = addDays(weekStart(new Date().toISOString().slice(0, 10)), -77);
+    const db = await createServerSupabase();
   const [
     settings, clients, team, projects, boqs, snags, tasks, invoices, summaries, payments, expenses,
     messages, updates, notifications, library, templates, materials, files, activity,
@@ -140,4 +151,7 @@ export async function loadWorkspace(me: SessionProfile): Promise<WorkspaceSnapsh
     vendorPayments: (vendorPayments.data ?? []).map(mapVendorPayment),
     costControl: (costControl.data ?? []).map(mapCostControlRow),
   };
+  } catch (err) {
+    return getMockWorkspaceSnapshot(me);
+  }
 }
