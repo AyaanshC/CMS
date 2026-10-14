@@ -14,9 +14,11 @@ export async function setFileVisibility(input: unknown) {
 
 export async function deleteFile(input: unknown) {
   return mutate(idInput, input, async ({ id }, db) => {
-    const res = await db.from("project_files").delete().eq("id", id).select("id, storage_path").single();
-    // ponytail: if the object removal fails the file is orphaned in storage; add a cleanup job if that happens.
-    if (!res.error && res.data) await db.storage.from("project-files").remove([res.data.storage_path]);
-    return res;
+    const file = await db.from("project_files").select("id, storage_path").eq("id",id).single();
+    if (file.error || !file.data) return file;
+    const removal = await db.storage.from("project-files").remove([file.data.storage_path]);
+    if (removal.error) return { data: null, error: removal.error };
+    // Keep the metadata until removal succeeds, so failed deletions remain retryable.
+    return db.from("project_files").delete().eq("id",id).select("id").single();
   });
 }

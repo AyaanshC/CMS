@@ -1,24 +1,20 @@
 "use client";
 
+import { BrandLoader } from "@/components/brand/BrandLoader";
 import { useState } from "react";
 import { use, Suspense } from "react";
 import { useAppStore } from "@/lib/store";
-import { formatCurrency, formatDate, getStatusColor, cn } from "@/lib/utils";
+import { formatMoney as formatCurrency, formatDate, getStatusColor, cn } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  Receipt, Download, CheckCircle2, Clock, Copy, Check, Building2,
-  CreditCard, ShieldCheck, FileText, ArrowUpRight
-} from "lucide-react";
+import { Dialog, DialogContent, DialogFooter } from "@/components/ui/dialog";
+import { Receipt, Download, CheckCircle2, Copy, Check, Building2, CreditCard, FileText } from "lucide-react";
 import { Invoice } from "@/types";
 
 export default function PortalInvoicesPage({ params }: { params: Promise<{ slug: string }> }) {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading invoices...</div>}>
+    <Suspense fallback={<BrandLoader label="Loading invoices" />}>
       <PortalInvoicesContent params={params} />
     </Suspense>
   );
@@ -97,14 +93,14 @@ function PortalInvoicesContent({ params }: { params: Promise<{ slug: string }> }
       </div>
 
       {/* Bank & NEFT/UPI Payment Details */}
-      <Card className="border border-indigo-100 bg-gradient-to-r from-indigo-50/70 to-purple-50/40 shadow-sm">
+      <Card className="border border-primary/15 bg-gradient-to-r from-indigo-50/70 to-purple-50/40 shadow-sm">
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
             <CardTitle className="text-sm font-semibold flex items-center gap-2 text-indigo-950">
-              <CreditCard className="w-4 h-4 text-indigo-600" />
+              <CreditCard className="w-4 h-4 text-primary" />
               Official Bank & Transfer Details
             </CardTitle>
-            <Badge variant="outline" className="text-[10px] bg-white border-indigo-200 text-indigo-700">
+            <Badge variant="outline" className="text-[10px] bg-white border-primary/20 text-primary">
               Verified Studio Account
             </Badge>
           </div>
@@ -123,7 +119,7 @@ function PortalInvoicesContent({ params }: { params: Promise<{ slug: string }> }
               <p className="text-muted-foreground">Account Number / IFSC</p>
               <p className="font-semibold text-foreground mt-0.5">
                 {studioSettings.bank_details.account_number} <br />
-                <span className="text-indigo-600 font-mono text-[11px]">{studioSettings.bank_details.ifsc_code}</span>
+                <span className="text-primary font-mono text-[11px]">{studioSettings.bank_details.ifsc_code}</span>
               </p>
             </div>
             <div>
@@ -153,13 +149,13 @@ function PortalInvoicesContent({ params }: { params: Promise<{ slug: string }> }
         {projectInvoices.map((inv) => (
           <Card
             key={inv.id}
-            className="shadow-sm hover:border-indigo-200 transition-all cursor-pointer"
+            className="shadow-sm hover:border-primary/20 transition-all cursor-pointer"
             onClick={() => setSelectedInvoice(inv)}
           >
             <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="flex items-start gap-3.5">
                 <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center flex-shrink-0 text-slate-700">
-                  <Receipt className="w-5 h-5 text-indigo-600" />
+                  <Receipt className="w-5 h-5 text-primary" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
@@ -236,7 +232,7 @@ function PortalInvoicesContent({ params }: { params: Promise<{ slug: string }> }
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
                     TAX INVOICE
                   </span>
-                  <p className="text-lg font-bold text-indigo-600">{selectedInvoice.invoice_number}</p>
+                  <p className="text-lg font-bold text-primary">{selectedInvoice.invoice_number}</p>
                   <p className="text-xs text-muted-foreground">Date: {selectedInvoice.issue_date ? formatDate(selectedInvoice.issue_date) : "—"}</p>
                   <p className="text-xs text-muted-foreground">Due: {selectedInvoice.due_date ? formatDate(selectedInvoice.due_date) : "—"}</p>
 

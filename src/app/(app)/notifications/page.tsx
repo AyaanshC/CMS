@@ -1,15 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+
 import { TopBar } from "@/components/layout/AppSidebar";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
-import {
-  Bell, CheckCheck, IndianRupee, AlertCircle, FileText, CheckSquare,
-  MessageSquare, Sparkles, ExternalLink, Clock
-} from "lucide-react";
+import { Bell, CheckCheck, IndianRupee, AlertCircle, FileText, CheckSquare, MessageSquare, Clock } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { formatRelativeTime, cn } from "@/lib/utils";
 
@@ -39,13 +36,13 @@ export default function NotificationsPage() {
       return <AlertCircle className="w-4 h-4 text-amber-600" />;
     }
     if (t.includes("boq") || t.includes("approved")) {
-      return <FileText className="w-4 h-4 text-indigo-600" />;
+      return <FileText className="w-4 h-4 text-primary" />;
     }
     if (t.includes("task")) {
       return <CheckSquare className="w-4 h-4 text-blue-600" />;
     }
     if (t.includes("message")) {
-      return <MessageSquare className="w-4 h-4 text-violet-600" />;
+      return <MessageSquare className="w-4 h-4 text-primary" />;
     }
     return <Bell className="w-4 h-4 text-slate-600" />;
   };
@@ -89,7 +86,7 @@ export default function NotificationsPage() {
               onClick={markAllNotificationsRead}
               className="gap-1.5 text-xs self-start sm:self-auto"
             >
-              <CheckCheck className="w-3.5 h-3.5 text-indigo-600" />
+              <CheckCheck className="w-3.5 h-3.5 text-primary" />
               Mark all as read
             </Button>
           )}
@@ -104,13 +101,13 @@ export default function NotificationsPage() {
                 onClick={() => markNotificationRead(notif.id)}
                 className={cn(
                   "p-4 flex items-start gap-4 transition-colors cursor-pointer hover:bg-slate-50/80",
-                  notif.is_read ? "bg-white" : "bg-indigo-50/25"
+                  notif.is_read ? "bg-white" : "bg-accent/25"
                 )}
               >
                 <div
                   className={cn(
                     "w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5",
-                    notif.is_read ? "bg-slate-100" : "bg-indigo-100"
+                    notif.is_read ? "bg-slate-100" : "bg-primary/10"
                   )}
                 >
                   {getNotifIcon(notif.type, notif.title)}
@@ -138,7 +135,7 @@ export default function NotificationsPage() {
                 </div>
 
                 {!notif.is_read && (
-                  <div className="w-2 h-2 rounded-full bg-indigo-600 self-center flex-shrink-0" />
+                  <div className="w-2 h-2 rounded-full bg-primary self-center flex-shrink-0" />
                 )}
               </div>
             ))}

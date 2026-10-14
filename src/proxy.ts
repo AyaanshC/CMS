@@ -1,7 +1,8 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { isDemoEnabled, isDemoEmail } from "@/lib/demo";
 
-const PUBLIC_PREFIXES = ["/login", "/auth", "/onboarding", "/portal", "/api"];
+const PUBLIC_PREFIXES = ["/login", "/forgot-password", "/auth", "/onboarding", "/portal", "/api"];
 
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -34,7 +35,8 @@ export async function proxy(request: NextRequest) {
     user = null;
   }
 
-  const hasDemoCookie = Boolean(request.cookies.get("demo_user_email")?.value);
+  const demoEmail = request.cookies.get("demo_user_email")?.value;
+  const hasDemoCookie = isDemoEnabled() && !!demoEmail && isDemoEmail(demoEmail);
   const isAuthenticated = Boolean(user || hasDemoCookie);
 
   if (!isAuthenticated && !isPublic) {

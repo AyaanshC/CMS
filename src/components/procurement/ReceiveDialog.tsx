@@ -1,5 +1,6 @@
 "use client";
 
+import { useRequestKey } from "@/lib/hooks/use-request-key";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -10,21 +11,27 @@ import { localToday } from "@/lib/utils";
 import type { PurchaseOrder } from "@/types";
 
 export function ReceiveDialog({ po, open, onOpenChange }: { po: PurchaseOrder; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const requestKey=useRequestKey();
+  const [busy,setBusy]=useState(false);
   const { recordReceipt } = useAppStore();
   const outstanding = po.lines.filter((l) => l.received_qty < l.quantity);
   const [qty, setQty] = useState<Record<string, { rec: string; rej: string; note: string }>>({});
   const [photo, setPhoto] = useState<string | undefined>();
 
   async function save() {
+    if(busy)return;
+    setBusy(true);
     const lines = outstanding.filter((l) => Number(qty[l.id]?.rec) > 0).map((l) => ({
       po_line_id: l.id, quantity_received: Number(qty[l.id].rec), quantity_rejected: Number(qty[l.id].rej || 0), condition_note: qty[l.id].note || undefined,
     }));
-    const r = await recordReceipt({ po_id: po.id, received_on: localToday(), photo_url: photo, lines });
+    const payload={po_id:po.id,received_on:localToday(),photo_url:photo,lines};
+    const r = await recordReceipt({...payload,request_id:requestKey(payload)});
+    setBusy(false);
     if (r.ok) onOpenChange(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={o=>{if(!busy)onOpenChange(o);}}>
       <DialogContent className="max-w-xl">
         <DialogHeader><DialogTitle>Receive goods · {po.number}</DialogTitle></DialogHeader>
         <table className="w-full text-xs">
@@ -43,7 +50,7 @@ export function ReceiveDialog({ po, open, onOpenChange }: { po: PurchaseOrder; o
           ))}</tbody>
         </table>
         <PhotoInput projectId={po.project_id} label="Delivery photo / challan" onUploaded={setPhoto} />
-        <DialogFooter><Button onClick={save}>Record receipt</Button></DialogFooter>
+        <DialogFooter><Button disabled={busy || !outstanding.some(l => Number(qty[l.id]?.rec)>0)} onClick={save}>{busy?"Saving…":"Record receipt"}</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

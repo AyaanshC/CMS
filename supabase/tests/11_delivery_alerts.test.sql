@@ -1,6 +1,9 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 select plan(5);
+-- The isolated instance may already have run its scheduled reminders. Clear
+-- these fixtures inside the rollback-only test transaction.
+delete from alerts where kind in ('timesheet_missing','timesheet_missing_manager');
 
 -- Monday 2026-10-12: nobody except seeded people submitted week of 2026-10-05
 select ok(generate_delivery_alerts('2026-10-12') > 0, 'Monday run creates reminders');

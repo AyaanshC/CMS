@@ -29,7 +29,7 @@ select is((select approved_by from boq_versions where id = 'b0000000-0000-4000-8
 select pg_temp.act_as('00000000-0000-4000-8000-000000000011');
 set local role authenticated;
 select throws_like($$ select client_close_snag((select id from snags where title = 'Cove light gap near window')) $$,
-  '%only after it is fixed%', 'cannot close an unfixed snag');
+  '%must verify%', 'cannot close a snag before designer verification');
 reset role;
 
 -- create_boq_version is atomic and numbers versions

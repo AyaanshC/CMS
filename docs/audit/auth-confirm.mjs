@@ -1,0 +1,18 @@
+import {readFile} from "node:fs/promises";
+import assert from "node:assert/strict";
+import {createClient} from "@supabase/supabase-js";
+const env=Object.fromEntries((await readFile(".audit-db/primary-runtime.env","utf8")).split(/\r?\n/).flatMap(line=>{const m=line.match(/^([A-Z_]+)="(.*)"$/);return m?[[m[1],m[2]]]:[];}));
+assert.equal(new URL(env.API_URL).port,"54321","Only the seeded local development backend is allowed");
+const origin=new URL(process.argv[2]??"http://localhost:3000");
+assert.equal(origin.hostname,"localhost");assert(["3000","3001"].includes(origin.port),"Only the local development or verification server is allowed");
+const admin=createClient(env.API_URL,env.SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+const generated=await admin.auth.admin.generateLink({type:"magiclink",email:"arun@client.test"});assert(!generated.error);
+const url=new URL("/auth/confirm",origin);url.searchParams.set("token_hash",generated.data.properties.hashed_token);url.searchParams.set("type","magiclink");url.searchParams.set("next","/portal");
+const confirmed=await fetch(url,{redirect:"manual",signal:AbortSignal.timeout(60000)});
+assert.equal(new URL(confirmed.headers.get("location")).pathname,"/portal","Invitation must confirm and redirect to the portal");
+const cookies=confirmed.headers.getSetCookie().map(c=>c.split(';')[0]).join('; ');assert(cookies.includes("-auth-token"));
+console.log("PASS invitation confirms on the server and sets session cookies");
+const portal=await fetch(new URL("/portal",origin),{headers:{Cookie:cookies},signal:AbortSignal.timeout(60000)});assert.equal(portal.status,200);const html=await portal.text();assert(html.includes("Sharma Villa"));assert(!html.includes("TechCorp HQ Office"));
+console.log("PASS confirmed client session renders only its own project");
+const expired=await fetch(url,{redirect:"manual",signal:AbortSignal.timeout(10000)});assert(new URL(expired.headers.get("location")).searchParams.get("error")==="link");
+console.log("PASS consumed invitation cannot sign in again");admin.realtime.disconnect();

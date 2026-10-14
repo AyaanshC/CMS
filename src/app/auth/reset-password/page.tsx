@@ -1,0 +1,10 @@
+"use client";
+import {useState} from "react";
+import Link from "next/link";
+import {createBrowserSupabase} from "@/lib/supabase/browser";
+import {Button} from "@/components/ui/button";
+import {Input} from "@/components/ui/input";
+export default function ResetPassword(){
+const [password,setPassword]=useState(""),[confirm,setConfirm]=useState(""),[busy,setBusy]=useState(false),[message,setMessage]=useState(""),[done,setDone]=useState(false);
+return <main className="flex min-h-dvh items-center justify-center bg-background p-6"><section className="w-full max-w-md space-y-5 rounded-2xl border bg-card p-8"><h1 className="text-2xl font-semibold">Choose a new password</h1>{done?<p role="status">Your password has been updated. Sign in with your new password.</p>:<form className="space-y-4" onSubmit={async e=>{e.preventDefault();if(password!==confirm){setMessage("The passwords do not match.");return;}setBusy(true);setMessage("");try{const db=createBrowserSupabase();const {data,error:sessionError}=await db.auth.getUser();if(sessionError||!data.user){setMessage("This reset link is invalid or expired. Request a fresh link.");return;}const {error}=await db.auth.updateUser({password});if(error)setMessage(error.message);else{await db.auth.signOut();setPassword("");setConfirm("");setDone(true);}}catch{setMessage("Could not update your password. Please try again.");}finally{setBusy(false);}}}><label className="block text-sm">New password<Input required type="password" minLength={12} autoComplete="new-password" value={password} onChange={e=>setPassword(e.target.value)}/></label><label className="block text-sm">Confirm password<Input required type="password" minLength={12} autoComplete="new-password" value={confirm} onChange={e=>setConfirm(e.target.value)}/></label><p className="text-xs text-muted-foreground">Use at least 12 characters.</p><Button type="submit" disabled={busy}>{busy?"Updating…":"Update password"}</Button></form>}{message&&<p role="alert" className="text-sm">{message}</p>}<Link className="block text-sm text-primary" href={done?"/login":"/forgot-password"}>{done?"Sign in":"Request a fresh reset link"}</Link></section></main>;
+}

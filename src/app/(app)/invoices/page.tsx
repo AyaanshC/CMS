@@ -1,5 +1,10 @@
 "use client";
+import { canRecordPayments } from "@/lib/permissions";
 
+import { InvoiceComposer } from "@/components/finance/InvoiceComposer";
+import { invoiceSummary } from "@/lib/finance/summary";
+import { localToday } from "@/lib/utils";
+import { useRequestKey } from "@/lib/hooks/use-request-key";
 import { useState } from "react";
 import Link from "next/link";
 import { TopBar } from "@/components/layout/AppSidebar";
@@ -16,28 +21,22 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Search, Plus, MoreHorizontal, Download, IndianRupee, Clock, ArrowUpRight,
-  CheckCircle2, AlertCircle, Building2, CreditCard, Check, Receipt, Printer
-} from "lucide-react";
+import { Search, Plus, MoreHorizontal, IndianRupee, Clock, ArrowUpRight, CheckCircle2, AlertCircle, Building2, CreditCard, Check, Receipt, Printer } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { formatCurrency, formatDate, getStatusColor, cn } from "@/lib/utils";
+import { formatMoney as formatCurrency, formatDate, getStatusColor, cn } from "@/lib/utils";
 import { Invoice, PAYMENT_MODE_LABELS, type PaymentMode } from "@/types";
-import { canRecordPayments } from "@/lib/permissions";
+
 
 export default function InvoicesPage() {
-  const { invoices, projects, clients, studioSettings, addInvoice, recordPayment, me } = useAppStore();
+  const { invoices, studioSettings, recordPayment, me, issueInvoice, deleteDraftInvoice } = useAppStore();
 
+  const requestKey=useRequestKey();
+  const [savingPayment,setSavingPayment]=useState(false),[paymentTds,setPaymentTds]=useState(0);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // Create Invoice Modal State
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id || "");
-  const [invoiceTitle, setInvoiceTitle] = useState("Carpentry & Wardrobe Milestone (40%)");
-  const [subtotal, setSubtotal] = useState(250000);
-  const [dueDate, setDueDate] = useState("2025-01-15");
-
   // Record Payment Modal State
   const [paymentInvoice, setPaymentInvoice] = useState<Invoice | null>(null);
   const [paymentAmount, setPaymentAmount] = useState<number>(0);
@@ -60,40 +59,24 @@ export default function InvoicesPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const totalInvoiced = invoices.reduce((sum, inv) => sum + inv.total_amount, 0);
-  const totalPaid = invoices.reduce((sum, inv) => sum + inv.amount_paid, 0);
-  const totalOutstanding = invoices.reduce((sum, inv) => sum + inv.amount_due, 0);
+  const { invoiced: totalInvoiced, collected: totalPaid, outstanding: totalOutstanding } = invoiceSummary(invoices);
   const overdueCount = invoices.filter((inv) => inv.status === "overdue").length;
-
-  const handleCreateInvoice = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const proj = projects.find((p) => p.id === selectedProjectId);
-    if (!proj) return;
-
-    const gstPercent = studioSettings.gst_rate;
-    const r = await addInvoice({
-      project_id: proj.id,
-      subtotal,
-      discount: 0,
-      gst_rate: gstPercent,
-      due_date: dueDate,
-      notes: invoiceTitle,
-      send: true,
-    });
-    if (r.ok) setShowCreateModal(false);
-  };
 
   const openPaymentModal = (inv: Invoice) => {
     setPaymentInvoice(inv);
     setPaymentAmount(inv.amount_due);
+    setPaymentTds(0);
     setPaymentRef("");
+    setPaymentDate(localToday());
   };
 
   const handleRecordPayment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!paymentInvoice || paymentAmount <= 0) return;
+    if (!paymentInvoice || paymentAmount <= 0 || savingPayment) return;
+    setSavingPayment(true);
 
-    const r = await recordPayment(paymentInvoice.id, paymentAmount, paymentDate, paymentMode, paymentRef || undefined);
+    const r = await recordPayment(paymentInvoice.id, paymentAmount, paymentDate, paymentMode, paymentRef || undefined,paymentTds,requestKey({invoice_id:paymentInvoice.id,paymentAmount,paymentDate,paymentMode,paymentRef,paymentTds}));
+    setSavingPayment(false);
     if (r.ok) setPaymentInvoice(null);
   };
 
@@ -101,7 +84,7 @@ export default function InvoicesPage() {
 
   return (
     <div>
-      <TopBar title="Invoices & Finance" subtitle={`${invoices.length} total invoices issued`} />
+      <TopBar title="Invoices & Finance" subtitle={`${invoices.filter(i=>i.status!=="draft"&&i.status!=="cancelled").length} issued · ${invoices.filter(i=>i.status==="draft").length} drafts`} />
       <div className="p-6">
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -165,16 +148,16 @@ export default function InvoicesPage() {
             </div>
 
             {/* Status Filter */}
-            <select
+            <select aria-label="Filter invoice status"
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="text-xs border border-input rounded-md px-2.5 py-2 bg-background focus:outline-none focus:ring-1 focus:ring-ring"
             >
               <option value="all">All Status</option>
               <option value="paid">Paid</option>
-              <option value="issued">Issued / Unpaid</option>
-              <option value="partially_paid">Partially Paid</option>
-              <option value="overdue">Overdue</option>
+              <option value="sent">Issued / Unpaid</option>
+              <option value="partial">Partially Paid</option>
+              <option value="overdue">Overdue</option><option value="draft">Draft</option><option value="cancelled">Cancelled</option>
             </select>
           </div>
 
@@ -208,7 +191,7 @@ export default function InvoicesPage() {
                     <button
                       type="button"
                       onClick={() => setViewInvoice(inv)}
-                      className="hover:underline text-indigo-600 font-mono text-xs flex items-center gap-1"
+                      className="hover:underline text-primary font-mono text-xs flex items-center gap-1"
                     >
                       <Receipt className="w-3.5 h-3.5" />
                       {inv.invoice_number ?? "Draft"}
@@ -225,10 +208,10 @@ export default function InvoicesPage() {
                   </TableCell>
                   <TableCell>
                     <p className="text-xs text-foreground">Issued: {inv.issue_date ? formatDate(inv.issue_date) : "—"}</p>
-                    <p className="text-[11px] text-muted-foreground">Due: {inv.due_date ? formatDate(inv.due_date) : "—"}</p>
+                    <p className="text-xs text-muted-foreground">Due: {inv.due_date ? formatDate(inv.due_date) : "—"}</p>
                   </TableCell>
                   <TableCell>
-                    <Badge className={cn("text-[10px] border-0", getStatusColor(inv.status))}>
+                    <Badge className={cn("text-xs border-0", getStatusColor(inv.status))}>
                       {inv.status.replace("_", " ").toUpperCase()}
                     </Badge>
                   </TableCell>
@@ -248,14 +231,15 @@ export default function InvoicesPage() {
                   </TableCell>
                   <TableCell className="text-center">
                     <DropdownMenu>
-                      <DropdownMenuTrigger className="w-8 h-8 inline-flex items-center justify-center rounded-md hover:bg-muted cursor-pointer border-0 bg-transparent text-slate-600">
+                      <DropdownMenuTrigger aria-label={`Invoice actions for ${inv.invoice_number??"draft"}`} className="w-8 h-8 inline-flex items-center justify-center rounded-md hover:bg-muted cursor-pointer border-0 bg-transparent text-slate-600">
                         <MoreHorizontal className="w-4 h-4" />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        {inv.status==="draft"&&<><DropdownMenuItem onClick={()=>issueInvoice(inv.id,inv.due_date)}>Issue reviewed draft</DropdownMenuItem><DropdownMenuItem onClick={()=>deleteDraftInvoice(inv.id)}>Delete draft</DropdownMenuItem></>}
                         <DropdownMenuItem onClick={() => setViewInvoice(inv)}>
-                          <Receipt className="w-3.5 h-3.5 mr-2 text-indigo-600" /> View & Print Invoice
+                          <Receipt className="w-3.5 h-3.5 mr-2 text-primary" /> View & Print Invoice
                         </DropdownMenuItem>
-                        {inv.amount_due > 0 && (
+                        {inv.amount_due > 0 && inv.status!=="draft" && inv.status!=="cancelled" && canRecordPayments(me) && (
                           <DropdownMenuItem
                             onClick={() => openPaymentModal(inv)}
                             className="text-emerald-700 font-medium"
@@ -281,88 +265,7 @@ export default function InvoicesPage() {
       </div>
 
       {/* Create Invoice Dialog */}
-      <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create New Tax Invoice</DialogTitle>
-            <DialogDescription>
-              Issue an invoice for project milestones or custom deliverable phases.
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleCreateInvoice} className="space-y-4 py-2">
-            <div>
-              <label className="text-xs font-semibold text-foreground block mb-1">Select Project *</label>
-              <select
-                value={selectedProjectId}
-                onChange={(e) => setSelectedProjectId(e.target.value)}
-                className="w-full text-sm border border-input rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.client_name})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs font-semibold text-foreground block mb-1">Milestone Description *</label>
-              <Input
-                required
-                value={invoiceTitle}
-                onChange={(e) => setInvoiceTitle(e.target.value)}
-                placeholder="e.g. Carpentry Work 40% Advance"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="text-xs font-semibold text-foreground block mb-1">Subtotal (₹) *</label>
-                <Input
-                  type="number"
-                  required
-                  value={subtotal}
-                  onChange={(e) => setSubtotal(Number(e.target.value))}
-                />
-              </div>
-              <div>
-                <label className="text-xs font-semibold text-foreground block mb-1">Due Date *</label>
-                <Input
-                  type="date"
-                  required
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="p-3 bg-slate-50 rounded-lg border border-border text-xs space-y-1">
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Subtotal:</span>
-                <span className="font-semibold">{formatCurrency(subtotal)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">GST ({studioSettings.gst_rate}%):</span>
-                <span className="font-semibold">{formatCurrency((subtotal * studioSettings.gst_rate) / 100)}</span>
-              </div>
-              <div className="flex justify-between border-t border-border pt-1 font-bold text-sm text-foreground">
-                <span>Total Invoice Value:</span>
-                <span>{formatCurrency(subtotal * (1 + studioSettings.gst_rate / 100))}</span>
-              </div>
-            </div>
-
-            <DialogFooter className="gap-2 sm:gap-0 pt-2">
-              <Button type="button" variant="outline" onClick={() => setShowCreateModal(false)}>
-                Cancel
-              </Button>
-              <Button type="submit" className="gradient-primary border-0 text-white">
-                Generate Invoice
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {showCreateModal && <InvoiceComposer onClose={() => setShowCreateModal(false)} />}
 
       {/* Record Payment Dialog */}
       {paymentInvoice && (
@@ -381,19 +284,20 @@ export default function InvoicesPage() {
             <form onSubmit={handleRecordPayment} className="space-y-4 py-2">
               <div>
                 <label className="text-xs font-semibold text-foreground block mb-1">Amount Received (₹) *</label>
-                <Input
+                <Input aria-label="Amount Received (₹) *"
                   type="number"
-                  max={paymentInvoice.amount_due}
-                  required
+                  max={paymentInvoice.amount_due-paymentTds}
+                  min="0.01" step="0.01" required
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(Number(e.target.value))}
                 />
               </div>
 
+              <label className="block text-sm">TDS withheld (₹)<Input type="number" min="0" step="0.01" value={paymentTds} onChange={e=>setPaymentTds(Number(e.target.value))}/></label>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-foreground block mb-1">Payment Mode *</label>
-                  <select
+                  <select aria-label="Payment Mode *"
                     value={paymentMode}
                     onChange={(e) => setPaymentMode(e.target.value as PaymentMode)}
                     className="w-full text-sm border border-input rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -405,7 +309,7 @@ export default function InvoicesPage() {
                 </div>
                 <div>
                   <label className="text-xs font-semibold text-foreground block mb-1">Payment Date *</label>
-                  <Input
+                  <Input aria-label="Payment Date *"
                     type="date"
                     required
                     value={paymentDate}
@@ -416,7 +320,7 @@ export default function InvoicesPage() {
 
               <div>
                 <label className="text-xs font-semibold text-foreground block mb-1">Transaction Ref / Cheque No.</label>
-                <Input
+                <Input aria-label="Transaction Ref / Cheque No."
                   value={paymentRef}
                   onChange={(e) => setPaymentRef(e.target.value)}
                   placeholder="e.g. UTR194820129"
@@ -427,7 +331,7 @@ export default function InvoicesPage() {
                 <Button type="button" variant="outline" onClick={() => setPaymentInvoice(null)}>
                   Cancel
                 </Button>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 gap-1.5">
+                <Button disabled={savingPayment||paymentAmount+paymentTds>paymentInvoice.amount_due} type="submit" className="bg-emerald-600 hover:bg-emerald-700 text-white border-0 gap-1.5">
                   <Check className="w-4 h-4" /> Save Receipt
                 </Button>
               </DialogFooter>
@@ -456,7 +360,7 @@ export default function InvoicesPage() {
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground block">
                     TAX INVOICE
                   </span>
-                  <p className="text-lg font-bold text-indigo-600 font-mono">{viewInvoice.invoice_number ?? "Draft"}</p>
+                  <p className="text-lg font-bold text-primary font-mono">{viewInvoice.invoice_number ?? "Draft"}</p>
                   <p className="text-xs text-muted-foreground">Issued: {viewInvoice.issue_date ? formatDate(viewInvoice.issue_date) : "—"}</p>
                   <p className="text-xs text-muted-foreground">Due: {viewInvoice.due_date ? formatDate(viewInvoice.due_date) : "—"}</p>
 
@@ -536,7 +440,7 @@ export default function InvoicesPage() {
               </div>
 
               {/* Bank Details */}
-              <div className="p-3 bg-slate-50 rounded-lg border border-border text-[11px] text-muted-foreground">
+              <div className="p-3 bg-slate-50 rounded-lg border border-border text-xs text-muted-foreground">
                 <p className="font-semibold text-foreground mb-1">Bank Payment Instructions:</p>
                 <p>Beneficiary: {studioSettings.bank_details.account_name}</p>
                 <p>Account: {studioSettings.bank_details.account_number} | IFSC: {studioSettings.bank_details.ifsc_code} | Bank: {studioSettings.bank_details.bank_name}</p>

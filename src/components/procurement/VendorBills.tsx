@@ -6,18 +6,21 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { hasAnyRole } from "@/lib/permissions";
 import { useAppStore } from "@/lib/store";
-import { formatCurrency, formatDate, localToday } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import { BillDialog } from "./BillDialog";
+import { VendorPaymentDialog } from "./VendorPaymentDialog";
+import type { VendorBill } from "@/types";
 
 export function VendorBills({ projectId }: { projectId: string }) {
-  const { me, vendorBills, decideVendorBill, recordVendorPayment } = useAppStore();
+  const { me, vendorBills, decideVendorBill } = useAppStore();
   const list = vendorBills.filter((b) => b.project_id === projectId);
   const [open, setOpen] = useState(false);
+  const [payment,setPayment]=useState<VendorBill|null|undefined>(undefined);
   const isFinance = hasAnyRole(me, ["owner", "finance"]);
 
   return (
     <div className="space-y-2">
-      {hasAnyRole(me, ["owner", "finance", "procurement"]) && <div className="flex justify-end"><Button size="sm" onClick={() => setOpen(true)}>Record bill</Button></div>}
+      {hasAnyRole(me, ["owner", "finance", "procurement"]) && <div className="flex justify-end gap-2">{isFinance&&<Button size="sm" variant="outline" onClick={()=>setPayment(null)}>Record vendor advance</Button>}<Button size="sm" onClick={() => setOpen(true)}>Record bill</Button></div>}
       {list.map((b) => (
         <Card key={b.id}><CardContent className="p-3 space-y-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -32,8 +35,8 @@ export function VendorBills({ projectId }: { projectId: string }) {
                 </>
               )}
               {isFinance && b.status === "approved" && b.outstanding > 0 && (
-                <Button size="sm" variant="outline" onClick={() => recordVendorPayment({ vendor_id: b.vendor_id, project_id: projectId, bill_id: b.id, amount: b.outstanding, paid_on: localToday(), mode: "bank_transfer" })}>
-                  Mark paid
+                <Button size="sm" variant="outline" onClick={() => setPayment(b)}>
+                  Record payment
                 </Button>
               )}
               {b.file_url && <a href={b.file_url} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">View bill</a>}
@@ -43,6 +46,7 @@ export function VendorBills({ projectId }: { projectId: string }) {
         </CardContent></Card>
       ))}
       <BillDialog projectId={projectId} open={open} onOpenChange={setOpen} />
+      {payment!==undefined&&<VendorPaymentDialog projectId={projectId} bill={payment} onClose={()=>setPayment(undefined)}/>}
     </div>
   );
 }

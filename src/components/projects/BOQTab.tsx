@@ -1,23 +1,30 @@
 "use client";
 
 import React, { useState } from "react";
-import { BOQVersion, BOQLineItem } from "@/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BOQVersion } from "@/types";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { formatCurrency, formatDate, getStatusColor, cn } from "@/lib/utils";
+import { formatMoney as formatCurrency, formatDate, getStatusColor, cn } from "@/lib/utils";
 import { Download, FileText, Check, History, Plus, Trash2, BookOpen, Printer, X, ArrowRight } from "lucide-react";
 import { useAppStore } from "@/lib/store";
+import { boqTotals } from "@/lib/finance/money";
+import { downloadBoq } from "@/lib/export/boq";
+import { compareBoqs } from "@/lib/finance/boq-diff";
+import { updateLineItem } from "@/app/actions/boq";
+import { BoqTools } from "./BoqTools";
+import { toast } from "@/components/ui/toast";
+
 
 export default function BOQTab({ projectId, boqVersions }: { projectId: string; boqVersions: BOQVersion[] }) {
-  const { 
-    itemLibrary, 
-    addBOQVersion, 
-    updateBOQVersion, 
-    addLineItemToBOQ, 
+  const {
+    itemLibrary,
+    addBOQVersion,
+    updateBOQVersion,
+    addLineItemToBOQ,
     deleteLineItemFromBOQ,
     studioSettings
   } = useAppStore();
@@ -27,6 +34,8 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [addItemModalOpen, setAddItemModalOpen] = useState(false);
   const [activeSectionId, setActiveSectionId] = useState<string>("");
+  const [editingItem, setEditingItem] = useState<string | null>(null);
+  const [savingItem, setSavingItem] = useState(false);
   const [compareVersionId, setCompareVersionId] = useState<string>(boqVersions[1]?.id || boqVersions[0]?.id || "");
 
   // Form for adding new item
@@ -39,6 +48,7 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
   });
 
   const selectedBoq = boqVersions.find((b) => b.id === selectedVersionId) || boqVersions[0];
+  const totals = selectedBoq ? boqTotals(selectedBoq) : null;
 
   if (!boqVersions.length || !selectedBoq) {
     return (
@@ -46,7 +56,7 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
         <FileText className="w-10 h-10 text-muted-foreground mb-4" />
         <h3 className="font-semibold mb-1">No BOQ created yet</h3>
         <p className="text-sm text-muted-foreground mb-4">Start by creating your first Bill of Quantities version.</p>
-        <Button 
+        <Button
           onClick={async () => {
             const r = await addBOQVersion({
               id: "", project_id: projectId, version_number: 1, version_label: "Initial estimate", status: "draft",
@@ -95,24 +105,30 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
     if (r.ok && r.id) setSelectedVersionId(r.id);
   };
 
-  const handleAddItemSubmit = (e: React.FormEvent) => {
+  const handleAddItemSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeSectionId) return;
-    addLineItemToBOQ(selectedBoq.id, activeSectionId, {
+    setSavingItem(true);
+    const values = {
       description: newItemForm.description,
       unit: newItemForm.unit,
       quantity: Number(newItemForm.quantity),
       unit_rate: Number(newItemForm.unit_rate),
       remarks: newItemForm.remarks,
-      sort_order: 99
-    });
+      sort_order: editingItem ? selectedBoq.sections.flatMap(s => s.items).find(i => i.id === editingItem)?.sort_order ?? 99 : 99
+    };
+    const result = editingItem ? await updateLineItem({id:editingItem,...values}) : await addLineItemToBOQ(selectedBoq.id, activeSectionId, values);
+    setSavingItem(false);
+    if (!result.ok && editingItem) toast.add({title:"Could not save line",description:result.error,type:"error"});
+    if (!result.ok) return;
     setNewItemForm({ description: "", unit: "sqft", quantity: 1, unit_rate: 100, remarks: "" });
     setAddItemModalOpen(false);
   };
 
   // Version diff calculations for comparison
   const compareTargetBoq = boqVersions.find(b => b.id === compareVersionId) || selectedBoq;
-  const netDifference = selectedBoq.grand_total - compareTargetBoq.grand_total;
+  const netDifference = boqTotals(selectedBoq).grandTotal - boqTotals(compareTargetBoq).grandTotal;
+  const differences = compareBoqs(compareTargetBoq,selectedBoq);
 
   return (
     <div className="space-y-6">
@@ -139,11 +155,13 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <BoqTools key={selectedBoq.id} boq={selectedBoq}/>
           {boqVersions.length > 1 && (
             <Button variant="outline" size="sm" onClick={() => setCompareModalOpen(true)} className="gap-2 text-xs">
               <History className="w-3.5 h-3.5" /> Compare Versions
             </Button>
           )}
+          <Button variant="outline" size="sm" onClick={async()=>{try{await downloadBoq(selectedBoq,studioSettings.name);}catch{toast.add({title:"Could not export Excel",description:"Please try again.",type:"error"});}}}>Export Excel</Button>
           <Button variant="outline" size="sm" onClick={() => setExportModalOpen(true)} className="gap-2 text-xs">
             <Download className="w-3.5 h-3.5" /> Export PDF
           </Button>
@@ -170,15 +188,15 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
           <CardContent className="p-4">
             <p className="text-xs font-medium text-muted-foreground mb-1">Subtotal (Excl. Tax)</p>
             <p className="text-xl font-bold text-foreground">
-              {formatCurrency(selectedBoq.sections?.reduce((sum, s) => sum + s.subtotal, 0) || 0)}
+              {formatCurrency(totals!.taxable)}
             </p>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs font-medium text-muted-foreground mb-1">GST ({selectedBoq.gst_percent || 18}%)</p>
+            <p className="text-xs font-medium text-muted-foreground mb-1">GST ({selectedBoq.gst_percent}%)</p>
             <p className="text-xl font-bold text-muted-foreground">
-              {formatCurrency(((selectedBoq.sections?.reduce((sum, s) => sum + s.subtotal, 0) || 0) * (selectedBoq.gst_percent || 18)) / 100)}
+              {formatCurrency(totals!.gst)}
             </p>
           </CardContent>
         </Card>
@@ -186,12 +204,13 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
           <CardContent className="p-4">
             <p className="text-xs font-medium text-muted-foreground mb-1">Designer Fee</p>
             <p className="text-xl font-bold text-foreground">{formatCurrency(selectedBoq.designer_fee || 0)}</p>
+            {selectedBoq.discount_amount > 0 && <p className="text-xs text-muted-foreground mt-1">Discount: {formatCurrency(selectedBoq.discount_amount)}</p>}
           </CardContent>
         </Card>
-        <Card className="bg-indigo-50/50 border-indigo-200">
+        <Card className="bg-accent/50 border-primary/20">
           <CardContent className="p-4">
-            <p className="text-xs font-medium text-indigo-700 mb-1">Grand Total</p>
-            <p className="text-xl font-bold text-indigo-700">{formatCurrency(selectedBoq.grand_total)}</p>
+            <p className="text-xs font-medium text-primary mb-1">Grand Total</p>
+            <p className="text-xl font-bold text-primary">{formatCurrency(totals!.grandTotal)}</p>
           </CardContent>
         </Card>
       </div>
@@ -217,7 +236,7 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
                   <tr className="bg-muted/40 border-b border-border">
                     <td colSpan={4} className="py-2.5 px-4 font-semibold text-foreground">
                       <div className="flex items-center gap-2">
-                        <span className="w-2 h-2 rounded-full bg-indigo-500" />
+                        <span className="w-2 h-2 rounded-full bg-primary" />
                         {section.room_name} — {section.category}
                       </div>
                     </td>
@@ -226,14 +245,15 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
                     </td>
                     <td className="py-2.5 px-4 text-center">
                       {selectedBoq.status === 'draft' && (
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => {
                             setActiveSectionId(section.id);
+                            setEditingItem(null);
                             setAddItemModalOpen(true);
                           }}
-                          className="h-7 text-xs text-indigo-600 gap-1 hover:text-indigo-700"
+                          className="h-7 text-xs text-primary gap-1 hover:text-primary"
                         >
                           <Plus className="w-3 h-3" /> Add Item
                         </Button>
@@ -254,6 +274,9 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
                       <td className="py-2.5 px-4 text-right font-medium text-foreground">{formatCurrency(item.total)}</td>
                       <td className="py-2.5 px-4 text-center">
                         {selectedBoq.status === 'draft' && (
+                          <Button size="sm" variant="ghost" onClick={()=>{setActiveSectionId(section.id);setEditingItem(item.id);setNewItemForm({description:item.description,unit:item.unit,quantity:item.quantity,unit_rate:item.unit_rate,remarks:item.remarks??""});setAddItemModalOpen(true);}}>Edit</Button>
+                        )}
+                        {selectedBoq.status === 'draft' && (
                           <button
                             onClick={() => deleteLineItemFromBOQ(selectedBoq.id, section.id, item.id)}
                             className="text-muted-foreground hover:text-destructive p-1 rounded transition-colors"
@@ -271,7 +294,7 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
           </table>
         </div>
       </Card>
-      
+
       {/* Approval Status Banner */}
       {selectedBoq.status === 'approved' && (
         <div className="bg-green-50 border border-green-200 rounded-xl p-4 flex items-start gap-3">
@@ -280,7 +303,7 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
           </div>
           <div>
             <p className="font-semibold text-green-800 text-sm">Digitally Approved by Client</p>
-            <p className="text-green-700 text-xs mt-0.5">Approved on {formatDate(selectedBoq.approved_at!)}</p>
+            <p className="text-green-700 text-xs mt-0.5">{selectedBoq.approved_at ? `Approved on ${formatDate(selectedBoq.approved_at)}` : "Approval recorded"}</p>
             {selectedBoq.approval_note && (
               <p className="text-green-800 text-sm mt-2 p-2 bg-green-100/60 rounded italic border-l-2 border-green-400">
                 &ldquo;{selectedBoq.approval_note}&rdquo;
@@ -309,7 +332,7 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
       <Dialog open={addItemModalOpen} onOpenChange={setAddItemModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Line Item</DialogTitle>
+            <DialogTitle>{editingItem ? "Edit line item" : "Add line item"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAddItemSubmit} className="space-y-4">
             {/* Quick Pick from Library */}
@@ -317,7 +340,7 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
               <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                 <BookOpen className="w-3.5 h-3.5 text-primary" /> Pick from Rate Master
               </div>
-              <select 
+              <select
                 className="w-full text-xs p-2 rounded border border-input bg-card"
                 onChange={(e) => {
                   const item = itemLibrary.find(i => i.id === e.target.value);
@@ -343,7 +366,7 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
 
             <div className="space-y-1">
               <Label className="text-xs">Description</Label>
-              <Input 
+              <Input aria-label="Description"
                 required
                 value={newItemForm.description}
                 onChange={(e) => setNewItemForm({ ...newItemForm, description: e.target.value })}
@@ -353,7 +376,7 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
             <div className="grid grid-cols-3 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Unit</Label>
-                <select
+                <select aria-label="Unit"
                   value={newItemForm.unit}
                   onChange={(e) => setNewItemForm({ ...newItemForm, unit: e.target.value })}
                   className="w-full h-9 px-2 text-xs rounded border border-input bg-card"
@@ -366,7 +389,7 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Quantity</Label>
-                <Input 
+                <Input aria-label="Quantity"
                   type="number"
                   min="0.1"
                   step="any"
@@ -377,7 +400,7 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Unit Rate (₹)</Label>
-                <Input 
+                <Input aria-label="Unit Rate (₹)"
                   type="number"
                   min="0"
                   required
@@ -388,18 +411,18 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Remarks (Optional)</Label>
-              <Input 
+              <Input aria-label="Remarks (Optional)"
                 value={newItemForm.remarks}
                 onChange={(e) => setNewItemForm({ ...newItemForm, remarks: e.target.value })}
                 placeholder="e.g. Saint-Gobain 6mm toughened glass"
               />
             </div>
-            <div className="p-2 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded text-right">
+            <div className="p-2 bg-accent text-primary text-xs font-semibold rounded text-right">
               Total: {formatCurrency(newItemForm.quantity * newItemForm.unit_rate)}
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setAddItemModalOpen(false)}>Cancel</Button>
-              <Button type="submit" className="gradient-primary border-0">Add Item</Button>
+              <Button disabled={savingItem} type="submit" className="gradient-primary border-0">{savingItem ? "Saving…" : editingItem ? "Save item" : "Add item"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -452,23 +475,25 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {selectedBoq.sections?.flatMap(s => s.items || []).map((item) => {
-                    const oldItem = compareTargetBoq.sections?.flatMap(s => s.items || []).find(i => i.description === item.description);
-                    const diff = item.total - (oldItem?.total || 0);
+                  {differences.map((row) => {
+                    const item = row.after ?? row.before!;
+                    const oldItem = row.before;
+                    const diff = row.difference;
                     return (
-                      <tr key={item.id} className={cn(
+                      <tr key={row.key} className={cn(
                         "hover:bg-muted/10",
-                        !oldItem ? "bg-emerald-50/50" : diff !== 0 ? "bg-amber-50/50" : ""
+                        row.status === "Removed" ? "bg-red-50/50" : !oldItem ? "bg-emerald-50/50" : row.status === "Changed" ? "bg-amber-50/50" : ""
                       )}>
                         <td className="p-2.5">
                           <span className="font-medium text-foreground">{item.description}</span>
-                          {!oldItem && <span className="ml-2 text-[10px] text-emerald-600 font-bold uppercase">(Added)</span>}
+                          <span className="ml-2 text-[10px] font-bold uppercase">({row.status})</span><p className="text-muted-foreground">{row.section}</p>
+                          {row.status === "Changed" && <p className="text-muted-foreground">Qty {row.before?.quantity} → {row.after?.quantity} · Rate {row.before?.unit_rate} → {row.after?.unit_rate}</p>}
                         </td>
                         <td className="p-2.5 text-right text-muted-foreground">
                           {oldItem ? formatCurrency(oldItem.total) : "—"}
                         </td>
                         <td className="p-2.5 text-right font-medium">
-                          {formatCurrency(item.total)}
+                          {row.after ? formatCurrency(row.after.total) : "—"}
                         </td>
                         <td className={cn("p-2.5 text-right font-semibold", diff > 0 ? "text-amber-600" : diff < 0 ? "text-emerald-600" : "text-muted-foreground")}>
                           {diff > 0 ? `+${formatCurrency(diff)}` : diff < 0 ? formatCurrency(diff) : "0"}
@@ -542,19 +567,20 @@ export default function BOQTab({ projectId, boqVersions }: { projectId: string; 
               <div className="w-56 text-xs space-y-1.5">
                 <div className="flex justify-between">
                   <span className="text-slate-500">Subtotal:</span>
-                  <span className="font-medium">{formatCurrency(selectedBoq.sections?.reduce((s, x) => s + x.subtotal, 0) || 0)}</span>
+                  <span className="font-medium">{formatCurrency(totals!.itemsSubtotal)}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">GST ({selectedBoq.gst_percent || 18}%):</span>
-                  <span className="font-medium">{formatCurrency(((selectedBoq.sections?.reduce((s, x) => s + x.subtotal, 0) || 0) * (selectedBoq.gst_percent || 18)) / 100)}</span>
+                  <span className="text-slate-500">GST ({selectedBoq.gst_percent}%):</span>
+                  <span className="font-medium">{formatCurrency(totals!.gst)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Designer Fee:</span>
                   <span className="font-medium">{formatCurrency(selectedBoq.designer_fee || 0)}</span>
                 </div>
+                <div className="flex justify-between"><span className="text-slate-500">Discount:</span><span>{formatCurrency(selectedBoq.discount_amount)}</span></div>
                 <div className="flex justify-between text-sm font-bold border-t pt-1.5 text-slate-900">
                   <span>Grand Total:</span>
-                  <span>{formatCurrency(selectedBoq.grand_total)}</span>
+                  <span>{formatCurrency(totals!.grandTotal)}</span>
                 </div>
               </div>
             </div>

@@ -1,204 +1,357 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { TopBar } from "@/components/layout/AppSidebar";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import {
-  Search, Plus, LayoutGrid, List, Calendar, Filter,
-  FolderKanban, Clock, AlertCircle, IndianRupee,
+  Search,
+  LayoutGrid,
+  List,
+  Columns3,
+  CalendarDays,
+  ArrowUpRight,
+  FolderKanban,
+  SlidersHorizontal,
 } from "lucide-react";
 import { useAppStore } from "@/lib/store";
-import { formatCurrency, getStatusColor, formatShortDate, isOverdue, cn } from "@/lib/utils";
-import Link from "next/link";
-import { PROJECT_STAGES, PROJECT_STAGE_LABELS, ProjectStatus, type Project } from "@/types";
+import {
+  formatCurrency,
+  getStatusColor,
+  formatShortDate,
+  cn,
+} from "@/lib/utils";
+import {
+  PROJECT_STAGES,
+  PROJECT_STAGE_LABELS,
+  type ProjectStatus,
+  type Project,
+} from "@/types";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 
-type View = "kanban" | "list";
-
-const STAGE_COLORS: Record<ProjectStatus, string> = {
-  lead: "border-slate-300",
-  consultation: "border-blue-300",
-  design: "border-violet-300",
-  boq_approval: "border-amber-300",
-  execution: "border-indigo-400",
-  snag: "border-orange-400",
-  handover: "border-teal-400",
-  closed: "border-green-400",
-};
-
-const STAGE_HEADER_COLORS: Record<ProjectStatus, string> = {
-  lead: "bg-slate-50 text-slate-600",
-  consultation: "bg-blue-50 text-blue-700",
-  design: "bg-violet-50 text-violet-700",
-  boq_approval: "bg-amber-50 text-amber-700",
-  execution: "bg-indigo-50 text-indigo-700",
-  snag: "bg-orange-50 text-orange-700",
-  handover: "bg-teal-50 text-teal-700",
-  closed: "bg-green-50 text-green-700",
-};
+type View = "grid" | "board" | "list";
 
 function ProjectCard({ project }: { project: Project }) {
-  const overdue = project.estimated_end_date && isOverdue(project.estimated_end_date);
   return (
-    <Link href={`/projects/${project.id}`}>
-      <div className={cn("bg-card border-l-4 rounded-xl p-4 shadow-sm hover:shadow-md transition-all cursor-pointer mb-3 card-hover", STAGE_COLORS[(project.status as ProjectStatus) || "lead"])}>
-        <div className="flex items-start justify-between mb-2">
-          <p className="font-semibold text-sm text-foreground leading-tight">{project.name}</p>
-        </div>
-        <p className="text-xs text-muted-foreground mb-3">{project.client_name}</p>
-        <Progress value={project.progress_percent} className="h-1.5 mb-1" />
-        <div className="flex items-center justify-between text-xs text-muted-foreground mt-1">
-          <span>{project.progress_percent}% complete</span>
-          {project.estimated_end_date && (
-            <span className={cn("flex items-center gap-1", overdue ? "text-red-500" : "")}>
-              {overdue && <AlertCircle className="w-3 h-3" />}
-              {formatShortDate(project.estimated_end_date)}
-            </span>
+    <Link
+      href={`/projects/${project.id}`}
+      className="group flex h-full flex-col rounded-xl border border-border bg-card transition-all hover:border-primary/40 hover:shadow-sm"
+    >
+      <div className="flex items-start justify-between gap-3 p-5 pb-4">
+        <span className="flex size-11 items-center justify-center rounded-xl border border-primary/10 bg-accent/70 text-primary">
+          <FolderKanban className="size-5" strokeWidth={1.4} />
+        </span>
+        <Badge
+          className={cn(
+            "border-0 px-2 py-1 text-[9px] font-medium",
+            getStatusColor(project.status),
           )}
+        >
+          {PROJECT_STAGE_LABELS[project.status]}
+        </Badge>
+      </div>
+      <div className="flex-1 px-5">
+        <p className="text-[9px] uppercase tracking-wider text-muted-foreground">
+          {project.reference_number}
+        </p>
+        <div className="mt-1.5 flex items-start justify-between gap-2">
+          <h2 className="text-base font-semibold group-hover:text-primary">
+            {project.name}
+          </h2>
+          <ArrowUpRight className="mt-1 size-4 shrink-0 text-muted-foreground/60 group-hover:text-primary" />
         </div>
-        {project.outstanding_payment && project.outstanding_payment > 0 ? (
-          <div className="mt-2 pt-2 border-t border-border flex items-center gap-1 text-amber-600 text-xs font-medium">
-            <IndianRupee className="w-3 h-3" />
-            {formatCurrency(project.outstanding_payment)} outstanding
-          </div>
-        ) : null}
+        <p className="mt-1 text-xs text-muted-foreground">
+          {project.client_name}
+        </p>
+        <div className="mb-2 mt-6 flex items-center justify-between text-[10px]">
+          <span className="text-muted-foreground">Project progress</span>
+          <span className="font-semibold tabular-nums">
+            {project.progress_percent}%
+          </span>
+        </div>
+        <Progress value={project.progress_percent} className="h-1" />
+      </div>
+      <div className="mx-5 mb-4 mt-5 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+        <span className="text-[11px] font-semibold tabular-nums">
+          {project.total_budget
+            ? formatCurrency(project.total_budget)
+            : "Budget not set"}
+        </span>
+        <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+          <CalendarDays className="size-3" />
+          {project.estimated_end_date
+            ? formatShortDate(project.estimated_end_date)
+            : "No target date"}
+        </span>
       </div>
     </Link>
   );
 }
 
 export default function ProjectsPage() {
-  const [view, setView] = useState<View>("kanban");
+  const [view, setView] = useState<View>("grid");
   const [search, setSearch] = useState("");
-  const projects = useAppStore(state => state.projects);
-
+  const [stage, setStage] = useState("all");
+  const projects = useAppStore((s) => s.projects);
   const filtered = projects.filter(
     (p) =>
-      p.name.toLowerCase().includes(search.toLowerCase()) ||
-      p.client_name.toLowerCase().includes(search.toLowerCase()) ||
-      p.reference_number.toLowerCase().includes(search.toLowerCase())
+      (stage === "all" || p.status === stage) &&
+      `${p.name} ${p.client_name} ${p.reference_number}`
+        .toLowerCase()
+        .includes(search.toLowerCase()),
   );
-
-  const projectsByStage = PROJECT_STAGES.reduce((acc, stage) => {
-    acc[stage] = filtered.filter((p) => p.status === stage);
-    return acc;
-  }, {} as Record<ProjectStatus, Project[]>);
-
-  const activeStages = PROJECT_STAGES.filter((s) => s !== "closed" && projectsByStage[s].length > 0 || s !== "closed");
+  const active = projects.filter(
+    (p) => p.status !== "lead" && p.status !== "closed",
+  ).length;
+  const pipeline = projects.filter((p) => p.status === "lead").length;
+  const closed = projects.filter((p) => p.status === "closed").length;
+  const views: { value: View; label: string; icon: typeof LayoutGrid }[] = [
+    { value: "grid", label: "Grid view", icon: LayoutGrid },
+    { value: "board", label: "Board view", icon: Columns3 },
+    { value: "list", label: "List view", icon: List },
+  ];
 
   return (
     <div>
-      <TopBar title="Projects" subtitle={`${projects.length} total projects`} />
-      <div className="p-6">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between mb-6 gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+      <TopBar
+        title="Projects"
+        subtitle="Every brief, milestone, and detail in one place."
+      />
+      <div className="p-6 space-y-6">
+        <div className="flex flex-wrap items-end justify-between gap-5">
+          <div className="flex gap-7 sm:gap-10">
+            {[
+              ["Active projects", active],
+              ["In the pipeline", pipeline],
+              ["Completed", closed],
+            ].map(([label, count]) => (
+              <div key={label}>
+                <p className="text-[10px] text-muted-foreground">{label}</p>
+                <p className="mt-1 text-2xl font-semibold tracking-tight tabular-nums">
+                  {String(count).padStart(2, "0")}
+                </p>
+              </div>
+            ))}
+          </div>
+          <NewProjectDialog />
+        </div>
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-border bg-card p-3">
+          <div className="relative min-w-[180px] flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Search projects or clients…"
-              className="pl-9"
+              aria-label="Search projects"
+              placeholder="Search projects, clients, or references…"
+              className="border-transparent bg-muted/60 pl-9 shadow-none"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Filter className="w-3.5 h-3.5" />
-              Filter
-            </Button>
-            <div className="flex rounded-lg border border-border overflow-hidden">
-              {[
-                { val: "kanban", icon: LayoutGrid },
-                { val: "list", icon: List },
-              ].map(({ val, icon: Icon }) => (
-                <button
-                  key={val}
-                  onClick={() => setView(val as View)}
-                  className={cn("px-3 py-2", view === val ? "bg-primary text-white" : "bg-card text-muted-foreground hover:bg-muted")}
-                >
-                  <Icon className="w-4 h-4" />
-                </button>
+          <div className="relative flex items-center">
+            <SlidersHorizontal className="pointer-events-none absolute left-3 size-3.5 text-muted-foreground" />
+            <select
+              aria-label="Filter by project stage"
+              value={stage}
+              onChange={(e) => setStage(e.target.value)}
+              className="h-10 max-w-[200px] rounded-lg border border-border bg-card pl-9 pr-7 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <option value="all">All stages</option>
+              {PROJECT_STAGES.map((s) => (
+                <option key={s} value={s}>
+                  {PROJECT_STAGE_LABELS[s]}
+                </option>
               ))}
-            </div>
-            <NewProjectDialog />
+            </select>
           </div>
-        </div>
-
-        {/* Kanban View */}
-        {view === "kanban" && (
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {PROJECT_STAGES.filter((s) => s !== "closed").map((stage) => (
-              <div key={stage} className="flex-shrink-0 w-72">
-                <div className={cn("flex items-center justify-between px-3 py-2 rounded-lg mb-3", STAGE_HEADER_COLORS[stage])}>
-                  <span className="text-xs font-semibold">{PROJECT_STAGE_LABELS[stage]}</span>
-                  <span className="text-xs font-bold bg-white/60 rounded-full w-5 h-5 flex items-center justify-center">
-                    {projectsByStage[stage].length}
-                  </span>
-                </div>
-                <div>
-                  {projectsByStage[stage].map((project) => (
-                    <ProjectCard key={project.id} project={project} />
-                  ))}
-                  {projectsByStage[stage].length === 0 && (
-                    <div className="text-xs text-muted-foreground text-center py-6 border-2 border-dashed border-border rounded-xl">
-                      No projects here
-                    </div>
-                  )}
-                </div>
-              </div>
+          <div
+            role="group"
+            aria-label="Project display"
+            className="flex gap-1 rounded-lg bg-muted p-1"
+          >
+            {views.map(({ value, label, icon: Icon }) => (
+              <button
+                key={value}
+                aria-label={label}
+                title={label}
+                aria-pressed={view === value}
+                onClick={() => setView(value)}
+                className={cn(
+                  "flex size-8 items-center justify-center rounded-md transition-colors",
+                  view === value
+                    ? "bg-card text-primary shadow-xs"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Icon className="size-4" />
+              </button>
             ))}
           </div>
-        )}
-
-        {/* List View */}
-        {view === "list" && (
-          <div className="space-y-3">
-            {filtered.map((project) => (
-              <Link key={project.id} href={`/projects/${project.id}`}>
-                <Card className="card-hover cursor-pointer">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center flex-shrink-0">
-                        <FolderKanban className="w-5 h-5 text-white" />
+        </div>
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-medium">
+            {stage === "all"
+              ? "All projects"
+              : PROJECT_STAGE_LABELS[stage as ProjectStatus]}{" "}
+            <span className="ml-2 rounded-md bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+              {filtered.length}
+            </span>
+          </p>
+          <p className="text-[10px] text-muted-foreground">
+            {view === "board"
+              ? "Organised by project stage"
+              : "Your studio portfolio"}
+          </p>
+        </div>
+        {!filtered.length ? (
+          <div className="rounded-xl border border-dashed border-border bg-card px-6 py-20 text-center">
+            <FolderKanban className="mx-auto mb-4 size-8 text-primary/60" />
+            <h2 className="text-base font-semibold">
+              {projects.length
+                ? "No matching projects"
+                : "Make room for your first project"}
+            </h2>
+            <p className="mx-auto mt-2 max-w-sm text-xs text-muted-foreground">
+              {projects.length
+                ? "Try a different search or choose another stage."
+                : "Create a project to bring your client, team, and design details together."}
+            </p>
+            {(search || stage !== "all") && (
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setStage("all");
+                }}
+                className="mt-5 text-xs font-semibold text-primary"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <>
+            {view === "grid" && (
+              <div className="grid gap-5 md:grid-cols-2 2xl:grid-cols-3">
+                {filtered.map((p) => (
+                  <ProjectCard key={p.id} project={p} />
+                ))}
+              </div>
+            )}
+            {view === "board" && (
+              <div className="flex gap-4 overflow-x-auto pb-4">
+                {PROJECT_STAGES.filter(
+                  (s) => stage === "all" || stage === s,
+                ).map((s) => {
+                  const items = filtered.filter((p) => p.status === s);
+                  return (
+                    <section
+                      key={s}
+                      className="w-[285px] shrink-0 rounded-xl bg-muted/60 p-3"
+                    >
+                      <div className="mb-4 flex items-center justify-between px-1">
+                        <h2 className="text-xs font-semibold">
+                          {PROJECT_STAGE_LABELS[s]}
+                        </h2>
+                        <span className="text-[10px] text-muted-foreground">
+                          {items.length}
+                        </span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <p className="font-semibold text-foreground">{project.name}</p>
-                          <Badge className={cn("text-xs border-0", getStatusColor(project.status))}>
-                            {PROJECT_STAGE_LABELS[project.status]}
-                          </Badge>
-                          <span className="text-xs text-muted-foreground">{project.reference_number}</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <Progress value={project.progress_percent} className="h-1.5 w-32" />
-                          <span className="text-xs text-muted-foreground">{project.progress_percent}%</span>
-                          <span className="text-xs text-muted-foreground">· {project.client_name}</span>
-                          <span className="text-xs text-muted-foreground">· {project.area_sqft} sqft</span>
-                        </div>
-                      </div>
-                      <div className="text-right flex-shrink-0 space-y-0.5">
-                        <p className="font-bold text-foreground">
-                          {project.total_budget ? formatCurrency(project.total_budget) : "—"}
-                        </p>
-                        {project.outstanding_payment && project.outstanding_payment > 0 ? (
-                          <p className="text-xs text-amber-600">{formatCurrency(project.outstanding_payment)} due</p>
-                        ) : null}
-                        {project.estimated_end_date && (
-                          <p className={cn("text-xs", isOverdue(project.estimated_end_date) ? "text-red-500" : "text-muted-foreground")}>
-                            Due: {formatShortDate(project.estimated_end_date)}
+                      <div className="space-y-3">
+                        {items.map((p) => (
+                          <ProjectCard key={p.id} project={p} />
+                        ))}
+                        {!items.length && (
+                          <p className="rounded-lg border border-dashed border-border px-4 py-10 text-center text-[11px] text-muted-foreground">
+                            No projects at this stage
                           </p>
                         )}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
-            ))}
-          </div>
+                    </section>
+                  );
+                })}
+              </div>
+            )}
+            {view === "list" && (
+              <div className="overflow-x-auto rounded-xl border border-border bg-card">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-border bg-muted/50 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <tr>
+                      <th className="px-5 py-4 font-medium">
+                        Project / client
+                      </th>
+                      <th className="px-5 py-4 font-medium">Stage</th>
+                      <th className="px-5 py-4 font-medium">Progress</th>
+                      <th className="px-5 py-4 font-medium">Budget</th>
+                      <th className="px-5 py-4 font-medium">Target date</th>
+                      <th className="px-4">
+                        <span className="sr-only">Open project</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filtered.map((p) => (
+                      <tr
+                        key={p.id}
+                        className="transition-colors hover:bg-muted/40"
+                      >
+                        <td className="min-w-52 px-5 py-5">
+                          <Link
+                            href={`/projects/${p.id}`}
+                            className="font-semibold hover:text-primary"
+                          >
+                            {p.name}
+                          </Link>
+                          <p className="mt-1 text-[10px] text-muted-foreground">
+                            {p.client_name}
+                          </p>
+                        </td>
+                        <td className="px-5">
+                          <Badge
+                            className={cn(
+                              "whitespace-nowrap border-0 text-[9px]",
+                              getStatusColor(p.status),
+                            )}
+                          >
+                            {PROJECT_STAGE_LABELS[p.status]}
+                          </Badge>
+                        </td>
+                        <td className="min-w-36 px-5">
+                          <div className="flex items-center gap-3">
+                            <Progress
+                              value={p.progress_percent}
+                              className="h-1 w-20"
+                            />
+                            <span className="text-[10px] tabular-nums">
+                              {p.progress_percent}%
+                            </span>
+                          </div>
+                        </td>
+                        <td className="whitespace-nowrap px-5 font-medium tabular-nums">
+                          {p.total_budget
+                            ? formatCurrency(p.total_budget)
+                            : "—"}
+                        </td>
+                        <td className="whitespace-nowrap px-5 text-muted-foreground">
+                          {p.estimated_end_date
+                            ? formatShortDate(p.estimated_end_date)
+                            : "—"}
+                        </td>
+                        <td className="px-4">
+                          <Link
+                            href={`/projects/${p.id}`}
+                            aria-label={`Open ${p.name}`}
+                            className="inline-flex size-8 items-center justify-center rounded-md hover:bg-accent"
+                          >
+                            <ArrowUpRight className="size-4 text-primary" />
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -1,8 +1,10 @@
 "use client";
 
+import { BrandLoader } from "@/components/brand/BrandLoader";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 import {
   Mail,
   Lock,
@@ -18,10 +20,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createBrowserSupabase } from "@/lib/supabase/browser";
 import { safeNext } from "@/lib/safe-next";
+import { isDemoEnabled } from "@/lib/demo";
 
 const ERRORS: Record<string, string> = {
   link: "That sign-in link has expired. Request a new one.",
-  inactive: "Your account is inactive. Please contact the studio administrator.",
+  inactive:
+    "Your account is inactive. Please contact the studio administrator.",
 };
 
 const DEMO_USERS = [
@@ -34,7 +38,7 @@ const DEMO_USERS = [
 
 export default function LoginPage() {
   return (
-    <Suspense>
+    <Suspense fallback={<BrandLoader label="Opening your workspace" />}>
       <LoginForm />
     </Suspense>
   );
@@ -50,10 +54,13 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [selectedDemo, setSelectedDemo] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ type: "error" | "success" | "info"; text: string } | null>(
+  const [message, setMessage] = useState<{
+    type: "error" | "success" | "info";
+    text: string;
+  } | null>(
     params.get("error") && ERRORS[params.get("error")!]
       ? { type: "info", text: ERRORS[params.get("error")!] }
-      : null
+      : null,
   );
   const [busy, setBusy] = useState(false);
 
@@ -66,77 +73,49 @@ function LoginForm() {
 
   async function signInWithPassword(e: React.FormEvent) {
     e.preventDefault();
-    if (!email) {
-      setMessage({ type: "error", text: "Please enter your email address." });
-      return;
-    }
-    if (!password) {
-      setMessage({ type: "error", text: "Please enter your password." });
-      return;
-    }
-
     setBusy(true);
     setMessage(null);
-
+    const destination = next && next !== "/" ? next : "/dashboard";
     try {
-      const { error } = await createBrowserSupabase().auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      const defaultDestination = email.includes("client") ? "/portal/sharma-residence-2024" : (next && next !== "/" ? next : "/dashboard");
-
-      if (!error) {
-        setBusy(false);
-        router.replace(defaultDestination);
-        router.refresh();
-        return;
+      if (isDemoEnabled() && selectedDemo === email) {
+        const response = await fetch("/api/auth/demo-login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email }),
+        });
+        if (!response.ok)
+          throw new Error("Could not start the development preview.");
+        router.replace(email === "arun@client.test" ? "/portal" : destination);
+      } else {
+        const { error } = await createBrowserSupabase().auth.signInWithPassword(
+          { email, password },
+        );
+        if (error) {
+          setMessage({
+            type: "error",
+            text: error.message.toLowerCase().includes("fetch")
+              ? "Unable to connect. Please try again shortly."
+              : error.message,
+          });
+          return;
+        }
+        router.replace(destination);
       }
-
-      if (!error.message.toLowerCase().includes("fetch") && !error.message.toLowerCase().includes("network")) {
-        setBusy(false);
-        setMessage({ type: "error", text: error.message });
-        return;
-      }
+      router.refresh();
     } catch {
-      // Supabase server not running locally, proceed with demo login
-    }
-
-    // Offline / Demo fallback session
-    try {
-      const res = await fetch("/api/auth/demo-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+      setMessage({
+        type: "error",
+        text: "Unable to sign in. Please check your connection and try again.",
       });
-
-      if (res.ok) {
-        setBusy(false);
-        const target = email.includes("client") ? "/portal/sharma-residence-2024" : (next && next !== "/" ? next : "/dashboard");
-        router.replace(target);
-        router.refresh();
-        return;
-      }
-    } catch (err: any) {
-      // ignore
+    } finally {
+      setBusy(false);
     }
-
-    setBusy(false);
-    setMessage({ type: "error", text: "Unable to connect to authentication server." });
   }
 
   async function sendMagicLink(e: React.FormEvent) {
     e.preventDefault();
-    if (!email) {
-      setMessage({ type: "error", text: "Please enter your email address." });
-      return;
-    }
-
     setBusy(true);
     setMessage(null);
-
-    const target = email.includes("client") ? "/portal/sharma-residence-2024" : (next && next !== "/" ? next : "/dashboard");
-
     try {
       const { error } = await createBrowserSupabase().auth.signInWithOtp({
         email,
@@ -145,45 +124,31 @@ function LoginForm() {
           emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
         },
       });
-
-      setBusy(false);
-
-      if (error) {
-        if (error.message.toLowerCase().includes("fetch")) {
-          // In offline mode, automatically sign in directly
-          await fetch("/api/auth/demo-login", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ email }),
-          });
-          router.replace(target);
-          router.refresh();
-          return;
-        }
-        setMessage({ type: "error", text: error.message });
-      } else {
-        setMessage({
-          type: "success",
-          text: "A sign-in link has been sent to your email address.",
-        });
-      }
+      setMessage(
+        error
+          ? {
+              type: "error",
+              text: "We couldn’t send a sign-in link. Please try again.",
+            }
+          : {
+              type: "success",
+              text: "A sign-in link has been sent to your email address.",
+            },
+      );
     } catch {
-      // Offline fallback
-      await fetch("/api/auth/demo-login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+      setMessage({
+        type: "error",
+        text: "Unable to connect. Please try again shortly.",
       });
+    } finally {
       setBusy(false);
-      router.replace(target);
-      router.refresh();
     }
   }
 
   return (
-    <div className="min-h-screen w-full flex bg-background selection:bg-neutral-800 selection:text-white">
+    <div className="min-h-screen w-full flex bg-background">
       {/* Left Column: Pure Architectural Visual with Studio Name */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-neutral-950 overflow-hidden p-14 text-white">
+      <div className="hidden lg:flex lg:w-[46%] relative bg-primary overflow-hidden p-12 text-white">
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
           <Image
@@ -194,19 +159,32 @@ function LoginForm() {
             priority
             className="object-cover object-center"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/10 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/35 via-transparent to-black/60" />
         </div>
 
         {/* Top Studio Name in Bold White Font */}
-        <div className="relative z-10">
-          <h1 className="font-heading text-2xl xl:text-3xl font-bold tracking-tight text-white">
+        <div className="relative z-10 flex flex-col justify-between">
+          <h1 className="text-lg font-medium tracking-tight text-white">
             Priya Designs Studio
           </h1>
+          <div>
+            <p className="mb-4 text-[10px] uppercase tracking-[0.2em] text-white/70">
+              The studio workspace
+            </p>
+            <p className="font-editorial text-5xl leading-tight">
+              Great spaces.
+              <br />
+              <span className="italic">Thoughtfully managed.</span>
+            </p>
+            <p className="mt-5 max-w-xs text-xs leading-relaxed text-white/75">
+              Your projects, people, and the details that bring it all together.
+            </p>
+          </div>
         </div>
       </div>
 
       {/* Right Column: Authentication Form Panel */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-between p-8 sm:p-12 lg:p-20 overflow-y-auto">
+      <div className="w-full lg:w-[54%] flex flex-col justify-between p-6 sm:p-12 lg:p-16 overflow-y-auto">
         {/* Mobile Brand Header */}
         <div className="flex lg:hidden items-center justify-between pb-6 border-b border-border/60 mb-6">
           <span className="font-heading font-bold text-base tracking-tight text-foreground">
@@ -221,11 +199,11 @@ function LoginForm() {
         <div className="max-w-sm w-full mx-auto my-auto space-y-6">
           {/* Header Typography */}
           <div className="space-y-1.5">
-            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight text-foreground">
+            <h2 className="font-editorial text-4xl tracking-tight text-foreground">
               Sign in
             </h2>
             <p className="text-sm text-muted-foreground">
-              Enter your credentials to access your studio workspace.
+              Welcome back. Sign in to your studio workspace.
             </p>
           </div>
 
@@ -316,19 +294,7 @@ function LoginForm() {
                   <Label htmlFor="password" className="text-xs font-medium text-foreground/85">
                     Password
                   </Label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode("magic-link");
-                      setMessage({
-                        type: "info",
-                        text: "Enter your email to receive a passwordless sign-in link.",
-                      });
-                    }}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Forgot password?
-                  </button>
+                  <Link href="/forgot-password" className="text-xs text-muted-foreground hover:text-foreground">Forgot password?</Link>
                 </div>
                 <div className="relative">
                   <Lock className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
@@ -348,11 +314,16 @@ function LoginForm() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    tabIndex={-1}
                     className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
-                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
                   </button>
                 </div>
               </div>
@@ -361,7 +332,7 @@ function LoginForm() {
               <Button
                 type="submit"
                 disabled={busy || !email || !password}
-                className="w-full h-10 rounded-lg bg-neutral-900 text-white hover:bg-black dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100 font-medium text-sm transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer mt-2"
+                className="w-full h-10 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer mt-2"
               >
                 {busy ? (
                   <>
@@ -379,7 +350,10 @@ function LoginForm() {
           ) : (
             <form onSubmit={sendMagicLink} className="space-y-4">
               <div className="space-y-1.5">
-                <Label htmlFor="magic-email" className="text-xs font-medium text-foreground/85">
+                <Label
+                  htmlFor="magic-email"
+                  className="text-xs font-medium text-foreground/85"
+                >
                   Email
                 </Label>
                 <div className="relative">
@@ -406,7 +380,7 @@ function LoginForm() {
               <Button
                 type="submit"
                 disabled={busy || !email}
-                className="w-full h-10 rounded-lg bg-neutral-900 text-white hover:bg-black dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100 font-medium text-sm transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full h-10 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
               >
                 {busy ? (
                   <>
@@ -423,50 +397,59 @@ function LoginForm() {
             </form>
           )}
 
-          {/* Quick Sign-In Profiles */}
-          <div className="pt-6 border-t border-border/50 space-y-2.5">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <span className="font-medium text-foreground/80">Quick sign-in for testing</span>
-              <span className="font-mono text-[11px] text-muted-foreground/75">password: password123</span>
-            </div>
+          {/* Development-only demo access */}
+          {isDemoEnabled() && (
+            <div className="pt-6 border-t border-border/50 space-y-2.5">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span className="font-medium text-foreground/80">
+                  Development preview
+                </span>
+                <span className="font-mono text-[11px] text-muted-foreground/75">
+                  password: password123
+                </span>
+              </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-              {DEMO_USERS.map((user) => {
-                const isSelected = selectedDemo === user.email || email === user.email;
-                return (
-                  <button
-                    key={user.email}
-                    type="button"
-                    onClick={() => handleSelectDemo(user)}
-                    className={`text-xs p-2 rounded-lg border text-left transition-all ${
-                      isSelected
-                        ? "bg-neutral-900 text-white border-neutral-900 dark:bg-white dark:text-neutral-900 dark:border-white shadow-xs font-medium"
-                        : "bg-muted/30 border-border/60 text-foreground/80 hover:bg-muted/70 hover:border-border"
-                    }`}
-                  >
-                    <div className="font-medium leading-none mb-0.5 truncate">{user.label}</div>
-                    <div
-                      className={`text-[10px] truncate ${
-                        isSelected ? "text-neutral-300 dark:text-neutral-600" : "text-muted-foreground"
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                {DEMO_USERS.map((user) => {
+                  const isSelected =
+                    selectedDemo === user.email || email === user.email;
+                  return (
+                    <button
+                      key={user.email}
+                      type="button"
+                      onClick={() => handleSelectDemo(user)}
+                      className={`text-xs p-2 rounded-lg border text-left transition-all ${
+                        isSelected
+                          ? "bg-primary text-primary-foreground border-primary shadow-xs font-medium"
+                          : "bg-muted/30 border-border/60 text-foreground/80 hover:bg-muted/70 hover:border-border"
                       }`}
                     >
-                      {user.role}
-                    </div>
-                  </button>
-                );
-              })}
+                      <div className="font-medium leading-none mb-0.5 truncate">
+                        {user.label}
+                      </div>
+                      <div
+                        className={`text-[10px] truncate ${
+                          isSelected
+                            ? "text-neutral-300 dark:text-neutral-600"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {user.role}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Studio Footer */}
         <div className="pt-8 border-t border-border/40 flex items-center justify-between text-xs text-muted-foreground">
           <span>Priya Designs Studio &bull; MIS</span>
-          <div className="flex items-center gap-4 text-xs">
-            <span className="hover:text-foreground transition-colors cursor-pointer">Privacy</span>
-            <span className="hover:text-foreground transition-colors cursor-pointer">Security</span>
-            <span className="hover:text-foreground transition-colors cursor-pointer">Help</span>
-          </div>
+          <Link href="/" className="text-xs text-primary hover:underline">
+            Back to studio website
+          </Link>
         </div>
       </div>
     </div>

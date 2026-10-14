@@ -2,7 +2,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
-  
+
   "graphql_public": {
           Tables: {
             [_ in never]: never
@@ -57,14 +57,14 @@ isOneToOne: false
                   ]
                 },"alerts": {
                   Row: {
-                    "acknowledged_at": string | null,"acknowledged_by": string | null,"body": string,"created_at": string,"dedupe_key": string,"email_error": string | null,"email_status": string,"id": string,"invoice_id": string | null,"kind": string,"link": string | null,"project_id": string | null,"recipient_email": string | null,"recipient_id": string | null,"title": string
+                    "acknowledged_at": string | null,"acknowledged_by": string | null,"body": string,"claimed_at": string | null,"created_at": string,"dedupe_key": string,"delivery_attempts": number,"delivery_claim": string | null,"email_error": string | null,"email_status": string,"id": string,"invoice_id": string | null,"kind": string,"link": string | null,"next_attempt_at": string,"project_id": string | null,"recipient_email": string | null,"recipient_id": string | null,"title": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "acknowledged_at"?: string | null,"acknowledged_by"?: string | null,"body": string,"created_at"?: string,"dedupe_key": string,"email_error"?: string | null,"email_status"?: string,"id"?: string,"invoice_id"?: string | null,"kind": string,"link"?: string | null,"project_id"?: string | null,"recipient_email"?: string | null,"recipient_id"?: string | null,"title": string
+                    "acknowledged_at"?: string | null,"acknowledged_by"?: string | null,"body": string,"claimed_at"?: string | null,"created_at"?: string,"dedupe_key": string,"delivery_attempts"?: number,"delivery_claim"?: string | null,"email_error"?: string | null,"email_status"?: string,"id"?: string,"invoice_id"?: string | null,"kind": string,"link"?: string | null,"next_attempt_at"?: string,"project_id"?: string | null,"recipient_email"?: string | null,"recipient_id"?: string | null,"title": string
                   }
                   Update: {
-                    "acknowledged_at"?: string | null,"acknowledged_by"?: string | null,"body"?: string,"created_at"?: string,"dedupe_key"?: string,"email_error"?: string | null,"email_status"?: string,"id"?: string,"invoice_id"?: string | null,"kind"?: string,"link"?: string | null,"project_id"?: string | null,"recipient_email"?: string | null,"recipient_id"?: string | null,"title"?: string
+                    "acknowledged_at"?: string | null,"acknowledged_by"?: string | null,"body"?: string,"claimed_at"?: string | null,"created_at"?: string,"dedupe_key"?: string,"delivery_attempts"?: number,"delivery_claim"?: string | null,"email_error"?: string | null,"email_status"?: string,"id"?: string,"invoice_id"?: string | null,"kind"?: string,"link"?: string | null,"next_attempt_at"?: string,"project_id"?: string | null,"recipient_email"?: string | null,"recipient_id"?: string | null,"title"?: string
                   }
                   Relationships: [
                     {
@@ -111,7 +111,7 @@ isOneToOne: false
                     "action"?: string,"actor_id"?: string | null,"created_at"?: string,"id"?: number,"new_data"?: Json | null,"old_data"?: Json | null,"row_id"?: string | null,"table_name"?: string
                   }
                   Relationships: [
-                    
+
                   ]
                 },"boq_line_costs": {
                   Row: {
@@ -135,14 +135,14 @@ isOneToOne: true
                   ]
                 },"boq_line_items": {
                   Row: {
-                    "description": string,"id": string,"quantity": number,"remarks": string | null,"section_id": string,"sort_order": number,"specifications": string | null,"unit": string,"unit_rate": number
+                    "description": string,"id": string,"line_key": string,"quantity": number,"remarks": string | null,"section_id": string,"sort_order": number,"specifications": string | null,"unit": string,"unit_rate": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "description": string,"id"?: string,"quantity": number,"remarks"?: string | null,"section_id": string,"sort_order"?: number,"specifications"?: string | null,"unit": string,"unit_rate": number
+                    "description": string,"id"?: string,"line_key"?: string,"quantity": number,"remarks"?: string | null,"section_id": string,"sort_order"?: number,"specifications"?: string | null,"unit": string,"unit_rate": number
                   }
                   Update: {
-                    "description"?: string,"id"?: string,"quantity"?: number,"remarks"?: string | null,"section_id"?: string,"sort_order"?: number,"specifications"?: string | null,"unit"?: string,"unit_rate"?: number
+                    "description"?: string,"id"?: string,"line_key"?: string,"quantity"?: number,"remarks"?: string | null,"section_id"?: string,"sort_order"?: number,"specifications"?: string | null,"unit"?: string,"unit_rate"?: number
                   }
                   Relationships: [
                     {
@@ -191,7 +191,7 @@ isOneToOne: false
                     "category"?: string | null,"description"?: string,"id"?: string,"name"?: string,"sections"?: NonNullable<Json>
                   }
                   Relationships: [
-                    
+
                   ]
                 },"boq_versions": {
                   Row: {
@@ -257,7 +257,7 @@ isOneToOne: false
                     "address"?: string | null,"archived_at"?: string | null,"budget_max"?: number | null,"budget_min"?: number | null,"created_at"?: string,"email"?: string | null,"full_name"?: string,"id"?: string,"notes"?: string | null,"payment_terms_days"?: number,"phone"?: string,"source"?: Database["public"]['Enums']["client_source"] | null,"style_preferences"?: Json | null,"tags"?: (string)[],"whatsapp"?: string | null
                   }
                   Relationships: [
-                    
+
                   ]
                 },"credit_notes": {
                   Row: {
@@ -347,32 +347,58 @@ isOneToOne: false
                     "discipline"?: Database["public"]['Enums']["discipline"],"id"?: string,"kind"?: Database["public"]['Enums']["fee_stage_kind"],"name"?: string,"stages"?: NonNullable<Json>
                   }
                   Relationships: [
-                    
+
+                  ]
+                },"file_uploads": {
+                  Row: {
+                    "claimed_at": string | null,"created_at": string,"expires_at": string,"path": string,"project_id": string,"state": string,"uploaded_by": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "claimed_at"?: string | null,"created_at"?: string,"expires_at"?: string,"path": string,"project_id": string,"state"?: string,"uploaded_by": string
+                  }
+                  Update: {
+                    "claimed_at"?: string | null,"created_at"?: string,"expires_at"?: string,"path"?: string,"project_id"?: string,"state"?: string,"uploaded_by"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "file_uploads_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "file_uploads_uploaded_by_fkey"
+      columns: ["uploaded_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    }
                   ]
                 },"firm_settings": {
                   Row: {
-                    "address": string,"alert_preferences": NonNullable<Json>,"approval_thresholds": NonNullable<Json>,"bank_details": NonNullable<Json>,"brand_color": string,"email": string,"gst_rate": number,"gstin": string | null,"id": boolean,"invoice_prefix": string,"logo_url": string,"monthly_billing_target": number | null,"name": string,"pan": string | null,"phone": string,"risk_weights": NonNullable<Json>,"tagline": string,"terms_and_conditions": string | null,"updated_at": string
+                    "address": string,"alert_preferences": NonNullable<Json>,"approval_thresholds": NonNullable<Json>,"bank_details": NonNullable<Json>,"brand_color": string,"email": string,"gst_rate": number,"gstin": string | null,"id": boolean,"intake_options": NonNullable<Json>,"invoice_prefix": string,"logo_url": string,"monthly_billing_target": number | null,"name": string,"pan": string | null,"phone": string,"risk_weights": NonNullable<Json>,"tagline": string,"terms_and_conditions": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "address"?: string,"alert_preferences"?: NonNullable<Json>,"approval_thresholds"?: NonNullable<Json>,"bank_details"?: NonNullable<Json>,"brand_color"?: string,"email"?: string,"gst_rate"?: number,"gstin"?: string | null,"id"?: boolean,"invoice_prefix"?: string,"logo_url"?: string,"monthly_billing_target"?: number | null,"name": string,"pan"?: string | null,"phone"?: string,"risk_weights"?: NonNullable<Json>,"tagline"?: string,"terms_and_conditions"?: string | null,"updated_at"?: string
+                    "address"?: string,"alert_preferences"?: NonNullable<Json>,"approval_thresholds"?: NonNullable<Json>,"bank_details"?: NonNullable<Json>,"brand_color"?: string,"email"?: string,"gst_rate"?: number,"gstin"?: string | null,"id"?: boolean,"intake_options"?: NonNullable<Json>,"invoice_prefix"?: string,"logo_url"?: string,"monthly_billing_target"?: number | null,"name": string,"pan"?: string | null,"phone"?: string,"risk_weights"?: NonNullable<Json>,"tagline"?: string,"terms_and_conditions"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "address"?: string,"alert_preferences"?: NonNullable<Json>,"approval_thresholds"?: NonNullable<Json>,"bank_details"?: NonNullable<Json>,"brand_color"?: string,"email"?: string,"gst_rate"?: number,"gstin"?: string | null,"id"?: boolean,"invoice_prefix"?: string,"logo_url"?: string,"monthly_billing_target"?: number | null,"name"?: string,"pan"?: string | null,"phone"?: string,"risk_weights"?: NonNullable<Json>,"tagline"?: string,"terms_and_conditions"?: string | null,"updated_at"?: string
+                    "address"?: string,"alert_preferences"?: NonNullable<Json>,"approval_thresholds"?: NonNullable<Json>,"bank_details"?: NonNullable<Json>,"brand_color"?: string,"email"?: string,"gst_rate"?: number,"gstin"?: string | null,"id"?: boolean,"intake_options"?: NonNullable<Json>,"invoice_prefix"?: string,"logo_url"?: string,"monthly_billing_target"?: number | null,"name"?: string,"pan"?: string | null,"phone"?: string,"risk_weights"?: NonNullable<Json>,"tagline"?: string,"terms_and_conditions"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
-                    
+
                   ]
                 },"goods_receipts": {
                   Row: {
-                    "created_at": string,"id": string,"notes": string | null,"photo_url": string | null,"po_id": string,"received_by": string | null,"received_on": string
+                    "created_at": string,"id": string,"notes": string | null,"photo_url": string | null,"po_id": string,"received_by": string | null,"received_on": string,"request_hash": string | null,"request_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "created_at"?: string,"id"?: string,"notes"?: string | null,"photo_url"?: string | null,"po_id": string,"received_by"?: string | null,"received_on"?: string
+                    "created_at"?: string,"id"?: string,"notes"?: string | null,"photo_url"?: string | null,"po_id": string,"received_by"?: string | null,"received_on"?: string,"request_hash"?: string | null,"request_id"?: string | null
                   }
                   Update: {
-                    "created_at"?: string,"id"?: string,"notes"?: string | null,"photo_url"?: string | null,"po_id"?: string,"received_by"?: string | null,"received_on"?: string
+                    "created_at"?: string,"id"?: string,"notes"?: string | null,"photo_url"?: string | null,"po_id"?: string,"received_by"?: string | null,"received_on"?: string,"request_hash"?: string | null,"request_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -421,6 +447,46 @@ isOneToOne: false
       referencedColumns: ["id"]
     }
                   ]
+                },"handover_acceptances": {
+                  Row: {
+                    "accepted_at": string,"accepted_by": string,"document_number": string | null,"id": string,"note": string | null,"project_id": string,"signer": string,"snapshot": NonNullable<Json>
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "accepted_at"?: string,"accepted_by": string,"document_number"?: string | null,"id"?: string,"note"?: string | null,"project_id": string,"signer": string,"snapshot"?: NonNullable<Json>
+                  }
+                  Update: {
+                    "accepted_at"?: string,"accepted_by"?: string,"document_number"?: string | null,"id"?: string,"note"?: string | null,"project_id"?: string,"signer"?: string,"snapshot"?: NonNullable<Json>
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "handover_acceptances_accepted_by_fkey"
+      columns: ["accepted_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "handover_acceptances_project_id_fkey"
+      columns: ["project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["id"]
+    }
+                  ]
+                },"intake_requests": {
+                  Row: {
+                    "contact_hash": string,"created_at": string,"id": string,"payload_hash": string,"reference": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "contact_hash": string,"created_at"?: string,"id"?: string,"payload_hash": string,"reference": string
+                  }
+                  Update: {
+                    "contact_hash"?: string,"created_at"?: string,"id"?: string,"payload_hash"?: string,"reference"?: string
+                  }
+                  Relationships: [
+
+                  ]
                 },"invoice_counters": {
                   Row: {
                     "fy": string,"last_no": number
@@ -433,7 +499,7 @@ isOneToOne: false
                     "fy"?: string,"last_no"?: number
                   }
                   Relationships: [
-                    
+
                   ]
                 },"invoice_items": {
                   Row: {
@@ -511,25 +577,37 @@ isOneToOne: false
                     "category"?: string,"created_at"?: string,"description"?: string | null,"id"?: string,"item_name"?: string,"specifications"?: string | null,"standard_cost_rate"?: number | null,"standard_rate"?: number,"unit"?: string
                   }
                   Relationships: [
-                    
+
                   ]
                 },"material_options": {
                   Row: {
-                    "approx_cost": number,"brand": string,"category": Database["public"]['Enums']["material_category"],"description": string | null,"id": string,"image_url": string,"is_selected": boolean,"product_name": string,"project_id": string,"room_name": string
+                    "approx_cost": number,"brand": string,"category": Database["public"]['Enums']["material_category"],"description": string | null,"id": string,"image_url": string,"is_selected": boolean,"locked_at": string | null,"locked_by": string | null,"product_name": string,"project_id": string,"room_name": string,"selected_at": string | null,"selected_by": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "approx_cost"?: number,"brand"?: string,"category": Database["public"]['Enums']["material_category"],"description"?: string | null,"id"?: string,"image_url"?: string,"is_selected"?: boolean,"product_name": string,"project_id": string,"room_name": string
+                    "approx_cost"?: number,"brand"?: string,"category": Database["public"]['Enums']["material_category"],"description"?: string | null,"id"?: string,"image_url"?: string,"is_selected"?: boolean,"locked_at"?: string | null,"locked_by"?: string | null,"product_name": string,"project_id": string,"room_name": string,"selected_at"?: string | null,"selected_by"?: string | null
                   }
                   Update: {
-                    "approx_cost"?: number,"brand"?: string,"category"?: Database["public"]['Enums']["material_category"],"description"?: string | null,"id"?: string,"image_url"?: string,"is_selected"?: boolean,"product_name"?: string,"project_id"?: string,"room_name"?: string
+                    "approx_cost"?: number,"brand"?: string,"category"?: Database["public"]['Enums']["material_category"],"description"?: string | null,"id"?: string,"image_url"?: string,"is_selected"?: boolean,"locked_at"?: string | null,"locked_by"?: string | null,"product_name"?: string,"project_id"?: string,"room_name"?: string,"selected_at"?: string | null,"selected_by"?: string | null
                   }
                   Relationships: [
                     {
+      foreignKeyName: "material_options_locked_by_fkey"
+      columns: ["locked_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "material_options_project_id_fkey"
       columns: ["project_id"]
 isOneToOne: false
       referencedRelation: "projects"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "material_options_selected_by_fkey"
+      columns: ["selected_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
       referencedColumns: ["id"]
     }
                   ]
@@ -581,14 +659,14 @@ isOneToOne: false
                   ]
                 },"payments": {
                   Row: {
-                    "amount": number,"created_at": string,"id": string,"invoice_id": string,"mode": Database["public"]['Enums']["payment_mode"],"notes": string | null,"payment_date": string,"recorded_by": string | null,"reference": string | null,"tds_amount": number
+                    "amount": number,"created_at": string,"id": string,"invoice_id": string,"mode": Database["public"]['Enums']["payment_mode"],"notes": string | null,"payment_date": string,"recorded_by": string | null,"reference": string | null,"request_hash": string | null,"request_id": string | null,"tds_amount": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount": number,"created_at"?: string,"id"?: string,"invoice_id": string,"mode": Database["public"]['Enums']["payment_mode"],"notes"?: string | null,"payment_date": string,"recorded_by"?: string | null,"reference"?: string | null,"tds_amount"?: number
+                    "amount": number,"created_at"?: string,"id"?: string,"invoice_id": string,"mode": Database["public"]['Enums']["payment_mode"],"notes"?: string | null,"payment_date": string,"recorded_by"?: string | null,"reference"?: string | null,"request_hash"?: string | null,"request_id"?: string | null,"tds_amount"?: number
                   }
                   Update: {
-                    "amount"?: number,"created_at"?: string,"id"?: string,"invoice_id"?: string,"mode"?: Database["public"]['Enums']["payment_mode"],"notes"?: string | null,"payment_date"?: string,"recorded_by"?: string | null,"reference"?: string | null,"tds_amount"?: number
+                    "amount"?: number,"created_at"?: string,"id"?: string,"invoice_id"?: string,"mode"?: Database["public"]['Enums']["payment_mode"],"notes"?: string | null,"payment_date"?: string,"recorded_by"?: string | null,"reference"?: string | null,"request_hash"?: string | null,"request_id"?: string | null,"tds_amount"?: number
                   }
                   Relationships: [
                     {
@@ -847,14 +925,14 @@ isOneToOne: false
                   ]
                 },"purchase_orders": {
                   Row: {
-                    "approval_required_role": Database["public"]['Enums']["app_role"] | null,"approved_at": string | null,"approved_by": string | null,"cancel_reason": string | null,"created_at": string,"created_by": string | null,"expected_delivery": string | null,"id": string,"notes": string | null,"number": string | null,"order_date": string,"project_id": string,"status": Database["public"]['Enums']["po_status"],"vendor_id": string
+                    "approval_required_role": Database["public"]['Enums']["app_role"] | null,"approved_at": string | null,"approved_by": string | null,"cancel_reason": string | null,"created_at": string,"created_by": string | null,"expected_delivery": string | null,"id": string,"notes": string | null,"number": string | null,"order_date": string,"project_id": string,"request_hash": string | null,"request_id": string | null,"status": Database["public"]['Enums']["po_status"],"vendor_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "approval_required_role"?: Database["public"]['Enums']["app_role"] | null,"approved_at"?: string | null,"approved_by"?: string | null,"cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"expected_delivery"?: string | null,"id"?: string,"notes"?: string | null,"number"?: string | null,"order_date"?: string,"project_id": string,"status"?: Database["public"]['Enums']["po_status"],"vendor_id": string
+                    "approval_required_role"?: Database["public"]['Enums']["app_role"] | null,"approved_at"?: string | null,"approved_by"?: string | null,"cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"expected_delivery"?: string | null,"id"?: string,"notes"?: string | null,"number"?: string | null,"order_date"?: string,"project_id": string,"request_hash"?: string | null,"request_id"?: string | null,"status"?: Database["public"]['Enums']["po_status"],"vendor_id": string
                   }
                   Update: {
-                    "approval_required_role"?: Database["public"]['Enums']["app_role"] | null,"approved_at"?: string | null,"approved_by"?: string | null,"cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"expected_delivery"?: string | null,"id"?: string,"notes"?: string | null,"number"?: string | null,"order_date"?: string,"project_id"?: string,"status"?: Database["public"]['Enums']["po_status"],"vendor_id"?: string
+                    "approval_required_role"?: Database["public"]['Enums']["app_role"] | null,"approved_at"?: string | null,"approved_by"?: string | null,"cancel_reason"?: string | null,"created_at"?: string,"created_by"?: string | null,"expected_delivery"?: string | null,"id"?: string,"notes"?: string | null,"number"?: string | null,"order_date"?: string,"project_id"?: string,"request_hash"?: string | null,"request_id"?: string | null,"status"?: Database["public"]['Enums']["po_status"],"vendor_id"?: string
                   }
                   Relationships: [
                     {
@@ -895,7 +973,7 @@ isOneToOne: false
                     "blended_rate"?: number,"id"?: string,"name"?: string
                   }
                   Relationships: [
-                    
+
                   ]
                 },"snag_comments": {
                   Row: {
@@ -925,19 +1003,37 @@ isOneToOne: false
                   ]
                 },"snags": {
                   Row: {
-                    "after_photo_url": string | null,"assigned_to": string | null,"before_photo_url": string | null,"client_closed_at": string | null,"created_at": string,"description": string | null,"designer_verified_at": string | null,"due_date": string | null,"fixed_at": string | null,"id": string,"location_detail": string | null,"priority": Database["public"]['Enums']["snag_priority"],"project_id": string,"raised_by": string | null,"room_id": string | null,"status": Database["public"]['Enums']["snag_status"],"title": string,"updated_at": string,"vendor_id": string | null
+                    "after_photo_url": string | null,"assigned_to": string | null,"before_photo_url": string | null,"client_closed_at": string | null,"client_closed_by": string | null,"created_at": string,"description": string | null,"designer_verified_at": string | null,"designer_verified_by": string | null,"due_date": string | null,"fixed_at": string | null,"fixed_by": string | null,"id": string,"location_detail": string | null,"priority": Database["public"]['Enums']["snag_priority"],"project_id": string,"raised_by": string | null,"room_id": string | null,"status": Database["public"]['Enums']["snag_status"],"title": string,"updated_at": string,"vendor_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "after_photo_url"?: string | null,"assigned_to"?: string | null,"before_photo_url"?: string | null,"client_closed_at"?: string | null,"created_at"?: string,"description"?: string | null,"designer_verified_at"?: string | null,"due_date"?: string | null,"fixed_at"?: string | null,"id"?: string,"location_detail"?: string | null,"priority"?: Database["public"]['Enums']["snag_priority"],"project_id": string,"raised_by"?: string | null,"room_id"?: string | null,"status"?: Database["public"]['Enums']["snag_status"],"title": string,"updated_at"?: string,"vendor_id"?: string | null
+                    "after_photo_url"?: string | null,"assigned_to"?: string | null,"before_photo_url"?: string | null,"client_closed_at"?: string | null,"client_closed_by"?: string | null,"created_at"?: string,"description"?: string | null,"designer_verified_at"?: string | null,"designer_verified_by"?: string | null,"due_date"?: string | null,"fixed_at"?: string | null,"fixed_by"?: string | null,"id"?: string,"location_detail"?: string | null,"priority"?: Database["public"]['Enums']["snag_priority"],"project_id": string,"raised_by"?: string | null,"room_id"?: string | null,"status"?: Database["public"]['Enums']["snag_status"],"title": string,"updated_at"?: string,"vendor_id"?: string | null
                   }
                   Update: {
-                    "after_photo_url"?: string | null,"assigned_to"?: string | null,"before_photo_url"?: string | null,"client_closed_at"?: string | null,"created_at"?: string,"description"?: string | null,"designer_verified_at"?: string | null,"due_date"?: string | null,"fixed_at"?: string | null,"id"?: string,"location_detail"?: string | null,"priority"?: Database["public"]['Enums']["snag_priority"],"project_id"?: string,"raised_by"?: string | null,"room_id"?: string | null,"status"?: Database["public"]['Enums']["snag_status"],"title"?: string,"updated_at"?: string,"vendor_id"?: string | null
+                    "after_photo_url"?: string | null,"assigned_to"?: string | null,"before_photo_url"?: string | null,"client_closed_at"?: string | null,"client_closed_by"?: string | null,"created_at"?: string,"description"?: string | null,"designer_verified_at"?: string | null,"designer_verified_by"?: string | null,"due_date"?: string | null,"fixed_at"?: string | null,"fixed_by"?: string | null,"id"?: string,"location_detail"?: string | null,"priority"?: Database["public"]['Enums']["snag_priority"],"project_id"?: string,"raised_by"?: string | null,"room_id"?: string | null,"status"?: Database["public"]['Enums']["snag_status"],"title"?: string,"updated_at"?: string,"vendor_id"?: string | null
                   }
                   Relationships: [
                     {
       foreignKeyName: "snags_assigned_to_fkey"
       columns: ["assigned_to"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "snags_client_closed_by_fkey"
+      columns: ["client_closed_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "snags_designer_verified_by_fkey"
+      columns: ["designer_verified_by"]
+isOneToOne: false
+      referencedRelation: "profiles"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "snags_fixed_by_fkey"
+      columns: ["fixed_by"]
 isOneToOne: false
       referencedRelation: "profiles"
       referencedColumns: ["id"]
@@ -1027,17 +1123,29 @@ isOneToOne: false
                   ]
                 },"timesheet_entries": {
                   Row: {
-                    "activity": Database["public"]['Enums']["timesheet_activity"],"billable": boolean,"created_at": string,"decided_at": string | null,"decided_by": string | null,"decision_note": string | null,"fee_stage_id": string | null,"hours": number,"id": string,"notes": string | null,"profile_id": string,"project_id": string | null,"status": Database["public"]['Enums']["timesheet_status"],"submitted_at": string | null,"work_date": string
+                    "activity": Database["public"]['Enums']["timesheet_activity"],"billable": boolean,"billed_invoice_id": string | null,"created_at": string,"decided_at": string | null,"decided_by": string | null,"decision_note": string | null,"fee_stage_id": string | null,"hours": number,"id": string,"notes": string | null,"profile_id": string,"project_id": string | null,"status": Database["public"]['Enums']["timesheet_status"],"submitted_at": string | null,"work_date": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "activity": Database["public"]['Enums']["timesheet_activity"],"billable"?: boolean,"created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"fee_stage_id"?: string | null,"hours": number,"id"?: string,"notes"?: string | null,"profile_id"?: string,"project_id"?: string | null,"status"?: Database["public"]['Enums']["timesheet_status"],"submitted_at"?: string | null,"work_date": string
+                    "activity": Database["public"]['Enums']["timesheet_activity"],"billable"?: boolean,"billed_invoice_id"?: string | null,"created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"fee_stage_id"?: string | null,"hours": number,"id"?: string,"notes"?: string | null,"profile_id"?: string,"project_id"?: string | null,"status"?: Database["public"]['Enums']["timesheet_status"],"submitted_at"?: string | null,"work_date": string
                   }
                   Update: {
-                    "activity"?: Database["public"]['Enums']["timesheet_activity"],"billable"?: boolean,"created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"fee_stage_id"?: string | null,"hours"?: number,"id"?: string,"notes"?: string | null,"profile_id"?: string,"project_id"?: string | null,"status"?: Database["public"]['Enums']["timesheet_status"],"submitted_at"?: string | null,"work_date"?: string
+                    "activity"?: Database["public"]['Enums']["timesheet_activity"],"billable"?: boolean,"billed_invoice_id"?: string | null,"created_at"?: string,"decided_at"?: string | null,"decided_by"?: string | null,"decision_note"?: string | null,"fee_stage_id"?: string | null,"hours"?: number,"id"?: string,"notes"?: string | null,"profile_id"?: string,"project_id"?: string | null,"status"?: Database["public"]['Enums']["timesheet_status"],"submitted_at"?: string | null,"work_date"?: string
                   }
                   Relationships: [
                     {
+      foreignKeyName: "timesheet_entries_billed_invoice_id_fkey"
+      columns: ["billed_invoice_id"]
+isOneToOne: false
+      referencedRelation: "invoice_summary"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "timesheet_entries_billed_invoice_id_fkey"
+      columns: ["billed_invoice_id"]
+isOneToOne: false
+      referencedRelation: "invoices"
+      referencedColumns: ["id"]
+    },{
       foreignKeyName: "timesheet_entries_decided_by_fkey"
       columns: ["decided_by"]
 isOneToOne: false
@@ -1129,14 +1237,14 @@ isOneToOne: false
                   ]
                 },"vendor_bills": {
                   Row: {
-                    "approved_by": string | null,"bill_date": string,"bill_number": string,"created_at": string,"created_by": string | null,"due_date": string | null,"file_path": string | null,"id": string,"notes": string | null,"po_id": string | null,"project_id": string,"status": Database["public"]['Enums']["vendor_bill_status"],"vendor_id": string
+                    "approved_by": string | null,"bill_date": string,"bill_number": string,"created_at": string,"created_by": string | null,"due_date": string | null,"file_path": string | null,"id": string,"notes": string | null,"po_id": string | null,"project_id": string,"request_hash": string | null,"request_id": string | null,"status": Database["public"]['Enums']["vendor_bill_status"],"vendor_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "approved_by"?: string | null,"bill_date": string,"bill_number": string,"created_at"?: string,"created_by"?: string | null,"due_date"?: string | null,"file_path"?: string | null,"id"?: string,"notes"?: string | null,"po_id"?: string | null,"project_id": string,"status"?: Database["public"]['Enums']["vendor_bill_status"],"vendor_id": string
+                    "approved_by"?: string | null,"bill_date": string,"bill_number": string,"created_at"?: string,"created_by"?: string | null,"due_date"?: string | null,"file_path"?: string | null,"id"?: string,"notes"?: string | null,"po_id"?: string | null,"project_id": string,"request_hash"?: string | null,"request_id"?: string | null,"status"?: Database["public"]['Enums']["vendor_bill_status"],"vendor_id": string
                   }
                   Update: {
-                    "approved_by"?: string | null,"bill_date"?: string,"bill_number"?: string,"created_at"?: string,"created_by"?: string | null,"due_date"?: string | null,"file_path"?: string | null,"id"?: string,"notes"?: string | null,"po_id"?: string | null,"project_id"?: string,"status"?: Database["public"]['Enums']["vendor_bill_status"],"vendor_id"?: string
+                    "approved_by"?: string | null,"bill_date"?: string,"bill_number"?: string,"created_at"?: string,"created_by"?: string | null,"due_date"?: string | null,"file_path"?: string | null,"id"?: string,"notes"?: string | null,"po_id"?: string | null,"project_id"?: string,"request_hash"?: string | null,"request_id"?: string | null,"status"?: Database["public"]['Enums']["vendor_bill_status"],"vendor_id"?: string
                   }
                   Relationships: [
                     {
@@ -1173,14 +1281,14 @@ isOneToOne: false
                   ]
                 },"vendor_payments": {
                   Row: {
-                    "amount": number,"bill_id": string | null,"created_at": string,"created_by": string | null,"id": string,"is_advance": boolean,"mode": Database["public"]['Enums']["payment_mode"],"paid_on": string,"project_id": string,"reference": string | null,"tds_amount": number,"vendor_id": string
+                    "amount": number,"bill_id": string | null,"created_at": string,"created_by": string | null,"id": string,"is_advance": boolean,"mode": Database["public"]['Enums']["payment_mode"],"paid_on": string,"project_id": string,"reference": string | null,"request_hash": string | null,"request_id": string | null,"tds_amount": number,"vendor_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount": number,"bill_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"id"?: string,"is_advance"?: boolean,"mode": Database["public"]['Enums']["payment_mode"],"paid_on": string,"project_id": string,"reference"?: string | null,"tds_amount"?: number,"vendor_id": string
+                    "amount": number,"bill_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"id"?: string,"is_advance"?: boolean,"mode": Database["public"]['Enums']["payment_mode"],"paid_on": string,"project_id": string,"reference"?: string | null,"request_hash"?: string | null,"request_id"?: string | null,"tds_amount"?: number,"vendor_id": string
                   }
                   Update: {
-                    "amount"?: number,"bill_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"id"?: string,"is_advance"?: boolean,"mode"?: Database["public"]['Enums']["payment_mode"],"paid_on"?: string,"project_id"?: string,"reference"?: string | null,"tds_amount"?: number,"vendor_id"?: string
+                    "amount"?: number,"bill_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"id"?: string,"is_advance"?: boolean,"mode"?: Database["public"]['Enums']["payment_mode"],"paid_on"?: string,"project_id"?: string,"reference"?: string | null,"request_hash"?: string | null,"request_id"?: string | null,"tds_amount"?: number,"vendor_id"?: string
                   }
                   Relationships: [
                     {
@@ -1265,7 +1373,7 @@ isOneToOne: false
                     "address"?: string | null,"bank_details"?: NonNullable<Json>,"category"?: string,"created_at"?: string,"email"?: string | null,"gstin"?: string | null,"id"?: string,"name"?: string,"notes"?: string | null,"pan"?: string | null,"payment_terms_days"?: number,"phone"?: string | null,"status"?: Database["public"]['Enums']["vendor_status"]
                   }
                   Relationships: [
-                    
+
                   ]
                 }
           }
@@ -1316,7 +1424,7 @@ isOneToOne: false
                            "billed_qty"?: never,"po_line_id"?: string | null,"received_qty"?: never,"rejected_qty"?: never
                          }
                         Relationships: [
-                    
+
                   ]
                 },"vendor_bill_summary": {
                   Row: {
@@ -1324,13 +1432,22 @@ isOneToOne: false
                   }
                   ComputedFields: never
                   Relationships: [
-                    
+
                   ]
                 }
           }
           Functions: {
-            "acknowledge_alert":
+            "accept_project_handover":
+{ Args: { "p_note"?: string,"p_project": string,"p_signer": string }; Returns: string
+                           },
+"account_active":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"acknowledge_alert":
 { Args: { "p_alert": string }; Returns: undefined
+                           },
+"apply_boq_template":
+{ Args: { "p_project": string,"p_template": string }; Returns: string
                            },
 "apply_fee_template":
 { Args: { "p_project": string,"p_template": string }; Returns: number
@@ -1343,6 +1460,9 @@ isOneToOne: false
                            },
 "assign_po_number":
 { Args: { "p_po": string }; Returns: undefined
+                           },
+"bill_hourly_time":
+{ Args: { "p_from": string,"p_project": string,"p_to": string }; Returns: string
                            },
 "bill_match_issues":
 { Args: { "p_bill": string }; Returns: (string)[]
@@ -1376,6 +1496,9 @@ isOneToOne: false
 "can_procure":
 { Args: { "p": string }; Returns: boolean
                            },
+"can_read_project_object":
+{ Args: { "object_name": string }; Returns: boolean
+                           },
 "can_see_project":
 { Args: { "p": string }; Returns: boolean
                            },
@@ -1385,6 +1508,50 @@ isOneToOne: false
 "cancel_po":
 { Args: { "p_po": string,"p_reason": string }; Returns: undefined
                            },
+"claim_abandoned_uploads":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "claimed_at": string | null,
+"created_at": string,
+"expires_at": string,
+"path": string,
+"project_id": string,
+"state": string,
+"uploaded_by": string
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "file_uploads"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
+"claim_alert_emails":
+{ Args: { "p_claim": string }; Returns: {
+              "acknowledged_at": string | null,
+"acknowledged_by": string | null,
+"body": string,
+"claimed_at": string | null,
+"created_at": string,
+"dedupe_key": string,
+"delivery_attempts": number,
+"delivery_claim": string | null,
+"email_error": string | null,
+"email_status": string,
+"id": string,
+"invoice_id": string | null,
+"kind": string,
+"link": string | null,
+"next_attempt_at": string,
+"project_id": string | null,
+"recipient_email": string | null,
+"recipient_id": string | null,
+"title": string
+            }[]
+                          SetofOptions: {
+        from: "*"
+        to: "alerts"
+        isOneToOne: false
+        isSetofReturn: true
+      } },
 "client_close_snag":
 { Args: { "p_snag": string }; Returns: undefined
                            },
@@ -1397,10 +1564,19 @@ isOneToOne: false
 "complete_fee_stage":
 { Args: { "p_stage": string }; Returns: string
                            },
+"configure_staff":
+{ Args: { "p_activate"?: boolean,"p_roles": (Database["public"]['Enums']["app_role"])[],"p_title"?: string,"p_user": string }; Returns: string
+                           },
 "cost_rate_on":
 { Args: { "p_date": string,"p_profile": string }; Returns: number
                            },
 "create_boq_version":
+{ Args: { "p": Json }; Returns: string
+                           },
+"create_itemized_invoice":
+{ Args: { "p": Json }; Returns: string
+                           },
+"create_purchase_order":
 { Args: { "p": Json }; Returns: string
                            },
 "decide_expense":
@@ -1408,6 +1584,9 @@ isOneToOne: false
                            },
 "decide_timesheet_entries":
 { Args: { "p_approve": boolean,"p_ids": (string)[],"p_note": string }; Returns: number
+                           },
+"delivery_health":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "dispute_vendor_bill":
 { Args: { "p_bill": string,"p_note": string }; Returns: undefined
@@ -1417,6 +1596,9 @@ isOneToOne: false
                            },
 "fee_percent_total":
 { Args: { "k": Database["public"]['Enums']["fee_stage_kind"],"p": string }; Returns: number
+                           },
+"finalize_material":
+{ Args: { "p_material": string }; Returns: string
                            },
 "financial_year":
 { Args: { "d": string }; Returns: string
@@ -1429,6 +1611,9 @@ isOneToOne: false
                            },
 "generate_procurement_alerts":
 { Args: { "p_today"?: string }; Returns: number
+                           },
+"get_intake_options":
+{ Args: Record<PropertyKey, never>; Returns: Json
                            },
 "has_role":
 { Args: { "r": Database["public"]['Enums']["app_role"] }; Returns: boolean
@@ -1486,8 +1671,23 @@ isOneToOne: false
 "react_to_update":
 { Args: { "p_kind": string,"p_update": string }; Returns: undefined
                            },
+"record_cash_payment":
+{ Args: { "p": Json,"p_vendor"?: boolean }; Returns: string
+                           },
+"record_goods_receipt":
+{ Args: { "p": Json }; Returns: string
+                           },
+"record_vendor_bill":
+{ Args: { "p": Json }; Returns: string
+                           },
+"register_project_upload":
+{ Args: { "p_path": string,"p_project": string }; Returns: string
+                           },
 "reopen_fee_stage":
 { Args: { "p_stage": string }; Returns: undefined
+                           },
+"save_timesheet_checked":
+{ Args: { "p_expected": (string)[],"p_rows": Json,"p_submit"?: boolean,"p_week": string }; Returns: Json
                            },
 "save_timesheet_week":
 { Args: { "p_rows": Json,"p_week": string }; Returns: number
@@ -1497,6 +1697,9 @@ isOneToOne: false
                            },
 "sees_all_projects":
 { Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"select_material":
+{ Args: { "p_material": string,"p_selected": boolean }; Returns: string
                            },
 "snag_project":
 { Args: { "s": string }; Returns: string
@@ -1512,6 +1715,9 @@ isOneToOne: false
 "submit_onboarding":
 { Args: { "p": Json }; Returns: string
                            },
+"submit_onboarding_unchecked":
+{ Args: { "p": Json }; Returns: string
+                           },
 "submit_po":
 { Args: { "p_po": string }; Returns: string
                            },
@@ -1520,6 +1726,9 @@ isOneToOne: false
                            },
 "toggle_milestone":
 { Args: { "p_id": string }; Returns: undefined
+                           },
+"upload_is_referenced":
+{ Args: { "p_path": string }; Returns: boolean
                            }
           }
           Enums: {
@@ -1639,7 +1848,7 @@ export type CompositeTypes<
 export const Constants = {
   "graphql_public": {
           Enums: {
-            
+
           }
         },"public": {
           Enums: {

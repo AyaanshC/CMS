@@ -1,5 +1,6 @@
 "use client";
 
+import { EditProjectDialog } from "./EditProjectDialog";
 import { useState } from "react";
 import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
@@ -22,9 +23,9 @@ import {
 const STAGE_DOT_COLORS: Record<ProjectStatus, string> = {
   lead: "bg-slate-400",
   consultation: "bg-blue-400",
-  design: "bg-violet-500",
+  design: "bg-primary",
   boq_approval: "bg-amber-400",
-  execution: "bg-indigo-500",
+  execution: "bg-primary",
   snag: "bg-orange-500",
   handover: "bg-teal-500",
   closed: "bg-green-500",
@@ -35,17 +36,20 @@ export default function ProjectHeader({
   openSnags,
   totalInvoiced,
   totalPaid,
+  outstanding,
   onSelectTab,
 }: {
   project: Project;
   openSnags: number;
   totalInvoiced: number;
   totalPaid: number;
+  outstanding: number;
   onSelectTab?: (tab: string) => void;
 }) {
   const { advanceProjectStage } = useAppStore();
   const [stageConfirmModalOpen, setStageConfirmModalOpen] = useState(false);
   const [targetStage, setTargetStage] = useState<ProjectStatus | null>(null);
+  const [savingStage, setSavingStage] = useState(false);
 
   const currentStageIndex = PROJECT_STAGES.indexOf(project.status);
 
@@ -54,9 +58,12 @@ export default function ProjectHeader({
     setStageConfirmModalOpen(true);
   };
 
-  const handleConfirmStage = () => {
+  const handleConfirmStage = async () => {
     if (targetStage) {
-      advanceProjectStage(project.id, targetStage);
+      setSavingStage(true);
+      const result = await advanceProjectStage(project.id, targetStage);
+      setSavingStage(false);
+      if (!result.ok) return;
     }
     setStageConfirmModalOpen(false);
   };
@@ -66,8 +73,8 @@ export default function ProjectHeader({
       <Card>
         <CardContent className="p-5">
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="flex-1 min-w-[300px]">
-              <div className="flex items-center gap-3 mb-3">
+            <div className="min-w-0 w-full flex-1">
+              <div className="flex flex-wrap items-center gap-3 mb-5">
                 <Badge className={cn("border-0 text-xs px-2 py-0.5", getStatusColor(project.status))}>
                   {PROJECT_STAGE_LABELS[project.status]}
                 </Badge>
@@ -89,6 +96,7 @@ export default function ProjectHeader({
                 )}
               </div>
 
+              <div className="mb-4"><EditProjectDialog project={project}/></div>
               {/* Interactive Stage Pipeline */}
               <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-1">
                 {PROJECT_STAGES.map((stage, idx) => {
@@ -100,7 +108,7 @@ export default function ProjectHeader({
                       <button
                         onClick={() => handleStageClick(stage)}
                         className={cn(
-                          "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer border border-transparent",
+                          "flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium whitespace-nowrap transition-all cursor-pointer border border-transparent",
                           isCurrent ? "bg-primary text-white shadow-sm font-bold" : "",
                           isPast ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" : "",
                           isFuture ? "bg-muted text-muted-foreground hover:bg-muted/80" : ""
@@ -169,20 +177,20 @@ export default function ProjectHeader({
 
           {/* Financial summary metrics bar */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-border">
-            <div className="text-center">
-              <p className="text-lg font-bold text-foreground">{project.total_budget ? formatCurrency(project.total_budget) : "—"}</p>
+            <div className="text-left">
+              <p className="text-xl font-semibold text-foreground">{project.total_budget ? formatCurrency(project.total_budget) : "—"}</p>
               <p className="text-[11px] text-muted-foreground">Total Budget</p>
             </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-indigo-600">{formatCurrency(totalInvoiced)}</p>
+            <div className="text-left">
+              <p className="text-xl font-semibold text-primary">{formatCurrency(totalInvoiced)}</p>
               <p className="text-[11px] text-muted-foreground">Total Invoiced</p>
             </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-emerald-600">{formatCurrency(totalPaid)}</p>
+            <div className="text-left">
+              <p className="text-xl font-semibold text-emerald-600">{formatCurrency(totalPaid)}</p>
               <p className="text-[11px] text-muted-foreground">Collected</p>
             </div>
-            <div className="text-center">
-              <p className="text-lg font-bold text-amber-600">{formatCurrency(Math.max(0, totalInvoiced - totalPaid))}</p>
+            <div className="text-left">
+              <p className="text-xl font-semibold text-amber-600">{formatCurrency(outstanding)}</p>
               <p className="text-[11px] text-muted-foreground">Outstanding</p>
             </div>
           </div>
@@ -207,7 +215,8 @@ export default function ProjectHeader({
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setStageConfirmModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleConfirmStage} className="gradient-primary border-0">Confirm Advance</Button>
+            <Button disabled={savingStage || ((targetStage === "handover" || targetStage === "closed") && openSnags > 0)} onClick={handleConfirmStage} className="gradient-primary border-0">{savingStage ? "Saving…" : "Confirm Advance"}</Button>
+            {(targetStage === "handover" || targetStage === "closed") && openSnags > 0 && <p role="alert" className="text-sm text-destructive">Resolve all snags and obtain client sign-off first.</p>}
           </DialogFooter>
         </DialogContent>
       </Dialog>

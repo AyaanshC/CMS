@@ -41,8 +41,8 @@ describe("mapBoq", () => {
       id: "s1", boq_version_id: "b1", room_id: "r1", name: null, category: "Civil", sort_order: 1,
       room: { name: "Living" },
       items: [
-        { id: "i2", section_id: "s1", description: "Putty", specifications: null, unit: "sqft", quantity: 450, unit_rate: 25, remarks: null, sort_order: 2 },
-        { id: "i1", section_id: "s1", description: "Ceiling", specifications: null, unit: "sqft", quantity: 240, unit_rate: 95, remarks: null, sort_order: 1 },
+        { id: "i2", line_key: "key2", section_id: "s1", description: "Putty", specifications: null, unit: "sqft", quantity: 450, unit_rate: 25, remarks: null, sort_order: 2 },
+        { id: "i1", line_key: "key1", section_id: "s1", description: "Ceiling", specifications: null, unit: "sqft", quantity: 240, unit_rate: 95, remarks: null, sort_order: 1 },
       ],
     }],
   };
@@ -139,7 +139,7 @@ describe("mapCostRow", () => {
 describe("mapPurchaseOrder", () => {
   it("attaches line progress and totals", () => {
     const po = mapPurchaseOrder(
-      { id: "o", project_id: "p", vendor_id: "v", number: "PO/26-27/0001", status: "issued", order_date: "2026-10-01", expected_delivery: null,
+      { id: "o", request_id: null, request_hash: null, project_id: "p", vendor_id: "v", number: "PO/26-27/0001", status: "issued", order_date: "2026-10-01", expected_delivery: null,
         notes: null, approval_required_role: null, approved_by: null, approved_at: null, cancel_reason: null, created_by: "u", created_at: "2026-10-01T00:00:00Z",
         vendor: { name: "Bright" }, approver: null,
         lines: [{ id: "l", po_id: "o", boq_line_item_id: null, description: "Cable", unit: "m", quantity: 100, rate: 50, gst_rate: 18, amount: 5000 }] },
@@ -149,5 +149,3 @@ describe("mapPurchaseOrder", () => {
     expect(po.lines[0]).toMatchObject({ received_qty: 55, billed_qty: 55 });
   });
 });
-
-

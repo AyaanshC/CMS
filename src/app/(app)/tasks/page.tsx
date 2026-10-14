@@ -9,21 +9,21 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  CheckSquare, Plus, Clock, AlertCircle, Trash2, Calendar, CheckCircle2,
-  FolderKanban, User, Filter
-} from "lucide-react";
+import { CheckSquare, Plus, Clock, AlertCircle, Trash2, CheckCircle2, FolderKanban, User } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { formatShortDate, getPriorityColor, isOverdue, cn } from "@/lib/utils";
 import { Task, TaskPriority, TaskStatus } from "@/types";
 import { AssigneeSelect } from "@/components/team/AssigneeSelect";
 
 export default function TasksPage() {
-  const { tasks, projects, addTask, updateTaskStatus, deleteTask } = useAppStore();
+  const { tasks: workspaceTasks, projects, addTask, updateTaskStatus, deleteTask, me } = useAppStore();
+  const [scope, setScope] = useState<"mine" | "all">("mine");
+  const tasks = scope === "mine" ? workspaceTasks.filter(t => t.assigned_to === me.id) : workspaceTasks;
 
   const [activeTab, setActiveTab] = useState<"all" | "todo" | "in_progress" | "done" | "overdue">("all");
   const [selectedProjectId, setSelectedProjectId] = useState<string>("all");
   const [selectedPriority, setSelectedPriority] = useState<string>("all");
+  const [savingTask,setSavingTask]=useState(false);
   const [search, setSearch] = useState("");
 
   // Add Task Modal State
@@ -55,11 +55,12 @@ export default function TasksPage() {
   const overdueCount = tasks.filter((t) => !!t.due_date && isOverdue(t.due_date) && t.status !== "done").length;
   const doneCount = tasks.filter((t) => t.status === "done").length;
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!taskTitle.trim()) return;
+    if (!taskTitle.trim()||savingTask) return;
+    setSavingTask(true);
 
-    addTask({
+    const result=await addTask({
       project_id: taskProject,
       title: taskTitle.trim(),
       assigned_to: taskAssignee || undefined,
@@ -68,6 +69,8 @@ export default function TasksPage() {
       is_internal: true,
     });
 
+    setSavingTask(false);
+    if(!result.ok)return;
     setTaskTitle("");
     setTaskDueDate("");
     setTaskAssignee("");
@@ -82,6 +85,7 @@ export default function TasksPage() {
   return (
     <div>
       <TopBar title="Task Management" subtitle="Daily standup, site checklists, and team assignments" />
+      <div className="px-6 pt-4 flex gap-2"><Button size="sm" variant={scope === "mine" ? "default" : "outline"} onClick={()=>setScope("mine")}>My tasks</Button><Button size="sm" variant={scope === "all" ? "default" : "outline"} onClick={()=>setScope("all")}>Workspace tasks</Button></div>
       <div className="p-6">
         {/* KPI Summary Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -94,7 +98,7 @@ export default function TasksPage() {
           <Card className="shadow-sm">
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground font-medium">In Progress</p>
-              <p className="text-2xl font-bold text-indigo-600 mt-1">{inProgressCount}</p>
+              <p className="text-2xl font-bold text-primary mt-1">{inProgressCount}</p>
             </CardContent>
           </Card>
           <Card className={cn("shadow-sm", overdueCount > 0 ? "border-red-200 bg-red-50/50" : "")}>
@@ -111,6 +115,7 @@ export default function TasksPage() {
           </Card>
         </div>
 
+        <Input aria-label="Search tasks" placeholder="Search tasks…" className="mb-4 max-w-md" value={search} onChange={e=>setSearch(e.target.value)}/>
         {/* Toolbar & Filters */}
         <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 mb-6">
           <div className="flex flex-wrap items-center gap-2">
@@ -186,7 +191,7 @@ export default function TasksPage() {
               <Card
                 key={task.id}
                 className={cn(
-                  "shadow-xs hover:border-indigo-200 transition-all",
+                  "shadow-xs hover:border-primary/20 transition-all",
                   isDone ? "bg-slate-50/60 opacity-80" : "bg-white"
                 )}
               >
@@ -285,7 +290,7 @@ export default function TasksPage() {
           <form onSubmit={handleCreateTask} className="space-y-4 py-2">
             <div>
               <label className="text-xs font-semibold text-foreground block mb-1">Task Title *</label>
-              <Input
+              <Input aria-label="Task Title *"
                 required
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
@@ -295,7 +300,7 @@ export default function TasksPage() {
 
             <div>
               <label className="text-xs font-semibold text-foreground block mb-1">Associated Project *</label>
-              <select
+              <select aria-label="Associated Project *"
                 value={taskProject}
                 onChange={(e) => setTaskProject(e.target.value)}
                 className="w-full text-sm border border-input rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -311,14 +316,14 @@ export default function TasksPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-foreground block mb-1">Assignee</label>
-                <AssigneeSelect
+                <AssigneeSelect aria-label="Assignee"
                   value={taskAssignee}
                   onChange={setTaskAssignee}
                 />
               </div>
               <div>
                 <label className="text-xs font-semibold text-foreground block mb-1">Due Date *</label>
-                <Input
+                <Input aria-label="Due Date *"
                   type="date"
                   required
                   value={taskDueDate}
@@ -352,7 +357,7 @@ export default function TasksPage() {
               <Button type="button" variant="outline" onClick={() => setShowAddModal(false)}>
                 Cancel
               </Button>
-              <Button type="submit" className="gradient-primary border-0 text-white">
+              <Button disabled={savingTask} type="submit" className="gradient-primary border-0 text-white">
                 Create Task
               </Button>
             </DialogFooter>

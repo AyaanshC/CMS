@@ -38,6 +38,7 @@ export type NewFileRecord = {
 };
 
 export type NewVendorBill = {
+  request_id?: string;
   vendor_id: string; project_id: string; po_id?: string; bill_number: string; bill_date: string;
   due_date?: string; notes?: string; file_path?: string;
   lines: { po_line_id?: string; description: string; quantity: number; rate: number; gst_rate: number }[];
@@ -88,11 +89,12 @@ export interface AppActions {
   deleteTask: (taskId: string) => Promise<ActionResult>;
 
   // Finance Actions
+  saveTimesheetChecked: (week:string, rows:WeekRow[], expected:string[], submit:boolean) => Promise<ActionResult>;
   addInvoice: (invoice: Partial<Invoice> & { send?: boolean }) => Promise<ActionResult>;
   issueInvoice: (id: string, dueDate?: string) => Promise<ActionResult>;
   deleteDraftInvoice: (id: string) => Promise<ActionResult>;
   cancelInvoice: (invoiceId: string) => Promise<ActionResult>;
-  recordPayment: (invoiceId: string, amount: number, paymentDate: string, mode: string, reference?: string, tdsAmount?: number) => Promise<ActionResult>;
+  recordPayment: (invoiceId: string, amount: number, paymentDate: string, mode: string, reference?: string, tdsAmount?: number, requestId?: string) => Promise<ActionResult>;
   addCreditNote: (invoiceId: string, amount: number, reason: string) => Promise<ActionResult>;
   setRetention: (invoiceId: string, amount: number) => Promise<ActionResult>;
   releaseRetention: (invoiceId: string) => Promise<ActionResult>;
@@ -129,12 +131,12 @@ export interface AppActions {
   saveVendor: (v: Partial<Vendor>) => Promise<ActionResult>;
   setLineCost: (lineItemId: string, costRate: number) => Promise<ActionResult>;
   addQuote: (q: { project_id: string; vendor_id: string; boq_line_item_id?: string; package_name?: string; description?: string; quantity: number; rate: number; valid_until?: string }) => Promise<ActionResult>;
-  createPurchaseOrder: (po: { project_id: string; vendor_id: string; order_date?: string; expected_delivery?: string; notes?: string; lines: Partial<PoLine>[] }) => Promise<ActionResult>;
+  createPurchaseOrder: (po: { request_id?: string; project_id: string; vendor_id: string; order_date?: string; expected_delivery?: string; notes?: string; lines: Partial<PoLine>[] }) => Promise<ActionResult>;
   submitPurchaseOrder: (id: string) => Promise<ActionResult>;
   approvePurchaseOrder: (id: string) => Promise<ActionResult>;
   issuePurchaseOrder: (id: string) => Promise<ActionResult>;
   cancelPurchaseOrder: (id: string, reason: string) => Promise<ActionResult>;
-  recordReceipt: (r: { po_id: string; received_on: string; notes?: string; photo_url?: string; lines: { po_line_id: string; quantity_received: number; quantity_rejected: number; condition_note?: string }[] }) => Promise<ActionResult>;
+  recordReceipt: (r: { request_id?: string; po_id: string; received_on: string; notes?: string; photo_url?: string; lines: { po_line_id: string; quantity_received: number; quantity_rejected: number; condition_note?: string }[] }) => Promise<ActionResult>;
   recordVendorBill: (b: NewVendorBill) => Promise<ActionResult>;
   decideVendorBill: (id: string, approve: boolean, note?: string) => Promise<ActionResult>;
   recordVendorPayment: (p: Partial<VendorPayment>) => Promise<ActionResult>;
@@ -206,12 +208,13 @@ export const createAppStore = (snapshot: WorkspaceSnapshot) =>
     deleteTask: (taskId) => run(taskActions.deleteTask({ id: taskId })),
 
     // Finance Actions
+    saveTimesheetChecked: (week, rows, expected, submit) => run(tsActions.saveTimesheetChecked({week_start:week,rows,expected_ids:expected,submit})),
     addInvoice: (invoice) => run(financeActions.createInvoice({ ...invoice, send: invoice.send ?? invoice.status !== "draft" })),
     issueInvoice: (id, dueDate) => run(recvActions.issueInvoice({ id, due_date: dueDate })),
     deleteDraftInvoice: (id) => run(recvActions.deleteDraftInvoice({ id })),
     cancelInvoice: (invoiceId) => run(financeActions.cancelInvoice({ id: invoiceId })),
-    recordPayment: (invoiceId, amount, paymentDate, mode, reference, tdsAmount = 0) =>
-      run(financeActions.recordPayment({ invoice_id: invoiceId, amount, payment_date: paymentDate, mode, reference, tds_amount: tdsAmount })),
+    recordPayment: (invoiceId, amount, paymentDate, mode, reference, tdsAmount = 0, requestId) =>
+      run(financeActions.recordPayment({ invoice_id: invoiceId, amount, payment_date: paymentDate, mode, reference, tds_amount: tdsAmount,request_id:requestId })),
     addCreditNote: (invoiceId, amount, reason) => run(recvActions.addCreditNote({ invoice_id: invoiceId, amount, reason })),
     setRetention: (invoiceId, amount) => run(recvActions.setRetention({ id: invoiceId, retention_amount: amount })),
     releaseRetention: (invoiceId) => run(recvActions.releaseRetention({ id: invoiceId })),

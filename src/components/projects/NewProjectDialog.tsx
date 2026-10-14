@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -50,6 +51,7 @@ export function NewProjectDialog() {
                 <option value="">Select client</option>
                 {clients.map((c) => <option key={c.id} value={c.id}>{c.full_name}</option>)}
               </select>
+              {clients.length === 0 && <p className="text-xs text-muted-foreground">Add a client before creating a project. <Link href="/clients" className="font-medium text-primary underline">Add your first client</Link></p>}
             </div>
             <div className="col-span-2 space-y-1"><Label htmlFor="np-name">Project name *</Label><Input id="np-name" required value={form.name} onChange={set("name")} /></div>
             <div className="space-y-1">
@@ -69,7 +71,7 @@ export function NewProjectDialog() {
             <div className="space-y-1"><Label htmlFor="np-pm">Project manager</Label><AssigneeSelect id="np-pm" roles={["project_manager", "director"]} value={form.manager_id} onChange={(v) => setForm({ ...form, manager_id: v })} /></div>
             <DialogFooter className="col-span-2">
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
-              <Button type="submit">Create project</Button>
+              <Button type="submit" disabled={clients.length === 0}>Create project</Button>
             </DialogFooter>
           </form>
         </DialogContent>

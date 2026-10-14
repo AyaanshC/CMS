@@ -1,6 +1,6 @@
 "use server";
 import { mutate } from "@/lib/actions/mutate";
-import { boqDecisionInput, boqUpdateInput, boqVersionInput, idInput, lineItemInput } from "@/lib/actions/schemas";
+import { boqDecisionInput, boqUpdateInput, boqVersionInput, idInput, lineItemInput, lineItemUpdate, boqSectionInput, applyTemplateInput } from "@/lib/actions/schemas";
 
 export async function createBoqVersion(input: unknown) {
   return mutate(boqVersionInput, input, (d, db) => db.rpc("create_boq_version", { p: d }));
@@ -20,6 +20,15 @@ export async function addLineItem(input: unknown) {
 
 export async function deleteLineItem(input: unknown) {
   return mutate(idInput, input, ({ id }, db) => db.from("boq_line_items").delete().eq("id", id).select("id").single());
+}
+export async function updateLineItem(input: unknown) {
+  return mutate(lineItemUpdate,input,({id,...data},db)=>db.from("boq_line_items").update(data).eq("id",id).select("id").single());
+}
+export async function addBoqSection(input: unknown) {
+  return mutate(boqSectionInput,input,(data,db)=>db.from("boq_sections").insert(data).select("id").single());
+}
+export async function applyBoqTemplate(input: unknown) {
+  return mutate(applyTemplateInput,input,(data,db)=>db.rpc("apply_boq_template",{p_project:data.project_id,p_template:data.template_id}));
 }
 
 export async function decideBoq(input: unknown) {

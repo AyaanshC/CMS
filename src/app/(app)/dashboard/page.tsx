@@ -1,25 +1,47 @@
 "use client";
 
+import Link from "next/link";
 import { TopBar } from "@/components/layout/AppSidebar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 import {
-  FolderKanban, IndianRupee, AlertCircle, CheckSquare,
-  Clock, ArrowRight, Bell,
+  FolderKanban,
+  IndianRupee,
+  ArrowUpRight,
+  ArrowRight,
+  CheckSquare,
+  Clock3,
+  CircleCheck,
+  CalendarDays,
+  CircleAlert,
 } from "lucide-react";
 import {
-  formatCurrency, formatRelativeTime, getStatusColor,
-  getPriorityColor, formatShortDate, isOverdue, localToday, cn,
+  formatCurrency,
+  formatRelativeTime,
+  getStatusColor,
+  formatShortDate,
+  localToday,
+  cn,
 } from "@/lib/utils";
-import Link from "next/link";
 import { useAppStore } from "@/lib/store";
-import { dashboardKpis, monthlySeries, stageDistribution } from "@/lib/metrics/kpis";
+import {
+  dashboardKpis,
+  monthlySeries,
+  stageDistribution,
+} from "@/lib/metrics/kpis";
 import { NotEnoughData } from "@/components/metrics/NotEnoughData";
 import { MetricInfo } from "@/components/metrics/MetricInfo";
 import { ActionItems } from "@/components/dashboard/ActionItems";
@@ -28,353 +50,506 @@ import { DirectorDashboard } from "@/components/dashboard/DirectorDashboard";
 import { PmDashboard } from "@/components/dashboard/PmDashboard";
 import { MyWeekDashboard } from "@/components/dashboard/MyWeekDashboard";
 import { SiteDashboard } from "@/components/dashboard/SiteDashboard";
-import type { ProjectStatus } from "@/types";
+import { PROJECT_STAGE_LABELS, type ProjectStatus } from "@/types";
 
 const STAGE_COLORS: Record<ProjectStatus, string> = {
-  lead: "#94a3b8",
-  consultation: "#60a5fa",
-  design: "#8b5cf6",
-  boq_approval: "#fbbf24",
-  execution: "#6366f1",
-  snag: "#f97316",
-  handover: "#14b8a6",
-  closed: "#22c55e",
-};
-
-interface TooltipPayloadEntry {
-  color: string;
-  name: string;
-  value: number;
-}
-
-const CUSTOM_TOOLTIP = ({
-  active,
-  payload,
-  label,
-}: {
-  active?: boolean;
-  payload?: TooltipPayloadEntry[];
-  label?: string;
-}) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-card border border-border rounded-xl p-3 shadow-lg text-sm">
-        <p className="font-semibold text-foreground mb-1">{label}</p>
-        {payload.map((entry, i) => (
-          <p key={i} style={{ color: entry.color }}>
-            {entry.name}: {formatCurrency(entry.value)}
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
+  lead: "#b5bab5",
+  consultation: "#8da4b1",
+  design: "#819888",
+  boq_approval: "#c4a16c",
+  execution: "#496958",
+  snag: "#b58269",
+  handover: "#729d91",
+  closed: "#a9b8a1",
 };
 
 export default function DashboardPage() {
-  const { me, notifications, projects, tasks, invoices, payments, snags, boqs, expenses } = useAppStore();
+  const {
+    me,
+    notifications,
+    projects,
+    tasks,
+    invoices,
+    payments,
+    snags,
+    boqs,
+    expenses,
+    vendorPayments,
+  } = useAppStore();
   const today = localToday();
-  const k = dashboardKpis({ projects, invoices, payments, snags, tasks, boqs }, today);
-  const series = monthlySeries(invoices, payments, expenses, today);
+  const k = dashboardKpis(
+    { projects, invoices, payments, snags, tasks, boqs },
+    today,
+  );
+  const series = monthlySeries(invoices, payments, expenses, today, 6, vendorPayments);
   const stages = stageDistribution(projects);
-
+  const liveProjects = projects.filter(
+    (p) => p.status !== "lead" && p.status !== "closed",
+  );
+  const upcoming = tasks
+    .filter((t) => t.status !== "done")
+    .sort((a, b) => (a.due_date || "9999").localeCompare(b.due_date || "9999"))
+    .slice(0, 5);
   const cards = [
     {
-      title: "Active Projects",
-      value: k.activeProjects,
+      label: "Active projects",
+      value: String(k.activeProjects).padStart(2, "0"),
+      note: `${projects.filter((p) => p.status === "lead").length} enquiries in the pipeline`,
       icon: FolderKanban,
-      textColor: "text-indigo-600",
-      bgColor: "bg-indigo-50",
-      note: `${projects.filter((p) => p.status === "lead").length} open leads`,
       href: "/projects",
-      formula: "Projects not in Lead or Closed stage",
+      formula: "Projects outside Lead and Closed stages",
     },
     {
-      title: "Collected This Month",
+      label: "Collected this month",
       value: formatCurrency(k.collectedThisMonth),
+      note: "Payments received this calendar month",
       icon: IndianRupee,
-      textColor: "text-emerald-600",
-      bgColor: "bg-emerald-50",
-      note: "Payments recorded this month",
       href: "/invoices",
-      formula: "Sum of payments dated this calendar month",
+      formula: "Sum of recorded payments dated this month",
     },
     {
-      title: "Outstanding",
+      label: "Outstanding balance",
       value: formatCurrency(k.outstanding),
-      icon: AlertCircle,
-      textColor: "text-amber-600",
-      bgColor: "bg-amber-50",
-      note: `${k.overdueInvoices} overdue`,
+      note: `${k.overdueInvoices} overdue invoice${k.overdueInvoices === 1 ? "" : "s"}`,
+      icon: Clock3,
       href: "/invoices",
-      formula: "Sum of amount due on sent invoices",
+      formula: "Total amount due on issued invoices",
     },
     {
-      title: "Open Snags",
-      value: k.openSnags,
-      icon: AlertCircle,
-      textColor: "text-red-600",
-      bgColor: "bg-red-50",
-      note: `${k.criticalSnags} critical`,
+      label: "Open snags",
+      value: String(k.openSnags).padStart(2, "0"),
+      note: `${k.criticalSnags} critical items to resolve`,
+      icon: CircleAlert,
       href: "/projects",
-      formula: "Snags not yet closed",
-    },
-    {
-      title: "Tasks Due Today",
-      value: k.tasksDueToday,
-      icon: CheckSquare,
-      textColor: "text-violet-600",
-      bgColor: "bg-violet-50",
-      note: `${k.overdueTasks} overdue`,
-      href: "/tasks",
-      formula: "Open tasks with today's due date",
-    },
-    {
-      title: "Awaiting Client Approval",
-      value: k.pendingApprovals,
-      icon: Clock,
-      textColor: "text-orange-600",
-      bgColor: "bg-orange-50",
-      note: "Submitted BOQs",
-      href: "/projects",
-      formula: "BOQ versions in Submitted status",
+      formula: "Snags that have not been closed",
     },
   ];
-
-  const hasSeriesData = series.some((s) => s.invoiced > 0 || s.collected > 0 || s.expenses > 0);
-  const hasStagesData = stages.length > 0;
-
-  const recentActivity = notifications.slice(0, 5);
-  const upcomingTasks = tasks
-    .filter((t) => t.status !== "done")
-    .sort((a, b) => (a.due_date || "").localeCompare(b.due_date || ""))
-    .slice(0, 5);
-
   return (
     <div>
       <TopBar
-        title="Dashboard"
-        subtitle={`Welcome back, ${me.full_name.split(" ")[0]}`}
+        title="Studio overview"
+        subtitle="A clear view of your projects, people, and progress."
       />
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-7">
+        <section className="flex flex-col justify-between gap-5 rounded-xl border border-primary/10 bg-accent/60 px-6 py-7 sm:flex-row sm:items-center">
+          <div>
+            <p className="eyebrow mb-2">Your workspace, at a glance</p>
+            <h2 className="text-2xl font-medium tracking-tight sm:text-[28px]">
+              Welcome back, {me.full_name.split(" ")[0]}.
+            </h2>
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              {k.tasksDueToday
+                ? `${k.tasksDueToday} task${k.tasksDueToday === 1 ? "" : "s"} due today`
+                : "No tasks due today"}
+              {k.pendingApprovals
+                ? ` · ${k.pendingApprovals} BOQ${k.pendingApprovals === 1 ? "" : "s"} awaiting client approval`
+                : ". Here’s how your studio is progressing."}
+            </p>
+          </div>
+          <Link
+            href="/projects"
+            className="inline-flex h-10 shrink-0 items-center justify-center gap-3 self-start rounded-lg bg-primary px-4 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 sm:self-center"
+          >
+            View projects <ArrowUpRight className="size-4" />
+          </Link>
+        </section>
+        {projects.length === 0 && !me.is_demo && (
+          <section className="rounded-xl border border-dashed border-primary/25 bg-card p-6" aria-label="Get started">
+            <h2 className="text-base font-semibold">Your workspace is ready for its first project</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Add your clients and projects to see their progress here. Financial totals stay at zero until you record invoices and payments.</p>
+            <div className="mt-4 flex flex-wrap gap-4 text-sm font-medium text-primary">
+              <Link href="/clients" className="underline underline-offset-4">Add your first client</Link>
+              <Link href="/settings" className="underline underline-offset-4">Set up studio details</Link>
+            </div>
+          </section>
+        )}
         <ActionItems />
-        {me.roles.includes("owner") ? <OwnerDashboard />
-          : me.roles.includes("director") ? <DirectorDashboard />
-          : me.roles.includes("project_manager") ? <PmDashboard />
-          : me.roles.includes("site_supervisor") ? <><SiteDashboard /><MyWeekDashboard /></>
-          : <MyWeekDashboard />}
-        {(me.roles.includes("director") || me.roles.includes("project_manager")) && <MyWeekDashboard />}
-
-        <div>
-          <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground mb-4">Operations</h3>
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          {cards.map((kpi) => (
-            <Link key={kpi.title} href={kpi.href}>
-              <Card className="card-hover border-border cursor-pointer h-full">
-                <CardContent className="p-4 flex flex-col justify-between h-full">
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className={cn("w-9 h-9 rounded-xl flex items-center justify-center", kpi.bgColor)}>
-                        <kpi.icon className={cn("w-4 h-4", kpi.textColor)} />
-                      </div>
-                      <MetricInfo formula={kpi.formula} />
-                    </div>
-                    <p className="text-2xl font-bold text-foreground">{kpi.value}</p>
-                    <p className="text-xs font-medium text-muted-foreground mt-0.5">{kpi.title}</p>
+        <section
+          aria-label="Key studio metrics"
+          className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+        >
+          {cards.map(({ label, value, note, icon: Icon, href, formula }) => (
+            <div key={label} className="group relative rounded-xl">
+              <Card className="h-full transition-colors group-hover:border-primary/40">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between">
+                    <Link
+                      href={href}
+                      className="text-xs font-medium text-muted-foreground after:absolute after:inset-0 after:rounded-xl focus-visible:outline-offset-4"
+                    >
+                      {label}
+                    </Link>
+                    <Icon
+                      className="size-4 text-primary/75"
+                      strokeWidth={1.6}
+                    />
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-2 opacity-70">{kpi.note}</p>
+                  <p className="my-4 text-[28px] font-semibold leading-none tracking-tight tabular-nums">
+                    {value}
+                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[10px] text-muted-foreground">{note}</p>
+                    <span className="relative z-10">
+                      <MetricInfo formula={formula} />
+                    </span>
+                  </div>
                 </CardContent>
               </Card>
-            </Link>
+            </div>
           ))}
-        </div>
+        </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Revenue Chart */}
-          <Card className="lg:col-span-2">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">Invoiced, collected and expenses</CardTitle>
-                <Badge variant="secondary" className="text-xs">Last 6 months</Badge>
+        <div className="grid items-start gap-5 xl:grid-cols-[1.8fr_1fr]">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between border-b border-border">
+              <div>
+                <CardTitle>Project portfolio</CardTitle>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Your active work, from concept to completion
+                </p>
               </div>
+              <Link
+                href="/projects"
+                className="flex shrink-0 items-center gap-1.5 text-[11px] font-semibold text-primary"
+              >
+                View all <ArrowRight className="size-3.5" />
+              </Link>
             </CardHeader>
-            <CardContent>
-              {!hasSeriesData ? (
-                <div className="h-[220px] flex items-center justify-center">
-                  <NotEnoughData hint="Appears once invoices or payments are recorded" />
+            <CardContent className="p-0">
+              {liveProjects.length ? (
+                <div className="divide-y divide-border">
+                  {liveProjects.slice(0, 5).map((p, i) => (
+                    <Link
+                      key={p.id}
+                      href={`/projects/${p.id}`}
+                      className="group flex items-center gap-4 px-5 py-5 transition-colors hover:bg-muted/40"
+                    >
+                      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-xs font-medium text-muted-foreground tabular-nums">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-[13px] font-semibold group-hover:text-primary">
+                            {p.name}
+                          </p>
+                          <Badge
+                            className={cn(
+                              "border-0 px-2 py-0.5 text-[9px] font-medium",
+                              getStatusColor(p.status),
+                            )}
+                          >
+                            {PROJECT_STAGE_LABELS[p.status]}
+                          </Badge>
+                        </div>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          {p.client_name}
+                        </p>
+                        <div className="mt-3 flex items-center gap-3">
+                          <Progress
+                            value={p.progress_percent}
+                            className="h-1 flex-1"
+                          />
+                          <span className="text-[10px] text-muted-foreground tabular-nums">
+                            {p.progress_percent}%
+                          </span>
+                        </div>
+                      </div>
+                      <ArrowUpRight className="size-4 shrink-0 text-muted-foreground/60 group-hover:text-primary" />
+                    </Link>
+                  ))}
                 </div>
               ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart data={series} barSize={16} barGap={4}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                    <XAxis dataKey="month" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} tickFormatter={(v) => `₹${(v / 100000).toFixed(0)}L`} />
-                    <Tooltip content={<CUSTOM_TOOLTIP />} />
-                    <Bar dataKey="invoiced" name="Invoiced" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="collected" name="Collected" fill="#10b981" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expenses" name="Expenses" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="p-10 text-center">
+                  <FolderKanban className="mx-auto mb-3 size-6 text-muted-foreground" />
+                  <p className="text-sm font-medium">
+                    Your next project starts here
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Active projects will appear as they move beyond enquiry.
+                  </p>
+                  <Link
+                    href="/projects"
+                    className="mt-4 inline-block text-xs font-semibold text-primary"
+                  >
+                    Go to projects →
+                  </Link>
+                </div>
               )}
             </CardContent>
           </Card>
-
-          {/* Project Status Donut */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base font-semibold">Projects by Stage</CardTitle>
+            <CardHeader className="flex flex-row items-center justify-between border-b border-border">
+              <div>
+                <CardTitle>Coming up next</CardTitle>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Keep the important things moving
+                </p>
+              </div>
+              <CalendarDays className="size-4 text-muted-foreground" />
             </CardHeader>
-            <CardContent>
-              {!hasStagesData ? (
-                <div className="h-[220px] flex items-center justify-center">
-                  <NotEnoughData />
+            <CardContent className="p-0">
+              {upcoming.length ? (
+                <div className="divide-y divide-border">
+                  {upcoming.map((task) => (
+                    <Link
+                      key={task.id}
+                      href="/tasks"
+                      className="flex items-start gap-3 px-5 py-4 transition-colors hover:bg-muted/40"
+                    >
+                      <span
+                        className={cn(
+                          "mt-1 size-2 shrink-0 rounded-full",
+                          task.priority === "urgent" || task.priority === "high"
+                            ? "bg-amber-500"
+                            : "bg-primary/40",
+                        )}
+                      />
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium leading-relaxed">
+                          {task.title}
+                        </p>
+                        <p className="mt-1 text-[10px] text-muted-foreground">
+                          {task.project_name}
+                        </p>
+                        <span
+                          className={cn(
+                            "mt-2 inline-block text-[10px]",
+                            task.due_date && task.due_date < today
+                              ? "text-destructive"
+                              : "text-muted-foreground",
+                          )}
+                        >
+                          {task.due_date
+                            ? `${task.due_date < today ? "Overdue · " : "Due "}${formatShortDate(task.due_date)}`
+                            : "No due date"}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
                 </div>
               ) : (
+                <div className="px-5 py-10 text-center">
+                  <CircleCheck className="mx-auto mb-3 size-6 text-primary" />
+                  <p className="text-sm font-medium">All caught up</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    No open tasks in your workspace.
+                  </p>
+                </div>
+              )}
+              <Link
+                href="/tasks"
+                className="flex items-center justify-center gap-2 border-t border-border px-5 py-3.5 text-[11px] font-semibold text-primary"
+              >
+                Open task list <ArrowRight className="size-3.5" />
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid gap-5 lg:grid-cols-[1.8fr_1fr]">
+          <Card>
+            <CardHeader className="flex flex-row items-start justify-between gap-3">
+              <div>
+                <CardTitle>Financial activity</CardTitle>
+                <p className="mt-1 text-[11px] text-muted-foreground">
+                  Invoiced, collected, and expenses
+                </p>
+              </div>
+              <span className="rounded-md border border-border px-2.5 py-1 text-[10px] text-muted-foreground">
+                Last 6 months
+              </span>
+            </CardHeader>
+            <CardContent>
+              {series.some((s) => s.invoiced || s.collected || s.expenses) ? (
                 <>
-                  <ResponsiveContainer width="100%" height={180}>
-                    <PieChart>
-                      <Pie
-                        data={stages}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={75}
-                        paddingAngle={3}
-                        dataKey="count"
-                        nameKey="label"
-                      >
-                        {stages.map((entry) => (
-                          <Cell key={entry.stage} fill={STAGE_COLORS[entry.stage] || "#94a3b8"} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(v, n) => [v, n]} />
-                    </PieChart>
+                  <div className="mb-5 flex flex-wrap gap-4 text-[10px] text-muted-foreground">
+                    {[
+                      ["Invoiced", "#496958"],
+                      ["Collected", "#93ac9c"],
+                      ["Expenses", "#c2a77f"],
+                    ].map(([name, color]) => (
+                      <span key={name} className="flex items-center gap-1.5">
+                        <span
+                          className="size-2 rounded-sm"
+                          style={{ background: color }}
+                        />
+                        {name}
+                      </span>
+                    ))}
+                  </div>
+                  <ResponsiveContainer width="100%" height={230}>
+                    <BarChart data={series} barSize={12} barGap={3}>
+                      <CartesianGrid
+                        strokeDasharray="3 5"
+                        stroke="hsl(var(--border))"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="month"
+                        tick={{
+                          fontSize: 10,
+                          fill: "hsl(var(--muted-foreground))",
+                        }}
+                        axisLine={false}
+                        tickLine={false}
+                        dy={8}
+                      />
+                      <YAxis
+                        width={46}
+                        tick={{
+                          fontSize: 10,
+                          fill: "hsl(var(--muted-foreground))",
+                        }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(v) => `₹${v / 100000}L`}
+                      />
+                      <Tooltip
+                        contentStyle={{
+                          borderRadius: 10,
+                          border: "1px solid hsl(var(--border))",
+                          fontSize: 11,
+                        }}
+                        formatter={(v) => formatCurrency(Number(v))}
+                        cursor={{ fill: "hsl(var(--muted))" }}
+                      />
+                      <Bar
+                        dataKey="invoiced"
+                        name="Invoiced"
+                        fill="#496958"
+                        radius={[3, 3, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="collected"
+                        name="Collected"
+                        fill="#93ac9c"
+                        radius={[3, 3, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="expenses"
+                        name="Expenses"
+                        fill="#c2a77f"
+                        radius={[3, 3, 0, 0]}
+                      />
+                    </BarChart>
                   </ResponsiveContainer>
-                  <div className="space-y-1.5 mt-2">
-                    {stages.map((item) => (
-                      <div key={item.stage} className="flex items-center justify-between text-xs">
-                        <div className="flex items-center gap-2">
-                          <div
-                            className="w-2 h-2 rounded-full"
-                            style={{ background: STAGE_COLORS[item.stage] || "#94a3b8" }}
-                          />
-                          <span className="text-muted-foreground">{item.label}</span>
-                        </div>
-                        <span className="font-medium">{item.count}</span>
+                </>
+              ) : (
+                <div className="flex h-[250px] items-center justify-center">
+                  <NotEnoughData hint="Record an invoice or payment to see your financial activity." />
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Projects by stage</CardTitle>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                How your work is taking shape
+              </p>
+            </CardHeader>
+            <CardContent>
+              {stages.length ? (
+                <>
+                  <div className="relative">
+                    <ResponsiveContainer width="100%" height={180}>
+                      <PieChart>
+                        <Pie
+                          data={stages}
+                          innerRadius={57}
+                          outerRadius={76}
+                          paddingAngle={4}
+                          stroke="none"
+                          dataKey="count"
+                          nameKey="label"
+                        >
+                          {stages.map((s) => (
+                            <Cell key={s.stage} fill={STAGE_COLORS[s.stage]} />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          contentStyle={{ borderRadius: 10, fontSize: 11 }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-3xl font-semibold tabular-nums">
+                        {projects.length}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        total projects
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-x-4 gap-y-2.5">
+                    {stages.map((s) => (
+                      <div
+                        key={s.stage}
+                        className="flex items-center gap-2 text-[10px]"
+                      >
+                        <span
+                          className="size-2 rounded-full"
+                          style={{ background: STAGE_COLORS[s.stage] }}
+                        />
+                        <span className="text-muted-foreground">{s.label}</span>
+                        <span className="ml-auto font-semibold">{s.count}</span>
                       </div>
                     ))}
                   </div>
                 </>
+              ) : (
+                <NotEnoughData hint="Your project stages will appear here." />
               )}
             </CardContent>
           </Card>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Active Projects */}
-          <Card className="lg:col-span-2">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base font-semibold">Active Projects</CardTitle>
-                <Link href="/projects">
-                  <Button variant="ghost" size="sm" className="text-xs gap-1">
-                    View all <ArrowRight className="w-3 h-3" />
-                  </Button>
-                </Link>
-              </div>
+        <section className="space-y-4">
+          <div className="flex items-center gap-3">
+            <h2 className="text-sm font-semibold">Studio performance</h2>
+            <span className="h-px flex-1 bg-border" />
+            <span className="text-[10px] text-muted-foreground">
+              Your management view
+            </span>
+          </div>
+          {me.roles.includes("owner") ? (
+            <OwnerDashboard />
+          ) : me.roles.includes("director") ? (
+            <DirectorDashboard />
+          ) : me.roles.includes("project_manager") ? (
+            <PmDashboard />
+          ) : me.roles.includes("site_supervisor") ? (
+            <>
+              <SiteDashboard />
+              <MyWeekDashboard />
+            </>
+          ) : (
+            <MyWeekDashboard />
+          )}
+          {(me.roles.includes("director") ||
+            me.roles.includes("project_manager")) &&
+            !me.roles.includes("owner") && <MyWeekDashboard />}
+        </section>
+        {notifications.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent activity</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
-              {projects.filter((p) => p.status !== "closed").map((project) => (
-                <Link key={project.id} href={`/projects/${project.id}`}>
-                  <div className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/50 transition-colors cursor-pointer border border-transparent hover:border-border">
-                    <div className="w-9 h-9 rounded-lg gradient-primary flex items-center justify-center flex-shrink-0">
-                      <FolderKanban className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <p className="text-sm font-semibold text-foreground truncate">{project.name}</p>
-                        <Badge className={cn("text-[10px] px-1.5 py-0 border-0", getStatusColor(project.status))}>
-                          {project.status.replace("_", " ")}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <Progress value={project.progress_percent} className="h-1.5 flex-1" />
-                        <span className="text-xs font-medium text-muted-foreground w-8 text-right">
-                          {project.progress_percent}%
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{project.client_name}</p>
-                    </div>
-                    {project.outstanding_payment && project.outstanding_payment > 0 ? (
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs text-amber-600 font-semibold">{formatCurrency(project.outstanding_payment)}</p>
-                        <p className="text-[10px] text-muted-foreground">outstanding</p>
-                      </div>
-                    ) : null}
+            <CardContent className="space-y-4">
+              {notifications.slice(0, 4).map((n) => (
+                <div key={n.id} className="flex items-start gap-3">
+                  <CheckSquare className="mt-0.5 size-4 text-primary" />
+                  <div>
+                    <p className="text-xs font-medium">{n.title}</p>
+                    <p className="mt-1 text-[10px] text-muted-foreground">
+                      {formatRelativeTime(n.created_at)}
+                    </p>
                   </div>
-                </Link>
+                </div>
               ))}
             </CardContent>
           </Card>
-
-          {/* Recent Activity + Tasks */}
-          <div className="space-y-4">
-            {/* Upcoming Tasks */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold">Upcoming Tasks</CardTitle>
-                  <Link href="/tasks">
-                    <Button variant="ghost" size="sm" className="text-xs gap-1">
-                      View all <ArrowRight className="w-3 h-3" />
-                    </Button>
-                  </Link>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {upcomingTasks.map((task) => (
-                  <div key={task.id} className="flex items-start gap-3 py-2">
-                    <div className={cn("w-2 h-2 rounded-full mt-1.5 flex-shrink-0", getPriorityColor(task.priority).includes("red") ? "bg-red-400" : task.priority === "medium" ? "bg-amber-400" : "bg-slate-400")} />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-foreground truncate">{task.title}</p>
-                      <p className="text-xs text-muted-foreground">{task.project_name}</p>
-                    </div>
-                    <span className={cn("text-[10px] font-medium flex-shrink-0", task.due_date && isOverdue(task.due_date) ? "text-red-500" : "text-muted-foreground")}>
-                      {task.due_date ? formatShortDate(task.due_date) : "No date"}
-                    </span>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Recent Notifications */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base font-semibold">Recent Activity</CardTitle>
-                  <Bell className="w-4 h-4 text-muted-foreground" />
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {recentActivity.map((notif) => (
-                  <div key={notif.id} className="flex items-start gap-3">
-                    <div className={cn("w-1.5 h-1.5 rounded-full mt-2 flex-shrink-0", notif.is_read ? "bg-muted-foreground/30" : "bg-indigo-500")} />
-                    <div className="flex-1 min-w-0">
-                      <p className={cn("text-xs", notif.is_read ? "text-muted-foreground" : "text-foreground font-medium")}>
-                        {notif.title}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">
-                        {formatRelativeTime(notif.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-        </div>
+        )}
       </div>
     </div>
   );

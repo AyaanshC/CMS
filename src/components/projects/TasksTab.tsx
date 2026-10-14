@@ -1,5 +1,7 @@
 "use client";
 
+import { updateTask } from "@/app/actions/tasks";
+import { toast } from "@/components/ui/toast";
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +17,7 @@ import type { Project, Task, TaskPriority } from "@/types";
 export default function TasksTab({ project, tasks }: { project: Project; tasks: Task[] }) {
   const { addTask, updateTaskStatus } = useAppStore();
 
+  const [editing,setEditing]=useState<Task|null>(null),[busy,setBusy]=useState(false);
   const [addTaskModalOpen, setAddTaskModalOpen] = useState(false);
   const [taskForm, setTaskForm] = useState({
     title: "",
@@ -23,16 +26,20 @@ export default function TasksTab({ project, tasks }: { project: Project; tasks: 
     assigned_to: "",
   });
 
-  const handleAddTask = (e: React.FormEvent) => {
+  const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault();
-    addTask({
+    if(busy)return;setBusy(true);
+    const values={
       project_id: project.id,
       title: taskForm.title,
       priority: taskForm.priority,
       assigned_to: taskForm.assigned_to || undefined,
       due_date: taskForm.due_date || undefined,
-      is_internal: true,
-    });
+      is_internal: editing?.is_internal ?? true,
+    };
+    const result=editing?await updateTask({...values,id:editing.id}):await addTask(values);
+    setBusy(false);
+    if (!result.ok){toast.add({title:"Could not save task",description:result.error,type:"error"});return;}
     setTaskForm({ title: "", priority: "medium", due_date: "", assigned_to: "" });
     setAddTaskModalOpen(false);
   };
@@ -41,7 +48,7 @@ export default function TasksTab({ project, tasks }: { project: Project; tasks: 
     <>
       <div className="flex justify-between items-center">
         <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Project Kanban Board</span>
-        <Button size="sm" onClick={() => setAddTaskModalOpen(true)} className="gradient-primary border-0 gap-1.5 text-xs">
+        <Button size="sm" onClick={() => {setEditing(null);setTaskForm({title:"",priority:"medium",due_date:"",assigned_to:""});setAddTaskModalOpen(true);}} className="gradient-primary border-0 gap-1.5 text-xs">
           <Plus className="w-3.5 h-3.5" /> Add Task
         </Button>
       </div>
@@ -59,7 +66,7 @@ export default function TasksTab({ project, tasks }: { project: Project; tasks: 
                 {colTasks.map((task) => (
                   <Card key={task.id} className="cursor-pointer card-hover">
                     <CardContent className="p-3">
-                      <p className="text-xs font-semibold text-foreground mb-1.5">{task.title}</p>
+                      <button type="button" className="text-left text-xs font-semibold text-foreground mb-1.5 hover:underline" aria-label={`Edit task ${task.title}`} onClick={()=>{setEditing(task);setTaskForm({title:task.title,priority:task.priority,due_date:task.due_date??"",assigned_to:task.assigned_to??""});setAddTaskModalOpen(true);}}>{task.title}</button>
                       <div className="flex items-center justify-between text-[10px]">
                         <span className={cn("px-1.5 py-0.5 rounded font-medium",
                           task.priority === "high" ? "bg-red-100 text-red-600" :
@@ -79,7 +86,7 @@ export default function TasksTab({ project, tasks }: { project: Project; tasks: 
                           <button onClick={() => updateTaskStatus(task.id, 'todo')} className="text-[10px] text-muted-foreground hover:underline">← Todo</button>
                         )}
                         {status !== 'in_progress' && (
-                          <button onClick={() => updateTaskStatus(task.id, 'in_progress')} className="text-[10px] text-indigo-600 hover:underline">In Progress</button>
+                          <button onClick={() => updateTaskStatus(task.id, 'in_progress')} className="text-[10px] text-primary hover:underline">In Progress</button>
                         )}
                         {status !== 'done' && (
                           <button onClick={() => updateTaskStatus(task.id, 'done')} className="text-[10px] text-emerald-600 hover:underline">Done ✓</button>
@@ -98,14 +105,14 @@ export default function TasksTab({ project, tasks }: { project: Project; tasks: 
       <Dialog open={addTaskModalOpen} onOpenChange={setAddTaskModalOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Create Project Task</DialogTitle>
+            <DialogTitle>{editing?"Edit project task":"Create project task"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleAddTask} className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Task Title</Label>
-              <Input 
-                required 
-                value={taskForm.title} 
+              <Input aria-label="Task Title"
+                required
+                value={taskForm.title}
                 onChange={(e) => setTaskForm({ ...taskForm, title: e.target.value })}
                 placeholder="e.g. Purchase brass handles from hardware supplier"
               />
@@ -113,7 +120,7 @@ export default function TasksTab({ project, tasks }: { project: Project; tasks: 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Priority</Label>
-                <select
+                <select aria-label="Priority"
                   value={taskForm.priority}
                   onChange={(e) => setTaskForm({ ...taskForm, priority: e.target.value as TaskPriority })}
                   className="w-full h-9 px-2 text-xs rounded border border-input bg-card"
@@ -125,23 +132,23 @@ export default function TasksTab({ project, tasks }: { project: Project; tasks: 
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Due Date</Label>
-                <Input 
+                <Input aria-label="Due Date"
                   type="date"
-                  value={taskForm.due_date} 
+                  value={taskForm.due_date}
                   onChange={(e) => setTaskForm({ ...taskForm, due_date: e.target.value })}
                 />
               </div>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Assignee</Label>
-              <AssigneeSelect 
-                value={taskForm.assigned_to} 
-                onChange={(v) => setTaskForm({ ...taskForm, assigned_to: v })} 
+              <AssigneeSelect aria-label="Assignee"
+                value={taskForm.assigned_to}
+                onChange={(v) => setTaskForm({ ...taskForm, assigned_to: v })}
               />
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setAddTaskModalOpen(false)}>Cancel</Button>
-              <Button type="submit" className="gradient-primary border-0">Create Task</Button>
+              <Button disabled={busy} type="submit" className="gradient-primary border-0">{editing?"Save task":"Create task"}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { TopBar } from "@/components/layout/AppSidebar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -14,7 +14,7 @@ import {
   XAxis, YAxis, Tooltip, Legend, PieChart as RechartsPieChart, Pie, Cell,
 } from "recharts";
 import { useAppStore } from "@/lib/store";
-import { formatCurrency, getStatusColor, localToday, cn } from "@/lib/utils";
+import { formatCurrency, localToday } from "@/lib/utils";
 import {
   avgApprovalDays, avgSnagFixHours, cleanHandoverRate, fyStart, inputGst, monthlySeries,
   onTimeMilestones, outputGst, ratio,
@@ -24,12 +24,13 @@ import { MetricInfo } from "@/components/metrics/MetricInfo";
 import { RiskTable } from "@/components/dashboard/RiskTable";
 import { portfolioRows } from "@/lib/metrics/portfolio";
 import { hasAnyRole } from "@/lib/permissions";
+import { cashOutflows } from "@/lib/finance/summary";
 
 const COLORS = ["#6366f1", "#10b981", "#f59e0b", "#ec4899", "#8b5cf6", "#06b6d4"];
 
 export default function ReportsPage() {
   const store = useAppStore();
-  const { me, projects, invoices, payments, expenses, snags, boqs, studioSettings, vendorBills } = store;
+  const { me, projects, invoices, payments, expenses, snags, boqs, studioSettings, vendorBills, vendorPayments } = store;
   const isOwnerOrFinance = hasAnyRole(me, ["owner", "finance"]);
   const [useActual, setUseActual] = useState(false);
   const today = localToday();
@@ -37,11 +38,11 @@ export default function ReportsPage() {
   const liveInvoices = invoices.filter((i) => i.status !== "draft" && i.status !== "cancelled");
   const totalBilled = liveInvoices.reduce((s, i) => s + i.total_amount, 0);
   const totalCollected = payments.reduce((s, p) => s + p.amount, 0);
-  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+  const totalExpenses = cashOutflows(expenses, vendorPayments).reduce((s, e) => s + e.amount, 0);
   const cashPosition = totalCollected - totalExpenses;
   const collectionEff = ratio(totalCollected, totalBilled);
 
-  const series = monthlySeries(invoices, payments, expenses, today);
+  const series = monthlySeries(invoices, payments, expenses, today, 6, vendorPayments);
   const hasSeriesData = series.some((s) => s.invoiced > 0 || s.collected > 0 || s.expenses > 0);
 
   // Snags by Room
@@ -97,7 +98,7 @@ export default function ReportsPage() {
                   <p className="text-xs font-medium text-muted-foreground">Total Invoiced</p>
                   <MetricInfo formula="Sum of all sent invoices, all time" />
                 </div>
-                <div className="w-8 h-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600">
+                <div className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-primary">
                   <BarChart3 className="w-4 h-4" />
                 </div>
               </div>
@@ -163,7 +164,7 @@ export default function ReportsPage() {
               </div>
               <p className="text-2xl font-bold text-white mt-2">{formatCurrency(cashPosition)}</p>
               <p className="text-xs text-indigo-200 mt-1 opacity-90">
-                Collected minus recorded expenses. True margin (incl. staff time) arrives in Phase 2.
+                Collections minus approved direct spends and vendor payments. This is recorded cash movement; profitability includes staff costing below.
               </p>
             </CardContent>
           </Card>
@@ -234,7 +235,7 @@ export default function ReportsPage() {
                     type="checkbox"
                     checked={useActual}
                     onChange={(e) => setUseActual(e.target.checked)}
-                    className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                    className="w-4 h-4 rounded text-primary focus:ring-indigo-500 cursor-pointer"
                   />
                 </div>
               )}
@@ -304,7 +305,7 @@ export default function ReportsPage() {
                     )}
                   </div>
 
-                  <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-200">
+                  <div className="p-4 bg-accent rounded-xl border border-primary/20">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-semibold text-indigo-900">Average Turnaround / Stage</span>
@@ -398,7 +399,7 @@ export default function ReportsPage() {
                       <p className="text-xs text-muted-foreground mt-0.5">From snag raised to marked fixed</p>
                     </div>
                     {fixHours !== null ? (
-                      <span className="text-xl font-bold text-indigo-600">{fixHours} hours</span>
+                      <span className="text-xl font-bold text-primary">{fixHours} hours</span>
                     ) : (
                       <NotEnoughData />
                     )}
@@ -456,7 +457,7 @@ export default function ReportsPage() {
                       <MetricInfo formula="GST on sent invoices in the current financial year (from April 1)" />
                     </div>
                     <p className="text-2xl font-bold text-foreground mt-1">{formatCurrency(gst)}</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Sent invoices this financial year</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">Sent invoices this financial year</p>
                   </div>
                   <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-100">
                     <div className="flex items-center gap-1.5">
@@ -464,15 +465,15 @@ export default function ReportsPage() {
                       <MetricInfo formula="GST on approved vendor bills in the current financial year" />
                     </div>
                     <p className="text-2xl font-bold text-emerald-700 mt-1">{formatCurrency(itc)}</p>
-                    <p className="text-[11px] text-emerald-600 mt-0.5">Approved vendor bills this financial year</p>
+                    <p className="text-xs text-emerald-600 mt-0.5">Approved vendor bills this financial year</p>
                   </div>
-                  <div className="p-4 bg-indigo-50 rounded-xl border border-indigo-100">
+                  <div className="p-4 bg-accent rounded-xl border border-primary/15">
                     <div className="flex items-center gap-1.5">
                       <p className="text-xs text-indigo-800">Net GST (estimate)</p>
                       <MetricInfo formula="Output GST minus Input Tax Credit (ITC)" />
                     </div>
-                    <p className="text-2xl font-bold text-indigo-700 mt-1">{formatCurrency(netGst)}</p>
-                    <p className="text-[11px] text-indigo-600 mt-0.5">Output − input</p>
+                    <p className="text-2xl font-bold text-primary mt-1">{formatCurrency(netGst)}</p>
+                    <p className="text-xs text-primary mt-0.5">Output − input</p>
                   </div>
                 </div>
 

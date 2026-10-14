@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLoader } from "@/components/brand/BrandLoader";
 import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -11,7 +12,7 @@ import { addDays, weekStart } from "@/lib/time/weeks";
 import { localToday } from "@/lib/utils";
 
 export default function TimesheetsPage() {
-  return <Suspense><Content /></Suspense>;
+  return <Suspense fallback={<BrandLoader label="Opening your workspace" />}><Content /></Suspense>;
 }
 
 function Content() {

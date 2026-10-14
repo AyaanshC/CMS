@@ -5,30 +5,35 @@ const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const FROM = Deno.env.get("ALERTS_FROM_EMAIL") ?? "Studio <alerts@example.com>";
 
 Deno.serve(async (req) => {
-  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  if (req.headers.get("Authorization") !== `Bearer ${serviceKey}`) return new Response("Unauthorized", { status: 401 });
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceKey || req.headers.get("Authorization") !== `Bearer ${serviceKey}`) return new Response("Unauthorized", { status: 401 });
+  if (!["GET", "POST"].includes(req.method)) return new Response("Method not allowed", { status: 405, headers: { Allow: "GET, POST" } });
 
   const db = createClient(Deno.env.get("SUPABASE_URL")!, serviceKey);
-  const { data: queue, error } = await db.from("alerts")
-    .select("id, recipient_email, title, body").eq("email_status", "pending").order("created_at").limit(50);
+  if(req.method==="GET")return Response.json({configured:!!(RESEND_API_KEY&&Deno.env.get("ALERTS_FROM_EMAIL"))});
+  if (!RESEND_API_KEY || !Deno.env.get("ALERTS_FROM_EMAIL")) return Response.json({ error: "Email delivery is not configured; queued emails remain pending." }, { status: 503 });
+  const claim = crypto.randomUUID();
+  const { data: queue, error } = await db.rpc("claim_alert_emails", { p_claim: claim });
   if (error) return new Response(error.message, { status: 500 });
 
   let sent = 0;
   for (const a of queue ?? []) {
-    if (!RESEND_API_KEY) {
-      await db.from("alerts").update({ email_status: "skipped", email_error: "RESEND_API_KEY not set" }).eq("id", a.id);
-      continue;
-    }
+    try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      signal: AbortSignal.timeout(15000),
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json", "Idempotency-Key": `studio-alert-${a.id}` },
       body: JSON.stringify({ from: FROM, to: [a.recipient_email], subject: a.title, text: a.body }),
     });
     if (res.ok) {
       sent++;
-      await db.from("alerts").update({ email_status: "sent" }).eq("id", a.id);
+      await db.from("alerts").update({ email_status: "sent", email_error: null, delivery_claim: null, claimed_at: null }).eq("id", a.id).eq("delivery_claim",claim);
     } else {
-      await db.from("alerts").update({ email_status: "failed", email_error: (await res.text()).slice(0, 500) }).eq("id", a.id);
+      throw new Error(`Email provider returned ${res.status}: ${(await res.text()).slice(0,300)}`);
+    }
+    } catch(error) {
+      await db.from("alerts").update({ email_status: "failed", email_error: String(error).slice(0,500), delivery_claim: null, claimed_at: null,
+        next_attempt_at: new Date(Date.now()+Math.min(24*60,15*2**a.delivery_attempts)*60_000).toISOString() }).eq("id",a.id).eq("delivery_claim",claim);
     }
   }
   return Response.json({ processed: queue?.length ?? 0, sent });

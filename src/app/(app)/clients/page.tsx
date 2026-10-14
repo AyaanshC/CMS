@@ -7,17 +7,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Progress } from "@/components/ui/progress";
+
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  Search, Plus, LayoutGrid, List, MoreHorizontal,
-  Phone, Mail, Tag, Send, Filter,
-} from "lucide-react";
+import { Search, Plus, LayoutGrid, List, MoreHorizontal, Phone, Mail, Tag, Send } from "lucide-react";
 import { formatCurrency, formatRelativeTime, getInitials, cn } from "@/lib/utils";
 import { useAppStore } from "@/lib/store";
 import Link from "next/link";
@@ -27,20 +24,21 @@ const TAG_COLORS: Record<string, string> = {
   VIP: "bg-amber-100 text-amber-700",
   Residential: "bg-blue-100 text-blue-700",
   Commercial: "bg-violet-100 text-violet-700",
-  Office: "bg-indigo-100 text-indigo-700",
+  Office: "bg-primary/10 text-primary",
   New: "bg-green-100 text-green-700",
 };
 
 export default function ClientsPage() {
   const [view, setView] = useState<"table" | "card">("table");
   const [search, setSearch] = useState("");
+  const [source, setSource] = useState("all");
   const [drawerOpen, setDrawerOpen] = useState(false);
   const clients = useAppStore((state) => state.clients);
 
-  const filtered = clients.filter((c) =>
+  const filtered = clients.filter((c) => (source === "all" || c.source === source) && (
     c.full_name.toLowerCase().includes(search.toLowerCase()) ||
     c.email?.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone.includes(search)
+    c.phone.includes(search))
   );
 
   return (
@@ -48,30 +46,35 @@ export default function ClientsPage() {
       <TopBar title="Clients" subtitle={`${clients.length} total clients`} />
       <div className="p-6">
         {/* Toolbar */}
-        <div className="flex items-center justify-between mb-6 gap-4">
-          <div className="relative flex-1 max-w-sm">
+        <div className="flex flex-wrap items-center justify-between mb-6 gap-3 rounded-xl border border-border bg-card p-3">
+          <div className="relative min-w-[200px] flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="Search by name, email or phone…"
+              aria-label="Search clients"
               className="pl-9"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Filter className="w-3.5 h-3.5" />
-              Filter
-            </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            <select aria-label="Filter clients by source" value={source} onChange={(e) => setSource(e.target.value)} className="h-10 rounded-lg border border-border bg-card px-3 text-xs">
+              <option value="all">All sources</option>
+              {[...new Set(clients.map((c) => c.source).filter(Boolean))].map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
             <div className="flex rounded-lg border border-border overflow-hidden">
               <button
                 onClick={() => setView("table")}
+                aria-label="Client table view"
+                aria-pressed={view === "table"}
                 className={cn("px-3 py-2 text-sm", view === "table" ? "bg-primary text-white" : "bg-card text-muted-foreground hover:bg-muted")}
               >
                 <List className="w-4 h-4" />
               </button>
               <button
                 onClick={() => setView("card")}
+                aria-label="Client card view"
+                aria-pressed={view === "card"}
                 className={cn("px-3 py-2 text-sm", view === "card" ? "bg-primary text-white" : "bg-card text-muted-foreground hover:bg-muted")}
               >
                 <LayoutGrid className="w-4 h-4" />
@@ -106,7 +109,7 @@ export default function ClientsPage() {
                     <TableCell>
                       <Link href={`/clients/${client.id}`} className="flex items-center gap-3">
                         <Avatar className="w-8 h-8">
-                          <AvatarFallback className="text-xs bg-indigo-100 text-indigo-700 font-semibold">
+                          <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
                             {getInitials(client.full_name)}
                           </AvatarFallback>
                         </Avatar>
@@ -131,7 +134,7 @@ export default function ClientsPage() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <div className="w-5 h-5 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-[11px] font-bold">
+                        <div className="w-5 h-5 bg-primary/10 text-primary rounded-full flex items-center justify-center text-[11px] font-bold">
                           {client.active_projects}
                         </div>
                         <span className="text-sm text-muted-foreground">projects</span>
@@ -176,7 +179,7 @@ export default function ClientsPage() {
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <Avatar className="w-11 h-11">
-                          <AvatarFallback className="text-sm bg-indigo-100 text-indigo-700 font-bold">
+                          <AvatarFallback className="text-sm bg-primary/10 text-primary font-bold">
                             {getInitials(client.full_name)}
                           </AvatarFallback>
                         </Avatar>
@@ -207,7 +210,7 @@ export default function ClientsPage() {
                     </div>
                     <div className="flex items-center justify-between pt-3 border-t border-border">
                       <div className="text-center">
-                        <p className="text-lg font-bold text-indigo-600">{client.active_projects}</p>
+                        <p className="text-lg font-bold text-primary">{client.active_projects}</p>
                         <p className="text-[10px] text-muted-foreground">Projects</p>
                       </div>
                       <div className="text-center">
@@ -236,11 +239,11 @@ export default function ClientsPage() {
             <div className="w-14 h-14 bg-muted rounded-2xl flex items-center justify-center mb-4">
               <Tag className="w-6 h-6 text-muted-foreground" />
             </div>
-            <h3 className="font-semibold text-foreground mb-1">No clients found</h3>
-            <p className="text-sm text-muted-foreground mb-4">Try adjusting your search or add a new client.</p>
+            <h3 className="font-semibold text-foreground mb-1">{clients.length ? "No matching clients" : "No clients yet"}</h3>
+            <p className="text-sm text-muted-foreground mb-4">{clients.length ? "Try adjusting your search or filters." : "Add your first client to start managing their projects and enquiries."}</p>
             <Button onClick={() => setDrawerOpen(true)} className="gap-2 gradient-primary border-0">
               <Plus className="w-4 h-4" />
-              Add First Client
+              {clients.length ? "Add client" : "Add first client"}
             </Button>
           </div>
         )}

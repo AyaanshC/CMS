@@ -6,6 +6,7 @@ import type {
 
 // Everything a signed-in user may see, already filtered by RLS.
 export interface WorkspaceSnapshot {
+  handoverAcceptances?: import("@/types").HandoverRecord[];
   me: SessionProfile;
   team: TeamMember[];
   studioSettings: StudioSettings;

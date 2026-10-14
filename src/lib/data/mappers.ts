@@ -116,7 +116,7 @@ export function mapBoq(r: BoqRow): BOQVersion {
       id: s.id, boq_version_id: s.boq_version_id, room_id: opt(s.room_id), room_name: s.room?.name ?? opt(s.name),
       name: opt(s.name), category: s.category, sort_order: s.sort_order, subtotal: totals.sectionSubtotals[i],
       items: s.items.map((it) => ({
-        id: it.id, section_id: it.section_id, description: it.description, specifications: opt(it.specifications),
+        id: it.id, line_key: it.line_key, section_id: it.section_id, description: it.description, specifications: opt(it.specifications),
         unit: it.unit, quantity: it.quantity, unit_rate: it.unit_rate, total: lineTotal(it.quantity, it.unit_rate),
         remarks: opt(it.remarks), sort_order: it.sort_order,
       })),
@@ -272,8 +272,8 @@ export function mapTemplate(r: Tables<"boq_templates">): BOQTemplate {
 export function mapMaterial(r: Tables<"material_options">, urlFor: UrlFor): MaterialOption {
   return {
     id: r.id, project_id: r.project_id, room_name: r.room_name, category: r.category, product_name: r.product_name,
-    brand: r.brand, approx_cost: r.approx_cost, image_url: urlFor(r.image_url) ?? "", description: opt(r.description),
-    is_selected: r.is_selected,
+    brand: r.brand, approx_cost: r.approx_cost, image_path: r.image_url, image_url: urlFor(r.image_url) ?? "", description: opt(r.description),
+    is_selected: r.is_selected, selected_by: opt(r.selected_by), locked_at: opt(r.locked_at),
   };
 }
 

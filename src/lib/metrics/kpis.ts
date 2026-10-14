@@ -1,6 +1,7 @@
 import { round2 } from "@/lib/finance/money";
+import { cashOutflows } from "@/lib/finance/summary";
 import { PROJECT_STAGES, PROJECT_STAGE_LABELS } from "@/types";
-import type { BOQVersion, Expense, Invoice, Payment, Project, ProjectStatus, Snag, Task, VendorBill } from "@/types";
+import type { BOQVersion, Expense, Invoice, Payment, Project, ProjectStatus, Snag, Task, VendorBill, VendorPayment } from "@/types";
 
 // Pure metric functions. A metric that cannot be measured returns null so the UI
 // shows "Not enough data yet" instead of NaN, 0% or a made-up value.
@@ -45,7 +46,7 @@ export function dashboardKpis(
   };
 }
 
-export function monthlySeries(invoices: Invoice[], payments: Payment[], expenses: Expense[], today: string, months = 6) {
+export function monthlySeries(invoices: Invoice[], payments: Payment[], expenses: Expense[], today: string, months = 6, vendorPayments: VendorPayment[] = []) {
   const [y, m] = today.split("-").map(Number);
   const keys = Array.from({ length: months }, (_, i) =>
     new Date(Date.UTC(y, m - 1 - (months - 1 - i), 1)).toISOString().slice(0, 7),
@@ -55,7 +56,7 @@ export function monthlySeries(invoices: Invoice[], payments: Payment[], expenses
     month: new Date(`${key}-01T00:00:00Z`).toLocaleString("en-IN", { month: "short", timeZone: "UTC" }),
     invoiced: sum(invoices.filter((i) => isLive(i) && i.issue_date?.startsWith(key)).map((i) => i.total_amount)),
     collected: sum(payments.filter((p) => p.payment_date.startsWith(key)).map((p) => p.amount)),
-    expenses: sum(expenses.filter((e) => e.expense_date.startsWith(key)).map((e) => e.amount)),
+    expenses: sum(cashOutflows(expenses, vendorPayments).filter(e => e.date.startsWith(key)).map(e => e.amount)),
   }));
 }
 

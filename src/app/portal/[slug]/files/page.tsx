@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLoader } from "@/components/brand/BrandLoader";
 import { useState } from "react";
 import { use, Suspense } from "react";
 import { useAppStore } from "@/lib/store";
@@ -10,15 +11,12 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Folder, FileText, Image as ImageIcon, Download, Eye, ExternalLink,
-  Layers, CheckCircle2
-} from "lucide-react";
+import { Folder, FileText, Download, Eye } from "lucide-react";
 import { ProjectFile } from "@/types";
 
 export default function PortalFilesPage({ params }: { params: Promise<{ slug: string }> }) {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading files...</div>}>
+    <Suspense fallback={<BrandLoader label="Loading files" />}>
       <PortalFilesContent params={params} />
     </Suspense>
   );
@@ -86,7 +84,7 @@ function PortalFilesContent({ params }: { params: Promise<{ slug: string }> }) {
           return (
             <Card
               key={file.id}
-              className="overflow-hidden shadow-sm hover:border-indigo-300 transition-all flex flex-col group cursor-pointer"
+              className="overflow-hidden shadow-sm hover:border-primary/30 transition-all flex flex-col group cursor-pointer"
               onClick={() => setPreviewFile(file)}
             >
               <div className="relative aspect-video bg-slate-100 overflow-hidden flex items-center justify-center">

@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/components/ui/toast";
-import { grantPortalAccess } from "@/app/actions/portal";
+import { grantPortalAccess,emailPortalInvitation } from "@/app/actions/portal";
 import type { Client } from "@/types";
 
 export function PortalAccessCard({ client }: { client: Client }) {
@@ -31,6 +31,7 @@ export function PortalAccessCard({ client }: { client: Client }) {
           <Input id="portal-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <Button size="sm" disabled={busy || !email} onClick={grant}>Create sign-in link</Button>
+        <Button size="sm" variant="outline" disabled={busy||!email} onClick={async()=>{setBusy(true);const r=await emailPortalInvitation({client_id:client.id,full_name:client.full_name,email});setBusy(false);toast.add({title:r.ok?"Invitation emailed":"Could not email invitation",description:r.ok?"A one-time sign-in link was sent to the client.":r.error,type:r.ok?"success":"error"});}}>Email invitation</Button>
         {link && (
           <div className="space-y-1">
             <p className="text-xs text-muted-foreground">One-time link. Share it with the client over WhatsApp or email.</p>

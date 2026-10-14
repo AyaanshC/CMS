@@ -1,5 +1,6 @@
 "use client";
 
+import { useRequestKey } from "@/lib/hooks/use-request-key";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,6 +17,8 @@ export function PoDialog({ projectId, lines, open, onOpenChange, preset }: {
   projectId: string; lines: CostControlRow[]; open: boolean; onOpenChange: (o: boolean) => void;
   preset?: { vendor_id: string; line?: Line };
 }) {
+  const requestKey=useRequestKey();
+  const [busy,setBusy]=useState(false);
   const { vendors, createPurchaseOrder, submitPurchaseOrder } = useAppStore();
   const [vendorId, setVendorId] = useState(preset?.vendor_id ?? "");
   const [expected, setExpected] = useState("");
@@ -29,17 +32,21 @@ export function PoDialog({ projectId, lines, open, onOpenChange, preset }: {
   };
 
   async function save(submit: boolean) {
-    const r = await createPurchaseOrder({
+    if(busy)return;
+    setBusy(true);
+    const payload={
       project_id: projectId, vendor_id: vendorId, expected_delivery: expected || undefined,
       lines: rows.map((x) => ({ boq_line_item_id: x.boq_line_item_id || undefined, description: x.description, unit: x.unit,
         quantity: Number(x.quantity), rate: Number(x.rate), gst_rate: Number(x.gst_rate) })),
-    });
-    if (r.ok && r.id && submit) await submitPurchaseOrder(r.id);
+    };
+    const r=await createPurchaseOrder({...payload,request_id:requestKey(payload)});
+    if(r.ok&&r.id&&submit){const submitted=await submitPurchaseOrder(r.id);if(!submitted.ok){setBusy(false);return;}}
+    setBusy(false);
     if (r.ok) { setRows([]); onOpenChange(false); }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={o=>{if(!busy)onOpenChange(o);}}>
       <DialogContent className="max-w-3xl">
         <DialogHeader><DialogTitle>New purchase order</DialogTitle></DialogHeader>
         <div className="grid grid-cols-2 gap-3">
@@ -68,8 +75,8 @@ export function PoDialog({ projectId, lines, open, onOpenChange, preset }: {
         <Button size="sm" variant="outline" onClick={() => setRows([...rows, { boq_line_item_id: "", description: "", unit: "nos", quantity: "1", rate: "0", gst_rate: "18" }])}>+ Unbudgeted line</Button>
         <p className="text-sm">Total before GST: <strong>{formatCurrency(total)}</strong></p>
         <DialogFooter>
-          <Button variant="outline" onClick={() => save(false)} disabled={!vendorId || rows.length === 0}>Save draft</Button>
-          <Button onClick={() => save(true)} disabled={!vendorId || rows.length === 0}>Submit</Button>
+          <Button variant="outline" onClick={() => save(false)} disabled={busy || !vendorId || rows.length === 0}>Save draft</Button>
+          <Button onClick={() => save(true)} disabled={busy || !vendorId || rows.length === 0}>Submit</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

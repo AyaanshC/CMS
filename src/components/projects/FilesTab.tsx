@@ -22,6 +22,7 @@ export default function FilesTab({ project, files }: { project: Project; files: 
     isClientVisible: false,
   });
   const [uploading, setUploading] = useState(false);
+  const [uploadedPath, setUploadedPath] = useState<string | null>(null);
   const [selectedFolderFilter, setSelectedFolderFilter] = useState("all");
 
   const handleUploadFile = async (e: React.FormEvent) => {
@@ -29,7 +30,8 @@ export default function FilesTab({ project, files }: { project: Project; files: 
     if (!fileForm.file) return;
     setUploading(true);
     try {
-      const storage_path = await uploadToProject(project.id, fileForm.file);
+      const storage_path = uploadedPath ?? await uploadToProject(project.id, fileForm.file);
+      setUploadedPath(storage_path);
       const r = await addFile({
         project_id: project.id,
         folder: fileForm.folder,
@@ -40,6 +42,7 @@ export default function FilesTab({ project, files }: { project: Project; files: 
         is_client_visible: fileForm.isClientVisible,
       });
       if (r.ok) {
+        setUploadedPath(null);
         setFileForm({ file: null, folder: "Drawings & Layouts", isClientVisible: false });
         setUploadFileModalOpen(false);
       }
@@ -85,9 +88,9 @@ export default function FilesTab({ project, files }: { project: Project; files: 
                     </span>
                   </div>
                 ) : (
-                  <div className="h-32 bg-indigo-50/60 flex flex-col items-center justify-center p-3 relative">
-                    <FileText className="w-10 h-10 text-indigo-500 mb-2" />
-                    <span className="text-[10px] font-bold text-indigo-700 uppercase">{file.file_type.split('/')[1] || 'DOC'}</span>
+                  <div className="h-32 bg-accent/60 flex flex-col items-center justify-center p-3 relative">
+                    <FileText className="w-10 h-10 text-primary mb-2" />
+                    <span className="text-[10px] font-bold text-primary uppercase">{file.file_type.split('/')[1] || 'DOC'}</span>
                     <span className="absolute top-1 right-1 bg-muted text-muted-foreground text-[9px] px-1.5 py-0.5 rounded">
                       {file.folder}
                     </span>
@@ -137,16 +140,16 @@ export default function FilesTab({ project, files }: { project: Project; files: 
           <form onSubmit={handleUploadFile} className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Choose File</Label>
-              <input
+              <input aria-label="Choose File"
                 type="file"
                 required
-                onChange={(e) => setFileForm({ ...fileForm, file: e.target.files?.[0] ?? null })}
+                onChange={(e) => { setUploadedPath(null); setFileForm({ ...fileForm, file: e.target.files?.[0] ?? null }); }}
                 className="mt-1 block w-full text-xs"
               />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Folder Category</Label>
-              <select
+              <select aria-label="Folder Category"
                 value={fileForm.folder}
                 onChange={(e) => setFileForm({ ...fileForm, folder: e.target.value })}
                 className="w-full h-9 px-2 text-xs rounded border border-input bg-card"

@@ -1,9 +1,5 @@
-import type {
-  ActivityLogItem, Alert, BOQTemplate, BOQVersion, ChangeOrder, Client, CostControlRow, CostRate, CreditNote, Expense,
-  FeeStage, FeeTemplate, GoodsReceipt, Invoice, ItemLibraryItem, MaterialOption, Message, Notification, Payment,
-  Project, ProjectCostRow, ProjectFile, ProjectUpdate, PurchaseOrder, RateBand, SessionProfile, Snag, StaffWeekHours,
-  StudioSettings, Task, TeamMember, TimesheetEntry, Vendor, VendorBill, VendorPayment, VendorQuote,
-} from "@/types";
+import {boqTotals} from "@/lib/finance/money";
+import type { BOQVersion, Client, Invoice, Project, ProjectFile, ProjectUpdate, SessionProfile, Snag, StudioSettings, Task, TeamMember } from "@/types";
 import { DEFAULT_RISK_WEIGHTS } from "@/lib/metrics/risk";
 import type { WorkspaceSnapshot } from "./snapshot";
 
@@ -167,6 +163,9 @@ export function getMockWorkspaceSnapshot(me: SessionProfile): WorkspaceSnapshot 
       client_id: "c1000000-0000-4000-8000-000000000001",
       client_name: "Arun & Meena Sharma",
       name: "Sharma Villa",
+      engagement_type: "design_and_execution",
+      manager_id: "00000000-0000-4000-8000-000000000003",
+      director_id: "00000000-0000-4000-8000-000000000002",
       reference_number: "PDS-2026-001",
       type: "residential",
       property_type: "4BHK Villa",
@@ -197,6 +196,9 @@ export function getMockWorkspaceSnapshot(me: SessionProfile): WorkspaceSnapshot 
       client_id: "c1000000-0000-4000-8000-000000000002",
       client_name: "Rohit Mehta",
       name: "TechCorp HQ Office",
+      engagement_type: "design_only",
+      manager_id: "00000000-0000-4000-8000-000000000003",
+      director_id: "00000000-0000-4000-8000-000000000002",
       reference_number: "PDS-2026-002",
       type: "office",
       property_type: "Office Floor",
@@ -268,6 +270,9 @@ export function getMockWorkspaceSnapshot(me: SessionProfile): WorkspaceSnapshot 
       project_id: "a1000000-0000-4000-8000-000000000001",
       version_number: 1,
       status: "approved",
+      is_active: true,
+      approved_at: "2026-08-25T10:00:00Z",
+      approved_by: "Arun Sharma",
       gst_percent: 18,
       discount_amount: 0,
       designer_fee: 150000,
@@ -439,14 +444,14 @@ export function getMockWorkspaceSnapshot(me: SessionProfile): WorkspaceSnapshot 
     projects,
     feeStages: [],
     feeTemplates: [],
-    changeOrders: [],
+    changeOrders: [{ id: "demo-change-1", project_id: projects[0].id, number: "CO-2026-001", title: "Additional kitchen storage", description: "Add a full-height pantry cabinet to the agreed kitchen layout.", reason: "client_request", fee_impact: 24000, cost_impact: 16000, schedule_impact_days: 3, status: "submitted", submitted_at: "2026-10-10T10:00:00Z", created_at: "2026-10-09T10:00:00Z" }],
     creditNotes: [],
-    boqs,
+    boqs: boqs.map(b=>({...b,grand_total:boqTotals(b).grandTotal})),
     snags,
     tasks,
     invoices,
     payments: [],
-    expenses: [],
+    expenses: [{ id: "demo-expense-1", project_id: projects[0].id, category: "Travel", description: "Site inspection travel", amount: 1200, expense_date: "2026-10-11", created_by_name: "Ananya Iyer", status: "pending" }],
     messages: [
       {
         id: "msg-1",
@@ -472,7 +477,7 @@ export function getMockWorkspaceSnapshot(me: SessionProfile): WorkspaceSnapshot 
     itemLibrary: [],
     boqTemplates: [],
     materialOptions: [],
-    files,
+    files: files.filter(f=>f.file_url!=="#"),
     activityLogs: [],
     alerts: [],
     timesheetEntries: [],

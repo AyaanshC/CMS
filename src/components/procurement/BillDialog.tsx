@@ -1,5 +1,6 @@
 "use client";
 
+import { useRequestKey } from "@/lib/hooks/use-request-key";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -12,6 +13,8 @@ import { localToday } from "@/lib/utils";
 
 // Bill lines are prefilled from the PO's accepted-but-unbilled quantities.
 export function BillDialog({ projectId, open, onOpenChange }: { projectId: string; open: boolean; onOpenChange: (o: boolean) => void }) {
+  const requestKey=useRequestKey();
+  const [busy,setBusy]=useState(false),[uploadedPath,setUploadedPath]=useState<string|undefined>();
   const { purchaseOrders, recordVendorBill } = useAppStore();
   const pos = purchaseOrders.filter((o) => o.project_id === projectId && (o.status === "issued" || o.status === "closed"));
   const [poId, setPoId] = useState("");
@@ -30,19 +33,22 @@ export function BillDialog({ projectId, open, onOpenChange }: { projectId: strin
   };
 
   async function save() {
-    if (!po) return;
-    let file_path: string | undefined;
-    try { if (file) file_path = await uploadToProject(projectId, file); }
-    catch (e) { return toast.add({ title: "Upload failed", description: (e as Error).message, type: "error" }); }
-    const r = await recordVendorBill({
+    if (!po || busy) return;
+    setBusy(true);
+    let file_path=uploadedPath;
+    try { if (file&&!file_path) {file_path = await uploadToProject(projectId, file);setUploadedPath(file_path);} }
+    catch (e) { setBusy(false); return toast.add({ title: "Upload failed", description: (e as Error).message, type: "error" }); }
+    const payload = {
       vendor_id: po.vendor_id, project_id: projectId, po_id: po.id, bill_number: billNo, bill_date: billDate, file_path,
       lines: lines.map((l) => ({ po_line_id: l.po_line_id, description: l.description, quantity: Number(l.quantity), rate: Number(l.rate), gst_rate: Number(l.gst_rate) })),
-    });
-    if (r.ok) onOpenChange(false);
+    };
+    const r=await recordVendorBill({...payload,request_id:requestKey(payload)});
+    setBusy(false);
+    if(r.ok)onOpenChange(false);
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={o=>{if(!busy)onOpenChange(o);}}>
       <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>Record vendor bill</DialogTitle></DialogHeader>
         <div className="grid grid-cols-3 gap-3">
@@ -59,8 +65,8 @@ export function BillDialog({ projectId, open, onOpenChange }: { projectId: strin
               <td key={k} className="pr-1"><Input aria-label={`${k} ${l.description}`} className="h-8" type="number" value={l[k]} onChange={(e) => setLines(lines.map((x, j) => (j === i ? { ...x, [k]: e.target.value } : x)))} /></td>
             ))}</tr>
         ))}</tbody></table>
-        <label className="text-xs">Bill scan (PDF/image) <input type="file" accept="application/pdf,image/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} /></label>
-        <DialogFooter><Button onClick={save} disabled={!po || !billNo || lines.length === 0}>Record bill</Button></DialogFooter>
+        <label className="text-xs">Bill scan (PDF/image) <input type="file" accept="application/pdf,image/*" onChange={(e) => {setFile(e.target.files?.[0] ?? null);setUploadedPath(undefined);}} /></label>
+        <DialogFooter><Button onClick={save} disabled={busy || !po || !billNo || lines.length === 0}>Record bill</Button></DialogFooter>
       </DialogContent>
     </Dialog>
   );

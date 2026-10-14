@@ -1,8 +1,7 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Check, Palette, Plus } from "lucide-react";
+import { Check, Palette } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import type { MaterialOption } from "@/types";
@@ -29,7 +28,7 @@ export default function MaterialsTab({ materials }: { materials: MaterialOption[
               <CardContent className="p-4 space-y-2">
                 <div className="flex justify-between items-start">
                   <h4 className="font-bold text-xs text-foreground leading-snug">{mat.product_name}</h4>
-                  <span className="text-xs font-bold text-indigo-600">₹{mat.approx_cost}</span>
+                  <span className="text-xs font-bold text-primary">₹{mat.approx_cost}</span>
                 </div>
                 <p className="text-[11px] text-muted-foreground">{mat.brand} · {mat.room_name}</p>
                 <p className="text-[11px] text-muted-foreground line-clamp-2">{mat.description}</p>
@@ -58,9 +57,7 @@ export default function MaterialsTab({ materials }: { materials: MaterialOption[
           <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
             You haven&apos;t added any material options or moodboard items for this project yet.
           </p>
-          <Button className="gap-2">
-            <Plus className="w-4 h-4" /> Add from Library
-          </Button>
+          <p className="max-w-sm text-xs text-muted-foreground">Material selection will be available here when options are added to this project.</p>
         </div>
       )}
     </>

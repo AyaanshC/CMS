@@ -302,6 +302,7 @@ export interface BOQSection {
 
 export interface BOQLineItem {
   id: string;
+  line_key?: string;
   section_id: string;
   description: string;
   specifications?: string;
@@ -561,6 +562,7 @@ export interface BOQTemplate {
 // --- Material Selections & Moodboards ---
 
 export interface MaterialOption {
+  image_path?: string;
   id: string;
   project_id: string;
   room_name: string;
@@ -571,6 +573,8 @@ export interface MaterialOption {
   image_url: string;
   description?: string;
   is_selected?: boolean;
+  selected_by?: string;
+  locked_at?: string;
 }
 
 // --- Studio Settings ---
@@ -653,7 +657,8 @@ export interface VendorBill {
   paid: number; outstanding: number; match_issues: string[];
   lines: { id: string; po_line_id?: string; description: string; quantity: number; rate: number; gst_rate: number; amount: number }[];
 }
-export interface VendorPayment { id: string; vendor_id: string; bill_id?: string; project_id: string; amount: number; tds_amount: number;
+export interface VendorPayment {
+  request_id?: string; id: string; vendor_id: string; bill_id?: string; project_id: string; amount: number; tds_amount: number;
   paid_on: string; mode: PaymentMode; reference?: string; is_advance: boolean }
 export interface CostControlRow {
   project_id: string; line_item_id: string; category: string; description: string; unit: string; quantity: number;
@@ -663,6 +668,7 @@ export type ExpenseStatus = 'pending' | 'approved' | 'rejected';
 export type CostType = 'design' | 'execution';
 
 export interface SessionProfile {
+  is_demo?: boolean;
   id: string;
   full_name: string;
   email: string;
@@ -685,3 +691,5 @@ export interface Alert {
 }
 
 
+
+export interface HandoverRecord { id:string; project_id:string; signer:string; accepted_at:string; document_number:string|null; }

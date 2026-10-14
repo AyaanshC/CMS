@@ -12,7 +12,7 @@ import { ACTIVITY_LABELS, NON_PROJECT_ACTIVITIES, type TimesheetActivity, type T
 const DAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const cell = "w-14 h-8 rounded border border-input bg-background text-right px-1 text-sm";
 
-const keyOf = (e: Pick<TimesheetEntry, "project_id" | "fee_stage_id" | "activity">) => `${e.project_id ?? ""}|${e.fee_stage_id ?? ""}|${e.activity}`;
+const keyOf = (e: Pick<TimesheetEntry, "project_id" | "fee_stage_id" | "activity" | "billable" | "notes">) => `${e.project_id ?? ""}|${e.fee_stage_id ?? ""}|${e.activity}|${e.billable}|${e.notes ?? ""}`;
 
 // Rows for a week: editable drafts/rejected; prefilled from last week's rows when empty.
 function rowsFor(entries: TimesheetEntry[], days: string[]): WeekRow[] {
@@ -21,7 +21,7 @@ function rowsFor(entries: TimesheetEntry[], days: string[]): WeekRow[] {
     const i = days.indexOf(e.work_date);
     if (i < 0) continue;
     const k = keyOf(e);
-    const row = map.get(k) ?? { project_id: e.project_id ?? null, fee_stage_id: e.fee_stage_id ?? null, activity: e.activity, billable: e.billable, hours: [0, 0, 0, 0, 0, 0, 0] };
+    const row = map.get(k) ?? { project_id: e.project_id ?? null, fee_stage_id: e.fee_stage_id ?? null, activity: e.activity, billable: e.billable, notes: e.notes, hours: [0, 0, 0, 0, 0, 0, 0] };
     row.hours[i] += e.hours;
     map.set(k, row);
   }
@@ -29,7 +29,7 @@ function rowsFor(entries: TimesheetEntry[], days: string[]): WeekRow[] {
 }
 
 export function WeekGrid({ weekStart }: { weekStart: string }) {
-  const { me, timesheetEntries, projects, feeStages, saveTimesheetWeek, submitTimesheetWeek } = useAppStore();
+  const { me, timesheetEntries, projects, feeStages, saveTimesheetChecked } = useAppStore();
   const days = weekDays(weekStart);
   const mine = timesheetEntries.filter((e) => e.profile_id === me.id);
   const thisWeek = mine.filter((e) => days.includes(e.work_date));
@@ -44,6 +44,7 @@ export function WeekGrid({ weekStart }: { weekStart: string }) {
     const prev = weekDays(addDays(weekStart, -7));
     return rowsFor(mine.filter((e) => prev.includes(e.work_date)), prev).map((r) => ({ ...r, hours: [0, 0, 0, 0, 0, 0, 0] }));
   });
+  const [expected, setExpected] = useState(() => thisWeek.map(e => `${e.id}:${e.status}`));
   const [busy, setBusy] = useState(false);
 
   const myProjects = projects.filter((p) => p.status !== "closed");
@@ -54,8 +55,11 @@ export function WeekGrid({ weekStart }: { weekStart: string }) {
   async function save(andSubmit: boolean) {
     setBusy(true);
     const clean = rows.filter((r) => r.hours.some((h) => Number(h) > 0));
-    const r = await saveTimesheetWeek(weekStart, clean);
-    if (r.ok && andSubmit) await submitTimesheetWeek(weekStart);
+    const r = await saveTimesheetChecked(weekStart, clean, expected, andSubmit);
+    if (r.ok) {
+      if (r.revision) setExpected(r.revision);
+      if (andSubmit) setRows([]);
+    }
     setBusy(false);
   }
 
@@ -66,7 +70,7 @@ export function WeekGrid({ weekStart }: { weekStart: string }) {
           <p className="text-sm text-red-600">Sent back: “{rejected[0].decision_note}”. Fix and resubmit.</p>
         )}
         {locked.length > 0 && <p className="text-xs text-muted-foreground">{locked.length} entries already submitted or approved for this week (read-only).</p>}
-        <table className="text-sm">
+        <fieldset disabled={busy}><table className="text-sm">
           <thead>
             <tr className="text-xs text-muted-foreground">
               <th className="text-left pr-2">Project / stage</th><th className="text-left pr-2">Activity</th><th className="pr-2">Billable</th>
@@ -118,9 +122,9 @@ export function WeekGrid({ weekStart }: { weekStart: string }) {
               <td className="pl-2">{weekTotal}h</td>
             </tr>
           </tbody>
-        </table>
+        </table></fieldset>
         <div className="flex flex-wrap items-center gap-2">
-          <Button size="sm" variant="outline" onClick={() => setRows([...rows, { project_id: null, fee_stage_id: null, activity: "design", billable: false, hours: [0, 0, 0, 0, 0, 0, 0] }])}>
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => setRows([...rows, { project_id: null, fee_stage_id: null, activity: "design", billable: false, hours: [0, 0, 0, 0, 0, 0, 0] }])}>
             <Plus className="w-4 h-4" /> Add row
           </Button>
           <Button size="sm" variant="outline" disabled={busy} onClick={() => save(false)}>Save draft</Button>

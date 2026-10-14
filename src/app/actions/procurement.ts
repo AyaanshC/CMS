@@ -6,18 +6,9 @@ export async function addQuote(input: unknown) {
   return mutate(quoteInput, input, (d, db) => db.from("vendor_quotes").insert(d).select("id").single());
 }
 
-// Header then lines; if lines fail the draft header is deleted so no empty PO remains.
+// Header and lines commit together; a failed line leaves no partial order.
 export async function createPurchaseOrder(input: unknown) {
-  return mutate(poInput, input, async ({ lines, order_date, ...head }, db) => {
-    const po = await db.from("purchase_orders").insert({ ...head, ...(order_date ? { order_date } : {}) }).select("id").single();
-    if (po.error || !po.data) return po;
-    const ins = await db.from("po_lines").insert(lines.map((l) => ({ ...l, po_id: po.data.id })));
-    if (ins.error) {
-      await db.from("purchase_orders").delete().eq("id", po.data.id);
-      return { data: null, error: ins.error };
-    }
-    return po;
-  });
+  return mutate(poInput, input, (d, db) => db.rpc("create_purchase_order", { p: d }));
 }
 
 export async function submitPurchaseOrder(input: unknown) {
@@ -34,10 +25,5 @@ export async function cancelPurchaseOrder(input: unknown) {
 }
 
 export async function recordReceipt(input: unknown) {
-  return mutate(receiptInput, input, async ({ lines, ...head }, db) => {
-    const grn = await db.from("goods_receipts").insert(head).select("id").single();
-    if (grn.error || !grn.data) return grn;
-    const ins = await db.from("grn_lines").insert(lines.map((l) => ({ ...l, grn_id: grn.data.id })));
-    return ins.error ? { data: null, error: ins.error } : grn;
-  });
+  return mutate(receiptInput, input, (d, db) => db.rpc("record_goods_receipt", { p: d }));
 }

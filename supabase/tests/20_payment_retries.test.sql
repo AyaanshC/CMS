@@ -1,0 +1,18 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(8);
+insert into invoices(id,project_id,status,subtotal,gst_rate) values('fd000000-0000-4000-8000-000000000020','a1000000-0000-4000-8000-000000000001','sent',1000,0);
+insert into vendor_bills(id,vendor_id,project_id,bill_number,bill_date,status) values('fd000000-0000-4000-8000-000000000021',(select id from vendors where name like 'Bright%'),'a1000000-0000-4000-8000-000000000001','Audit retry',current_date,'approved');
+insert into vendor_bill_lines(bill_id,description,quantity,rate,gst_rate) values('fd000000-0000-4000-8000-000000000021','Audit',1,1000,0);
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000006","role":"authenticated"}',true);
+set local role authenticated;
+select lives_ok($$select record_cash_payment('{"request_id":"fe000000-0000-4000-8000-000000000020","invoice_id":"fd000000-0000-4000-8000-000000000020","amount":100,"tds_amount":10,"payment_date":"2026-10-14","mode":"cash"}'::jsonb)$$,'record partial client payment');
+select lives_ok($$select record_cash_payment('{"request_id":"fe000000-0000-4000-8000-000000000020","invoice_id":"fd000000-0000-4000-8000-000000000020","amount":100,"tds_amount":10,"payment_date":"2026-10-14","mode":"cash"}'::jsonb)$$,'same request can retry');
+select is((select count(*)::int from payments where invoice_id='fd000000-0000-4000-8000-000000000020'),1,'no duplicate cash payment');
+select throws_like($$update invoices set status='cancelled' where id='fd000000-0000-4000-8000-000000000020'$$,'%recorded payments%','paid invoice cannot disappear from issued financial summaries');
+select throws_like($$select record_cash_payment('{"request_id":"fe000000-0000-4000-8000-000000000020","invoice_id":"fd000000-0000-4000-8000-000000000020","amount":101,"tds_amount":10,"payment_date":"2026-10-14","mode":"cash"}'::jsonb)$$,'%different values%','reusing payment key for altered values rejected');
+select lives_ok($$select record_cash_payment(jsonb_build_object('request_id','fe000000-0000-4000-8000-000000000021','vendor_id',(select id from vendors where name like 'Bright%'),'project_id','a1000000-0000-4000-8000-000000000001','bill_id','fd000000-0000-4000-8000-000000000021','amount',100,'tds_amount',0,'paid_on','2026-10-14','mode','cash','is_advance',false),true)$$,'record partial vendor payment');
+select is(record_cash_payment(jsonb_build_object('request_id','fe000000-0000-4000-8000-000000000021','vendor_id',(select id from vendors where name like 'Bright%'),'project_id','a1000000-0000-4000-8000-000000000001','bill_id','fd000000-0000-4000-8000-000000000021','amount',100,'tds_amount',0,'paid_on','2026-10-14','mode','cash','is_advance',false),true),(select id from vendor_payments where request_id='fe000000-0000-4000-8000-000000000021'),'vendor retry returns existing payment');
+select create_itemized_invoice('{"project_id":"a1000000-0000-4000-8000-000000000001","notes":"Audit delete draft","gst_rate":0,"send":false,"items":[{"description":"Draft line","quantity":1,"unit_rate":100}]}'::jsonb);
+select lives_ok($$delete from invoices where notes='Audit delete draft'$$,'itemized draft and its lines can be deleted together');
+reset role;select * from finish();rollback;

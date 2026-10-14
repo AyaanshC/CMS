@@ -1,0 +1,12 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(5);
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000004","role":"authenticated"}',true);set local role authenticated;
+select throws_like($$update projects set manager_id=auth.uid() where id='a1000000-0000-4000-8000-000000000001'$$,'%change team assignments%','architect cannot promote self into billing access');
+select throws_like($$update projects set client_id='c1000000-0000-4000-8000-000000000002' where id='a1000000-0000-4000-8000-000000000001'$$,'%transfer a project%','member cannot expose another client association');
+reset role;
+select set_config('request.jwt.claims','{"sub":"00000000-0000-4000-8000-000000000001","role":"authenticated"}',true);set local role authenticated;
+select throws_like($$update projects set director_id='00000000-0000-4000-8000-000000000011' where id='a1000000-0000-4000-8000-000000000001'$$,'%eligible active staff%','client cannot be assigned as staff lead');
+select lives_ok($$update projects set manager_id=auth.uid() where id='a1000000-0000-4000-8000-000000000001'$$,'owner can assign an eligible lead');
+select throws_like($$update snags set client_closed_by='00000000-0000-4000-8000-000000000011' where project_id='a1000000-0000-4000-8000-000000000001'$$,'%Lifecycle evidence%','staff cannot forge the client signoff actor');
+reset role;select * from finish();rollback;

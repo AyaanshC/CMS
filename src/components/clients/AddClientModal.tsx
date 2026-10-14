@@ -11,7 +11,7 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription
 } from "@/components/ui/dialog";
-import { X, User, Phone, Mail, MapPin, IndianRupee, FileText, Search, MessageSquare } from "lucide-react";
+import { User, Phone, Mail, MapPin, IndianRupee, FileText, MessageSquare } from "lucide-react";
 
 import { useAppStore } from "@/lib/store";
 import { ClientSource } from "@/types";
@@ -62,7 +62,7 @@ export default function AddClientModal({ open, onClose }: AddClientModalProps) {
         <form onSubmit={handleSubmit} className="p-6 space-y-8">
           {/* Section 1: Contact Details */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-indigo-600 uppercase tracking-wider mb-2">Contact Information</h3>
+            <h3 className="text-sm font-semibold text-primary uppercase tracking-wider mb-2">Contact Information</h3>
             
             <div className="space-y-2">
               <Label htmlFor="full_name" className="text-xs font-semibold">Full Name <span className="text-destructive">*</span></Label>
@@ -141,7 +141,7 @@ export default function AddClientModal({ open, onClose }: AddClientModalProps) {
           </div>
           {/* Section 2: Requirement Details */}
           <div className="space-y-4 pt-4 border-t border-border/60">
-            <h3 className="text-sm font-semibold text-indigo-600 uppercase tracking-wider mb-2">Project Requirements</h3>
+            <h3 className="text-sm font-semibold text-primary uppercase tracking-wider mb-2">Project Requirements</h3>
             
             <div className="space-y-2">
               <Label htmlFor="source" className="text-xs font-semibold">Lead Source <span className="text-muted-foreground font-normal ml-1">(Optional)</span></Label>

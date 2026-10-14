@@ -1,6 +1,7 @@
 "use client";
 
-import { use, Suspense } from "react";
+import { BrandLoader } from "@/components/brand/BrandLoader";
+import { use, Suspense, useState } from "react";
 import { TopBar } from "@/components/layout/AppSidebar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,26 +17,22 @@ import { useAppStore } from "@/lib/store";
 import { formatCurrency, formatDate, formatRelativeTime, getInitials, getStatusColor, cn } from "@/lib/utils";
 import Link from "next/link";
 import { PortalAccessCard } from "@/components/clients/PortalAccessCard";
+import { EditClientDialog } from "@/components/clients/EditClientDialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { invoiceSummary } from "@/lib/finance/summary";
 
 const TAG_COLORS: Record<string, string> = {
   VIP: "bg-amber-100 text-amber-700",
   Residential: "bg-blue-100 text-blue-700",
   Commercial: "bg-violet-100 text-violet-700",
-  Office: "bg-indigo-100 text-indigo-700",
+  Office: "bg-primary/10 text-primary",
   New: "bg-green-100 text-green-700",
 };
 
-const ACTIVITY_FEED = [
-  { date: "2024-12-10T14:30:00Z", text: "Client sent a message: 'When will the marble work start?'" },
-  { date: "2024-11-22T14:00:00Z", text: "Client approved BOQ v3 — ₹12,49,500" },
-  { date: "2024-11-08T10:00:00Z", text: "Design concept approved" },
-  { date: "2024-10-22T09:00:00Z", text: "Project created — Sharma Residence Full Home" },
-  { date: "2024-10-15T09:00:00Z", text: "Client profile created" },
-];
 
 export default function ClientProfilePage({ params }: { params: Promise<{ id: string }> }) {
   return (
-    <Suspense fallback={<div className="p-6">Loading client...</div>}>
+    <Suspense fallback={<BrandLoader label="Loading client" />}>
       <ClientProfileContent params={params} />
     </Suspense>
   );
@@ -43,14 +40,17 @@ export default function ClientProfilePage({ params }: { params: Promise<{ id: st
 
 function ClientProfileContent({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const { clients, projects, invoices, updateClient } = useAppStore();
+  const { clients, projects, invoices, updateClient, activityLogs, messages } = useAppStore();
+  const [editing, setEditing] = useState(false);
+  const [inviting, setInviting] = useState(false);
   
   const client = clients.find((c) => c.id === id);
   const clientProjects = projects.filter((p) => p.client_id === id);
   const clientInvoices = invoices.filter((i) => clientProjects.some((p) => p.id === i.project_id));
-  const totalInvoiced = clientInvoices.reduce((s, i) => s + i.total_amount, 0);
-  const totalPaid = clientInvoices.reduce((s, i) => s + i.amount_paid, 0);
-  const totalOutstanding = clientInvoices.reduce((s, i) => s + i.amount_due, 0);
+  const summary = invoiceSummary(clientInvoices);
+  const totalInvoiced = summary.invoiced, totalPaid = summary.collected, totalOutstanding = summary.outstanding;
+  const activity = activityLogs.filter(a => a.client_id === id || clientProjects.some(p => p.id === a.project_id));
+  const clientMessages = messages.filter(m => clientProjects.some(p => p.id === m.project_id));
 
   if (!client) {
     return <div className="p-6 text-muted-foreground">Client not found.</div>;
@@ -65,7 +65,7 @@ function ClientProfileContent({ params }: { params: Promise<{ id: string }> }) {
           <CardContent className="p-6">
             <div className="flex items-start gap-5">
               <Avatar className="w-16 h-16">
-                <AvatarFallback className="text-xl bg-indigo-100 text-indigo-700 font-bold">
+                <AvatarFallback className="text-xl bg-primary/10 text-primary font-bold">
                   {getInitials(client.full_name)}
                 </AvatarFallback>
               </Avatar>
@@ -98,11 +98,11 @@ function ClientProfileContent({ params }: { params: Promise<{ id: string }> }) {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2">
+                <Button onClick={() => setEditing(true)} variant="outline" size="sm" className="gap-2">
                   <Edit2 className="w-3.5 h-3.5" />
                   Edit
                 </Button>
-                <Button size="sm" className="gradient-primary border-0 gap-2">
+                <Button onClick={() => setInviting(true)} size="sm" className="gradient-primary border-0 gap-2">
                   <Send className="w-3.5 h-3.5" />
                   Send Portal Invite
                 </Button>
@@ -111,7 +111,7 @@ function ClientProfileContent({ params }: { params: Promise<{ id: string }> }) {
             {/* Stats */}
             <div className="grid grid-cols-4 gap-4 mt-5 pt-5 border-t border-border">
               <div className="text-center">
-                <p className="text-2xl font-bold text-indigo-600">{clientProjects.length}</p>
+                <p className="text-2xl font-bold text-primary">{clientProjects.length}</p>
                 <p className="text-xs text-muted-foreground">Total Projects</p>
               </div>
               <div className="text-center">
@@ -187,12 +187,13 @@ function ClientProfileContent({ params }: { params: Promise<{ id: string }> }) {
                   </CardHeader>
                   <CardContent>
                     <div className="timeline-line space-y-4">
-                      {ACTIVITY_FEED.map((item, i) => (
+                      {activity.length === 0 && <p className="text-sm text-muted-foreground">No activity recorded yet.</p>}
+                      {activity.map((item, i) => (
                         <div key={i} className="flex items-start gap-3 pl-5 relative">
                           <div className="absolute left-0 top-1.5 w-3.5 h-3.5 bg-card border-2 border-indigo-400 rounded-full z-10" />
                           <div>
-                            <p className="text-sm text-foreground">{item.text}</p>
-                            <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeTime(item.date)}</p>
+                            <p className="text-sm text-foreground">{item.title}</p>
+                            <p className="text-xs text-muted-foreground mt-0.5">{formatRelativeTime(item.created_at)}</p>
                           </div>
                         </div>
                       ))}
@@ -243,13 +244,7 @@ function ClientProfileContent({ params }: { params: Promise<{ id: string }> }) {
           <TabsContent value="communication" className="mt-4">
             <Card>
               <CardContent className="p-6">
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  Communication history across all projects will appear here.
-                  <br />
-                  <Link href={`/projects/${clientProjects[0]?.id}/messages`} className="text-primary hover:underline mt-2 inline-block">
-                    Go to project messages →
-                  </Link>
-                </p>
+                <div className="space-y-4">{clientMessages.length === 0 && <p className="text-sm text-muted-foreground">No messages recorded yet.</p>}{clientMessages.map(m => <div key={m.id} className="border-b pb-3"><p className="text-xs text-muted-foreground">{m.sender_name} · {formatRelativeTime(m.created_at)}</p><p className="mt-1 text-sm">{m.content || m.file_name}</p><Link href={`/projects/${m.project_id}?tab=messages`} className="text-xs text-primary hover:underline">Open conversation →</Link></div>)}{clientProjects.map(p => <Link key={p.id} href={`/projects/${p.id}?tab=messages`} className="block text-sm text-primary hover:underline">Go to {p.name} messages →</Link>)}</div>
               </CardContent>
             </Card>
           </TabsContent>
@@ -286,6 +281,8 @@ function ClientProfileContent({ params }: { params: Promise<{ id: string }> }) {
             </div>
           </TabsContent>
         </Tabs>
+        {editing && <EditClientDialog key={client.id} client={client} open={editing} onOpenChange={setEditing} />}
+        <Dialog open={inviting} onOpenChange={setInviting}><DialogContent><DialogHeader><DialogTitle>Client portal invitation</DialogTitle></DialogHeader><PortalAccessCard client={client} /></DialogContent></Dialog>
       </div>
     </div>
   );

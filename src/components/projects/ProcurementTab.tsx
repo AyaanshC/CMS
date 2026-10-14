@@ -7,11 +7,12 @@ import { QuotesPanel } from "@/components/procurement/QuotesPanel";
 import { VendorBills } from "@/components/procurement/VendorBills";
 import { useAppStore } from "@/lib/store";
 import type { Project } from "@/types";
+import { hasAnyRole } from "@/lib/permissions";
 
 export default function ProcurementTab({ project }: { project: Project }) {
-  const { costControl } = useAppStore();
+  const { costControl, me } = useAppStore();
   const lines = costControl.filter((r) => r.project_id === project.id);
-  const canSeeCosts = lines.length > 0;   // RLS returns cost rows only to roles allowed to see them
+  const canSeeCosts = hasAnyRole(me, ["owner", "director", "project_manager", "finance", "procurement"]);
   return (
     <Tabs defaultValue={canSeeCosts ? "cost" : "pos"}>
       <TabsList>

@@ -11,7 +11,7 @@ export function UtilisationTable({ rows, weeks }: { rows: UtilisationRow[]; week
     <Card>
       <CardHeader><CardTitle className="text-base flex items-center gap-1">Utilisation, last {weeks} weeks
         <MetricInfo formula="Billable hours ÷ capacity (weekly capacity × weeks); total includes non-billable time" /></CardTitle></CardHeader>
-      <CardContent className="p-0">
+      <CardContent className="overflow-x-auto p-0">
         {rows.length === 0 ? <div className="p-4"><NotEnoughData /></div> : (
           <table className="w-full text-sm">
             <thead><tr className="border-b text-xs text-muted-foreground text-left"><th className="py-2 px-4">Person</th>

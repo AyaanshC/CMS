@@ -1,4 +1,8 @@
 "use client";
+import { LibraryTools, LibraryItemEdit } from "@/components/clients/LibraryTools";
+import { DeliveryStatus } from "@/components/onboarding/DeliveryStatus";
+import { IntakeSettings } from "@/components/onboarding/IntakeSettings";
+import { ApplyBoqTemplate } from "@/components/clients/ApplyBoqTemplate";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -12,15 +16,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Building2, Layers, Users, Sliders, Bell, Plus, Trash2, Check,
-  Copy, ExternalLink, Save, Search, FileText, Phone, Mail, IndianRupee, ShieldAlert
-} from "lucide-react";
+import { Building2, Layers, Users, Sliders, Bell, Plus, Trash2, Check, Copy, ExternalLink, Save, Search, Phone, Mail, IndianRupee, ShieldAlert } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { formatCurrency, cn, localToday } from "@/lib/utils";
 import { hasAnyRole } from "@/lib/permissions";
 import { toast } from "@/components/ui/toast";
-import { inviteStaff, setStaffRoles, setStaffActive } from "@/app/actions/team";
+import { emailStaffInvitation, inviteStaff, setStaffRoles, setStaffActive } from "@/app/actions/team";
 import { setStaffTerms as setStaffTermsAction, upsertRateBand, addCostRate, updateRiskSettings } from "@/app/actions/staff";
 import { DEFAULT_RISK_WEIGHTS } from "@/lib/metrics/risk";
 import type { AppRole, RateBand, RiskWeights, TeamMember } from "@/types";
@@ -356,42 +357,42 @@ export default function SettingsPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                       <div>
                         <label className="text-xs font-semibold text-foreground block mb-1">Studio Name</label>
-                        <Input
+                        <Input aria-label="Studio Name"
                           value={studioForm.name}
                           onChange={(e) => setStudioForm({ ...studioForm, name: e.target.value })}
                         />
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-foreground block mb-1">Tagline</label>
-                        <Input
+                        <Input aria-label="Tagline"
                           value={studioForm.tagline}
                           onChange={(e) => setStudioForm({ ...studioForm, tagline: e.target.value })}
                         />
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-foreground block mb-1">Official Email</label>
-                        <Input
+                        <Input aria-label="Official Email"
                           value={studioForm.email}
                           onChange={(e) => setStudioForm({ ...studioForm, email: e.target.value })}
                         />
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-foreground block mb-1">Phone / WhatsApp</label>
-                        <Input
+                        <Input aria-label="Phone / WhatsApp"
                           value={studioForm.phone}
                           onChange={(e) => setStudioForm({ ...studioForm, phone: e.target.value })}
                         />
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-foreground block mb-1">GSTIN</label>
-                        <Input
+                        <Input aria-label="GSTIN"
                           value={studioForm.gstin}
                           onChange={(e) => setStudioForm({ ...studioForm, gstin: e.target.value })}
                         />
                       </div>
                       <div>
                         <label className="text-xs font-semibold text-foreground block mb-1">PAN Number</label>
-                        <Input
+                        <Input aria-label="PAN Number"
                           value={studioForm.pan}
                           onChange={(e) => setStudioForm({ ...studioForm, pan: e.target.value })}
                         />
@@ -400,7 +401,7 @@ export default function SettingsPage() {
 
                     <div>
                       <label className="text-xs font-semibold text-foreground block mb-1">Studio Address</label>
-                      <Input
+                      <Input aria-label="Studio Address"
                         value={studioForm.address}
                         onChange={(e) => setStudioForm({ ...studioForm, address: e.target.value })}
                       />
@@ -409,12 +410,12 @@ export default function SettingsPage() {
                     {/* Bank & Payment Details */}
                     <div className="pt-4 border-t border-border">
                       <h3 className="text-sm font-bold text-foreground mb-3 flex items-center gap-2">
-                        <IndianRupee className="w-4 h-4 text-indigo-600" /> Bank & Settlement Accounts
+                        <IndianRupee className="w-4 h-4 text-primary" /> Bank & Settlement Accounts
                       </h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                         <div>
                           <label className="text-xs font-semibold text-foreground block mb-1">Beneficiary Name</label>
-                          <Input
+                          <Input aria-label="Beneficiary Name"
                             value={studioForm.bank_details.account_name}
                             onChange={(e) =>
                               setStudioForm({
@@ -426,7 +427,7 @@ export default function SettingsPage() {
                         </div>
                         <div>
                           <label className="text-xs font-semibold text-foreground block mb-1">Bank Name</label>
-                          <Input
+                          <Input aria-label="Bank Name"
                             value={studioForm.bank_details.bank_name}
                             onChange={(e) =>
                               setStudioForm({
@@ -438,7 +439,7 @@ export default function SettingsPage() {
                         </div>
                         <div>
                           <label className="text-xs font-semibold text-foreground block mb-1">Account Number</label>
-                          <Input
+                          <Input aria-label="Account Number"
                             value={studioForm.bank_details.account_number}
                             onChange={(e) =>
                               setStudioForm({
@@ -450,7 +451,7 @@ export default function SettingsPage() {
                         </div>
                         <div>
                           <label className="text-xs font-semibold text-foreground block mb-1">IFSC Code</label>
-                          <Input
+                          <Input aria-label="IFSC Code"
                             value={studioForm.bank_details.ifsc_code}
                             onChange={(e) =>
                               setStudioForm({
@@ -462,7 +463,7 @@ export default function SettingsPage() {
                         </div>
                         <div>
                           <label className="text-xs font-semibold text-foreground block mb-1">UPI ID for Client Pay</label>
-                          <Input
+                          <Input aria-label="UPI ID for Client Pay"
                             value={studioForm.bank_details.upi_id}
                             onChange={(e) =>
                               setStudioForm({
@@ -474,7 +475,7 @@ export default function SettingsPage() {
                         </div>
                         <div>
                           <label className="text-xs font-semibold text-foreground block mb-1">Default GST Rate (%)</label>
-                          <Input
+                          <Input aria-label="Default GST Rate (%)"
                             type="number"
                             value={studioForm.gst_rate}
                             onChange={(e) =>
@@ -490,7 +491,7 @@ export default function SettingsPage() {
                       <label className="text-xs font-semibold text-foreground block mb-1">
                         Default Terms & Payment Conditions (Appears on Invoices & BOQ)
                       </label>
-                      <Textarea
+                      <Textarea aria-label="Default Terms & Payment Conditions (Appears on Invoices & BOQ)"
                         rows={3}
                         value={studioForm.terms_and_conditions}
                         onChange={(e) => setStudioForm({ ...studioForm, terms_and_conditions: e.target.value })}
@@ -512,10 +513,12 @@ export default function SettingsPage() {
                 </form>
               </CardContent>
             </Card>
+            {(isOwner||isFinance)&&<DeliveryStatus/>}
+            {isOwner&&<IntakeSettings/>}
           </TabsContent>
-
           {/* TAB 2: Item Library */}
           <TabsContent value="items" className="space-y-4">
+            <LibraryTools />
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
               <div className="flex flex-1 items-center gap-2 max-w-md">
                 <div className="relative flex-1">
@@ -572,7 +575,7 @@ export default function SettingsPage() {
                           </p>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <Badge variant="secondary" className="capitalize text-[10px]">
+                          <Badge variant="secondary" className="capitalize text-xs">
                             {item.category}
                           </Badge>
                         </td>
@@ -583,6 +586,7 @@ export default function SettingsPage() {
                           {formatCurrency(item.standard_rate || 0)}
                         </td>
                         <td className="py-3 px-4 text-center">
+                          <LibraryItemEdit item={item}/>
                           <button
                             type="button"
                             onClick={async () => {
@@ -613,7 +617,7 @@ export default function SettingsPage() {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base font-bold">{template.name}</CardTitle>
-                      <Badge variant="outline" className="text-[10px] capitalize">
+                      <Badge variant="outline" className="text-xs capitalize">
                         {template.category}
                       </Badge>
                     </div>
@@ -634,9 +638,7 @@ export default function SettingsPage() {
                       <span className="text-xs text-muted-foreground">
                         {template.sections.reduce((acc, s) => acc + s.items.length, 0)} total line items
                       </span>
-                      <Button size="sm" variant="outline" className="text-xs text-primary gap-1">
-                        <FileText className="w-3.5 h-3.5" /> Clone into Project
-                      </Button>
+                      <ApplyBoqTemplate templateId={template.id} />
                     </div>
                   </CardContent>
                 </Card>
@@ -666,20 +668,20 @@ export default function SettingsPage() {
                 <Card key={member.id} className={cn("shadow-sm", !member.active && "opacity-60")}>
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-start justify-between">
-                      <div className="w-10 h-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm">
+                      <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
                         {member.full_name.split(" ").map((n) => n[0]).join("")}
                       </div>
-                      <Badge variant={member.active ? "outline" : "destructive"} className="text-[10px]">
+                      <Badge variant={member.active ? "outline" : "destructive"} className="text-xs">
                         {member.active ? "Active" : "Inactive"}
                       </Badge>
                     </div>
                     <div>
                       <p className="font-bold text-sm text-foreground">{member.full_name}</p>
-                      <p className="text-xs text-indigo-600 font-medium">{member.title || "Team Member"}</p>
+                      <p className="text-xs text-primary font-medium">{member.title || "Team Member"}</p>
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {member.roles.map((r) => (
-                        <Badge key={r} variant="secondary" className="capitalize text-[10px]">
+                        <Badge key={r} variant="secondary" className="capitalize text-xs">
                           {ROLE_LABELS[r] || r}
                         </Badge>
                       ))}
@@ -696,10 +698,11 @@ export default function SettingsPage() {
                     </div>
                     {isOwner && (
                       <div className="pt-2 border-t border-border space-y-2 text-xs">
+                        {member.active&&<Button size="sm" variant="outline" onClick={async()=>{const r=await emailStaffInvitation({id:member.id});toast.add({title:r.ok?"Invitation emailed":"Could not email invitation",description:r.ok?"A one-time sign-in link was sent.":r.error,type:r.ok?"success":"error"});}}>Email sign-in invitation</Button>}
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="text-[11px] font-semibold text-muted-foreground block mb-0.5">Capacity (h/w)</label>
-                            <Input
+                            <label className="text-xs font-semibold text-muted-foreground block mb-0.5">Capacity (h/w)</label>
+                            <Input aria-label="Capacity (h/w)"
                               type="number"
                               min="0"
                               max="80"
@@ -725,8 +728,8 @@ export default function SettingsPage() {
                             />
                           </div>
                           <div>
-                            <label className="text-[11px] font-semibold text-muted-foreground block mb-0.5">Target %</label>
-                            <Input
+                            <label className="text-xs font-semibold text-muted-foreground block mb-0.5">Target %</label>
+                            <Input aria-label="Target %"
                               type="number"
                               min="0"
                               max="100"
@@ -753,8 +756,8 @@ export default function SettingsPage() {
                           </div>
                         </div>
                         <div>
-                          <label className="text-[11px] font-semibold text-muted-foreground block mb-0.5">Rate Band</label>
-                          <select
+                          <label className="text-xs font-semibold text-muted-foreground block mb-0.5">Rate Band</label>
+                          <select aria-label="Rate Band"
                             className="w-full h-7 text-xs border border-input rounded px-2 bg-background"
                             value={staffTerms[member.id]?.rate_band_id ?? member.rate_band_id ?? ""}
                             onChange={async (e) => {
@@ -869,7 +872,7 @@ export default function SettingsPage() {
                     <div>
                       <CardTitle className="text-base font-bold flex items-center gap-2">
                         Private Cost Rates
-                        <Badge variant="outline" className="text-[10px] text-amber-700 bg-amber-50 border-amber-200">
+                        <Badge variant="outline" className="text-xs text-amber-700 bg-amber-50 border-amber-200">
                           Owner & Finance Only
                         </Badge>
                       </CardTitle>
@@ -914,7 +917,7 @@ export default function SettingsPage() {
                                 {memberRates.length > 1 ? (
                                   <div className="flex flex-wrap gap-1">
                                     {memberRates.slice(1).map((r) => (
-                                      <Badge key={r.id} variant="secondary" className="text-[10px]">
+                                      <Badge key={r.id} variant="secondary" className="text-xs">
                                         {formatCurrency(r.cost_rate)} ({r.effective_from})
                                       </Badge>
                                     ))}
@@ -980,7 +983,7 @@ export default function SettingsPage() {
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-base font-bold flex items-center gap-2">
-                        <ShieldAlert className="w-4 h-4 text-indigo-600" /> Project Risk Weights & Billing Targets
+                        <ShieldAlert className="w-4 h-4 text-primary" /> Project Risk Weights & Billing Targets
                       </CardTitle>
                       <CardDescription className="text-xs">
                         Configure weights used in portfolio risk scoring and studio monthly billing targets.
@@ -1030,7 +1033,7 @@ export default function SettingsPage() {
                               onChange={(e) => setRiskWeights({ ...riskWeights, [factor.key]: Number(e.target.value) })}
                               className="h-8 text-xs bg-white"
                             />
-                            <p className="text-[11px] text-muted-foreground">{factor.desc}</p>
+                            <p className="text-xs text-muted-foreground">{factor.desc}</p>
                           </div>
                         ))}
                       </div>
@@ -1055,7 +1058,7 @@ export default function SettingsPage() {
                             className="h-8 pl-6 text-xs"
                           />
                         </div>
-                        <p className="text-[11px] text-muted-foreground">
+                        <p className="text-xs text-muted-foreground">
                           Shown on owner dashboard alongside month-to-date invoiced volume.
                         </p>
                       </div>
@@ -1084,7 +1087,7 @@ export default function SettingsPage() {
                               required
                             />
                           </div>
-                          <p className="text-[11px] text-muted-foreground">POs above this require Director approval.</p>
+                          <p className="text-xs text-muted-foreground">POs above this require Director approval.</p>
                         </div>
                         <div className="p-3 border rounded-lg bg-slate-50/50 space-y-1.5">
                           <label className="text-xs font-semibold text-foreground block">
@@ -1101,7 +1104,7 @@ export default function SettingsPage() {
                               required
                             />
                           </div>
-                          <p className="text-[11px] text-muted-foreground">POs above this require Owner approval.</p>
+                          <p className="text-xs text-muted-foreground">POs above this require Owner approval.</p>
                         </div>
                         <div className="p-3 border rounded-lg bg-slate-50/50 space-y-1.5">
                           <label className="text-xs font-semibold text-foreground block">
@@ -1118,7 +1121,7 @@ export default function SettingsPage() {
                               required
                             />
                           </div>
-                          <p className="text-[11px] text-muted-foreground">Expenses above this require Owner / Finance sign-off.</p>
+                          <p className="text-xs text-muted-foreground">Expenses above this require Owner / Finance sign-off.</p>
                         </div>
                       </div>
                     </div>
@@ -1161,7 +1164,7 @@ export default function SettingsPage() {
               <CardContent className="space-y-4">
                 <div className="p-4 bg-slate-50 rounded-xl border border-border">
                   <p className="text-xs font-semibold text-muted-foreground mb-1 uppercase tracking-wider">Public Intake URL</p>
-                  <p className="font-mono text-xs text-indigo-600 bg-white p-2 rounded border border-border truncate">
+                  <p className="font-mono text-xs text-primary bg-white p-2 rounded border border-border truncate">
                     /onboarding
                   </p>
                 </div>
@@ -1196,10 +1199,10 @@ export default function SettingsPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-3">
                   {[
-                    { key: "whatsapp_digest" as const, title: "WhatsApp Daily Site Photo Digest", desc: "Notify clients via WhatsApp when new photo updates are posted." },
+                    { key: "whatsapp_digest" as const, title: "WhatsApp Daily Site Photo Digest", desc: "Unavailable: WhatsApp provider integration is planned separately." },
                     { key: "payment_reminders" as const, title: "Payment Milestone Reminders", desc: "Send automated gentle reminders 3 days before invoice due date." },
-                    { key: "snag_fix_alerts" as const, title: "Snag Fix Instant Alerts", desc: "Notify client immediately when site supervisor marks a defect as fixed." },
-                    { key: "boq_ack" as const, title: "BOQ Approval Acknowledgment", desc: "Send email PDF copy to client immediately upon digital approval." },
+                    { key: "snag_fix_alerts" as const, title: "Snag Verification Alerts", desc: "Notify clients in their portal when the designer verifies a fix for sign-off." },
+                    { key: "boq_ack" as const, title: "BOQ PDF Email Acknowledgment", desc: "Unavailable until document email delivery is configured." },
                   ].map((notif) => (
                     <div key={notif.key} className="flex items-center justify-between p-3.5 bg-slate-50/70 rounded-xl border border-border">
                       <div>
@@ -1208,7 +1211,9 @@ export default function SettingsPage() {
                       </div>
                       <input
                         type="checkbox"
-                        checked={Boolean(studioSettings.alert_preferences?.[notif.key])}
+                        aria-label={notif.title}
+                        disabled={notif.key === "whatsapp_digest" || notif.key === "boq_ack"}
+                        checked={notif.key === "whatsapp_digest" || notif.key === "boq_ack" ? false : Boolean(studioSettings.alert_preferences?.[notif.key])}
                         onChange={async (e) => {
                           const updated = {
                             whatsapp_digest: studioSettings.alert_preferences?.whatsapp_digest ?? false,
@@ -1222,13 +1227,13 @@ export default function SettingsPage() {
                             toast.add({ title: "Failed to update alert preference", description: r.error, type: "error" });
                           }
                         }}
-                        className="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500"
+                        className="w-4 h-4 rounded text-primary focus:ring-indigo-500"
                       />
                     </div>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground italic">
-                  Delivery starts in Phase 1 (email) and Phase 5 (WhatsApp); preferences are saved now.
+                  In-app verification alerts use these preferences. Email reminders require the deployed delivery worker, sender and provider key. Unavailable integrations cannot be enabled.
                 </p>
               </CardContent>
             </Card>
@@ -1249,7 +1254,7 @@ export default function SettingsPage() {
           <form onSubmit={handleAddItem} className="space-y-4 py-2">
             <div>
               <label className="text-xs font-semibold text-foreground block mb-1">Item Name *</label>
-              <Input
+              <Input aria-label="Item Name *"
                 required
                 value={newItemName}
                 onChange={(e) => setNewItemName(e.target.value)}
@@ -1260,7 +1265,7 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-foreground block mb-1">Category *</label>
-                <select
+                <select aria-label="Category *"
                   value={newItemCategory}
                   onChange={(e) => setNewItemCategory(e.target.value)}
                   className="w-full text-sm border border-input rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -1276,7 +1281,7 @@ export default function SettingsPage() {
 
               <div>
                 <label className="text-xs font-semibold text-foreground block mb-1">Unit *</label>
-                <select
+                <select aria-label="Unit *"
                   value={newItemUnit}
                   onChange={(e) => setNewItemUnit(e.target.value)}
                   className="w-full text-sm border border-input rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -1292,7 +1297,7 @@ export default function SettingsPage() {
 
             <div>
               <label className="text-xs font-semibold text-foreground block mb-1">Base Rate (₹) *</label>
-              <Input
+              <Input aria-label="Base Rate (₹) *"
                 type="number"
                 required
                 value={newItemRate}
@@ -1302,7 +1307,7 @@ export default function SettingsPage() {
 
             <div>
               <label className="text-xs font-semibold text-foreground block mb-1">Specifications</label>
-              <Textarea
+              <Textarea aria-label="Specifications"
                 rows={2}
                 value={newItemSpecs}
                 onChange={(e) => setNewItemSpecs(e.target.value)}
@@ -1350,7 +1355,7 @@ export default function SettingsPage() {
                           : editingMemberRoles.roles.filter((r) => r !== role);
                         setEditingMemberRoles({ ...editingMemberRoles, roles: next });
                       }}
-                      className="rounded text-indigo-600"
+                      className="rounded text-primary"
                     />
                     <span>{ROLE_LABELS[role]}</span>
                   </label>
@@ -1382,7 +1387,7 @@ export default function SettingsPage() {
           <form onSubmit={handleInviteSubmit} className="space-y-4 py-2">
             <div>
               <label className="text-xs font-semibold text-foreground block mb-1">Full Name *</label>
-              <Input
+              <Input aria-label="Full Name *"
                 required
                 value={inviteName}
                 onChange={(e) => setInviteName(e.target.value)}
@@ -1392,7 +1397,7 @@ export default function SettingsPage() {
 
             <div>
               <label className="text-xs font-semibold text-foreground block mb-1">Email Address *</label>
-              <Input
+              <Input aria-label="Email Address *"
                 type="email"
                 required
                 value={inviteEmail}
@@ -1403,7 +1408,7 @@ export default function SettingsPage() {
 
             <div>
               <label className="text-xs font-semibold text-foreground block mb-1">Job Title</label>
-              <Input
+              <Input aria-label="Job Title"
                 value={inviteTitle}
                 onChange={(e) => setInviteTitle(e.target.value)}
                 placeholder="e.g. Site Supervisor"
@@ -1428,7 +1433,7 @@ export default function SettingsPage() {
                             e.target.checked ? [...prev, role] : prev.filter((r) => r !== role)
                           );
                         }}
-                        className="rounded text-indigo-600"
+                        className="rounded text-primary"
                       />
                       <span>{ROLE_LABELS[role]}</span>
                     </label>
@@ -1501,15 +1506,15 @@ function RateBandRow({
         <td className="py-3 px-4 text-center">
           {editing ? (
             <div className="flex items-center justify-center gap-1">
-              <Button size="sm" className="h-6 text-[11px] px-2" disabled={saving} onClick={handleSave}>
+              <Button size="sm" className="h-6 text-xs px-2" disabled={saving} onClick={handleSave}>
                 Save
               </Button>
-              <Button size="sm" variant="ghost" className="h-6 text-[11px] px-1" onClick={() => { setRate(band.blended_rate); setEditing(false); }}>
+              <Button size="sm" variant="ghost" className="h-6 text-xs px-1" onClick={() => { setRate(band.blended_rate); setEditing(false); }}>
                 Cancel
               </Button>
             </div>
           ) : (
-            <Button size="sm" variant="outline" className="h-6 text-[11px] px-2" onClick={() => setEditing(true)}>
+            <Button size="sm" variant="outline" className="h-6 text-xs px-2" onClick={() => setEditing(true)}>
               Edit
             </Button>
           )}

@@ -49,7 +49,7 @@ export default function FinancePage() {
           ))}
         </div>
         <Card>
-          <CardContent className="p-4 space-y-3">
+          <CardContent className="p-4 space-y-3 overflow-x-auto">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold">Payables due in 7 days</p>
@@ -88,7 +88,7 @@ export default function FinancePage() {
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4 space-y-3">
+          <CardContent className="p-4 space-y-3 overflow-x-auto">
             <div className="flex items-center justify-between">
               <div>
                 <p className="font-semibold">Expenses awaiting approval ({pendingExpenses.length})</p>

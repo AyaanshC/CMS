@@ -1,13 +1,14 @@
 "use client";
 
+import { BrandLoader } from "@/components/brand/BrandLoader";
 import { use, Suspense } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ApprovalPanel } from "@/components/approvals/ApprovalPanel";
 import { useAppStore } from "@/lib/store";
-import { formatCurrency } from "@/lib/utils";
+import { formatCurrency, formatDate } from "@/lib/utils";
 
 export default function PortalChangesPage({ params }: { params: Promise<{ slug: string }> }) {
-  return <Suspense><Content params={params} /></Suspense>;
+  return <Suspense fallback={<BrandLoader label="Preparing your project" />}><Content params={params} /></Suspense>;
 }
 
 function Content({ params }: { params: Promise<{ slug: string }> }) {
@@ -29,6 +30,7 @@ function Content({ params }: { params: Promise<{ slug: string }> }) {
             <p className="text-sm mt-2">Additional fee: <strong>{formatCurrency(c.fee_impact)}</strong> + GST
               {c.schedule_impact_days ? ` · Adds ${c.schedule_impact_days} days to the schedule` : ""}</p>
             <p className="text-xs text-muted-foreground mt-1 capitalize">Status: {c.status}</p>
+            {c.decided_at && <div className="mt-4 rounded-lg border border-primary/15 bg-accent/40 p-3"><p className="text-sm font-medium">{c.status === "approved" ? "Approval recorded" : "Feedback recorded"}{c.decided_by ? ` · ${c.decided_by}` : ""}</p><p className="mt-1 text-xs text-muted-foreground">{formatDate(c.decided_at)}</p>{c.decision_note && <p className="mt-2 text-sm text-muted-foreground">{c.decision_note}</p>}</div>}
           </CardContent></Card>
           {c.status === "submitted" && me.kind === "client" && (
             <ApprovalPanel title={`Approve ${c.number}`} defaultSigner={me.full_name}

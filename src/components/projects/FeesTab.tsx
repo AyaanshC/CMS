@@ -15,6 +15,7 @@ import { formatCurrency } from "@/lib/utils";
 import { ENGAGEMENT_LABELS, FEE_BASIS_LABELS, type FeeStage, type FeeStageKind, type Project } from "@/types";
 import { FeeSetupDialog } from "./FeeSetupDialog";
 import { ProfitabilityCard } from "./ProfitabilityCard";
+import {HourlyBillingDialog} from "@/components/finance/HourlyBillingDialog";
 
 export default function FeesTab({ project }: { project: Project }) {
   const {
@@ -49,6 +50,7 @@ export default function FeesTab({ project }: { project: Project }) {
   return (
     <div className="space-y-4">
       {canSeeFinance && <ProfitabilityCard profit={profit} />}
+      {canSeeFinance&&project.fee_basis==="hourly"&&<HourlyBillingDialog projectId={project.id}/>}
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <CardTitle className="text-sm">Fee terms</CardTitle>

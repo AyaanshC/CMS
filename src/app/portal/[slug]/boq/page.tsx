@@ -1,21 +1,21 @@
 "use client";
 
+import { BrandLoader } from "@/components/brand/BrandLoader";
 import { useState } from "react";
 import { use, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useAppStore } from "@/lib/store";
-import { formatCurrency, formatDate, cn } from "@/lib/utils";
+import { boqTotals } from "@/lib/finance/money";
+import { formatMoney as formatCurrency, formatDate, cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ApprovalPanel } from "@/components/approvals/ApprovalPanel";
-import {
-  XCircle, FileText, Download, ChevronDown, ChevronRight,
-  ShieldCheck, AlertCircle,
-} from "lucide-react";
+import { XCircle, FileText, Download, ChevronDown, ChevronRight, ShieldCheck } from "lucide-react";
 
 export default function PortalBOQPage({ params }: { params: Promise<{ slug: string }> }) {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading BOQ...</div>}>
+    <Suspense fallback={<BrandLoader label="Loading BOQ" />}>
       <PortalBOQContent params={params} />
     </Suspense>
   );
@@ -23,13 +23,15 @@ export default function PortalBOQPage({ params }: { params: Promise<{ slug: stri
 
 function PortalBOQContent({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const { projects, boqs, clients, studioSettings, approveBOQVersion, rejectBOQVersion } = useAppStore();
+  const { projects, boqs, clients, approveBOQVersion, rejectBOQVersion, me } = useAppStore();
+  const searchParams = useSearchParams();
 
   const project = projects.find((p) => p.portal_slug === slug);
   const client = clients.find((c) => c.id === project?.client_id);
-  const projectBOQs = boqs.filter((b) => b.project_id === project?.id);
+  const projectBOQs = boqs.filter((b) => b.project_id === project?.id && b.status !== "draft").sort((a, b) => b.version_number - a.version_number);
   // Pick active or latest submitted BOQ
-  const activeBOQ = projectBOQs.find((b) => b.is_active) || projectBOQs[0];
+  const activeBOQ = projectBOQs.find((b) => b.id === searchParams.get("version")) || projectBOQs.find((b) => b.status === "submitted") || projectBOQs.find((b) => b.is_active) || projectBOQs[0];
+  const totals = activeBOQ ? boqTotals(activeBOQ) : null;
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     sec_1: true,
@@ -85,6 +87,7 @@ function PortalBOQContent({ params }: { params: Promise<{ slug: string }> }) {
         </div>
       </div>
 
+      {projectBOQs.length > 1 && <div className="flex flex-wrap items-center gap-3"><span className="text-sm font-medium">Estimate versions</span>{projectBOQs.map((b) => <a key={b.id} href={`/portal/${slug}/boq?version=${b.id}`} aria-current={b.id === activeBOQ.id ? "page" : undefined} className={cn("rounded-lg border px-3 py-2 text-xs font-medium", b.id === activeBOQ.id ? "bg-primary text-primary-foreground" : "bg-card text-muted-foreground")}>v{b.version_number} · {b.status}</a>)}</div>}
       {/* Status Alert Banner */}
       {activeBOQ.status === "approved" ? (
         <Card className="border-emerald-200 bg-emerald-50/70 shadow-sm">
@@ -95,13 +98,14 @@ function PortalBOQContent({ params }: { params: Promise<{ slug: string }> }) {
                 BOQ Approved by {activeBOQ.approved_by || client?.full_name || "Client"}
               </p>
               <p className="text-xs text-emerald-700">
-                Approved on {activeBOQ.approved_at ? formatDate(activeBOQ.approved_at) : "recently"}. Procurement is underway.
+                {activeBOQ.approved_at ? `Recorded on ${formatDate(activeBOQ.approved_at)}.` : "Approval recorded."} {activeBOQ.is_active ? "This is the current approved estimate." : "This is a previous approved version."}
               </p>
+              {activeBOQ.approval_note && <p className="mt-2 text-sm text-primary">{activeBOQ.approval_note}</p>}
             </div>
             <Badge className="bg-emerald-600 text-white border-0 text-xs">Approved</Badge>
           </CardContent>
         </Card>
-      ) : activeBOQ.status === "submitted" ? (
+      ) : activeBOQ.status === "submitted" && me.kind === "client" ? (
         <ApprovalPanel
           title="Approve this estimate"
           confirmText="I confirm that I have reviewed the items, quantities and rates in this estimate and approve them for site execution."
@@ -129,16 +133,16 @@ function PortalBOQContent({ params }: { params: Promise<{ slug: string }> }) {
           <CardContent className="p-4">
             <p className="text-xs font-medium text-muted-foreground">Items & Fee Subtotal</p>
             <p className="text-2xl font-bold text-foreground mt-1">
-              {formatCurrency(Math.round(activeBOQ.grand_total / (1 + (activeBOQ.gst_percent || 18) / 100)))}
+              {formatCurrency(totals!.taxable)}
             </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">Excluding GST ({activeBOQ.gst_percent || studioSettings.gst_rate}%)</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Excluding GST ({activeBOQ.gst_percent}%) · Discount {formatCurrency(activeBOQ.discount_amount)}</p>
           </CardContent>
         </Card>
         <Card className="shadow-sm">
           <CardContent className="p-4">
-            <p className="text-xs font-medium text-muted-foreground">GST Amount ({activeBOQ.gst_percent || studioSettings.gst_rate}%)</p>
+            <p className="text-xs font-medium text-muted-foreground">GST Amount ({activeBOQ.gst_percent}%)</p>
             <p className="text-2xl font-bold text-slate-700 mt-1">
-              {formatCurrency(activeBOQ.grand_total - Math.round(activeBOQ.grand_total / (1 + (activeBOQ.gst_percent || 18) / 100)))}
+              {formatCurrency(totals!.gst)}
             </p>
             <p className="text-[11px] text-muted-foreground mt-0.5">Applicable tax</p>
           </CardContent>
@@ -147,7 +151,7 @@ function PortalBOQContent({ params }: { params: Promise<{ slug: string }> }) {
           <CardContent className="p-4">
             <p className="text-xs font-medium text-slate-400">Total Payable Value</p>
             <p className="text-2xl font-bold text-white mt-1">
-              {formatCurrency(activeBOQ.grand_total)}
+              {formatCurrency(totals?.grandTotal ?? 0)}
             </p>
             <p className="text-[11px] text-slate-400 mt-0.5">Inclusive of GST</p>
           </CardContent>

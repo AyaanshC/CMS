@@ -1,12 +1,13 @@
 "use client";
 
+import { BrandLoader } from "@/components/brand/BrandLoader";
 import { use, Suspense } from "react";
 import { Button } from "@/components/ui/button";
 import { useAppStore } from "@/lib/store";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatMoney as formatCurrency, formatDate } from "@/lib/utils";
 
 export default function PoPrint({ params }: { params: Promise<{ id: string }> }) {
-  return <Suspense><Content params={params} /></Suspense>;
+  return <Suspense fallback={<BrandLoader label="Opening your workspace" />}><Content params={params} /></Suspense>;
 }
 
 function Content({ params }: { params: Promise<{ id: string }> }) {

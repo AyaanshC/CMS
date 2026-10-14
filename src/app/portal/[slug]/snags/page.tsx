@@ -1,5 +1,6 @@
 "use client";
 
+import { BrandLoader } from "@/components/brand/BrandLoader";
 import { useState } from "react";
 import { use, Suspense } from "react";
 import { useAppStore } from "@/lib/store";
@@ -8,19 +9,17 @@ import { formatDate, getPriorityColor, getStatusColor, cn } from "@/lib/utils";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+
 import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  CheckCircle2, Plus, AlertCircle, Camera, Check, Clock, Sparkles
-} from "lucide-react";
+import { CheckCircle2, Plus, Camera, Check, Clock } from "lucide-react";
 import { Snag, SnagPriority } from "@/types";
 
 export default function PortalSnagsPage({ params }: { params: Promise<{ slug: string }> }) {
   return (
-    <Suspense fallback={<div className="p-8 text-center text-muted-foreground">Loading snags...</div>}>
+    <Suspense fallback={<BrandLoader label="Loading snags" />}>
       <PortalSnagsContent params={params} />
     </Suspense>
   );
@@ -28,7 +27,7 @@ export default function PortalSnagsPage({ params }: { params: Promise<{ slug: st
 
 function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
-  const { projects, snags, addSnag, updateSnagStatus, addSnagComment } = useAppStore();
+  const { projects, snags, addSnag, updateSnagStatus } = useAppStore();
 
   const project = projects.find((p) => p.portal_slug === slug);
   const projectSnags = snags.filter((s) => s.project_id === project?.id);
@@ -118,7 +117,7 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
         <Card>
           <CardContent className="p-4">
             <p className="text-xs text-muted-foreground">Ready for Sign-off</p>
-            <p className="text-2xl font-bold text-indigo-600 mt-1">{fixedCount}</p>
+            <p className="text-2xl font-bold text-primary mt-1">{fixedCount}</p>
           </CardContent>
         </Card>
         <Card>
@@ -162,7 +161,7 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
           <Card
             key={snag.id}
             onClick={() => setSelectedSnag(snag)}
-            className="cursor-pointer hover:border-indigo-200 transition-all shadow-sm"
+            className="cursor-pointer hover:border-primary/20 transition-all shadow-sm"
           >
             <CardContent className="p-4">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -201,7 +200,7 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
                 </div>
 
                 <div className="flex sm:flex-col items-end justify-between sm:justify-start gap-2">
-                  {["fixed", "verified"].includes(snag.status) && (
+                  {snag.status === "verified" && (
                     <Button
                       size="sm"
                       onClick={(e) => {
@@ -248,7 +247,7 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
           <form onSubmit={handleCreateSnag} className="space-y-4 py-2">
             <div>
               <label className="text-xs font-semibold text-foreground block mb-1">Select Room *</label>
-              <select
+              <select aria-label="Select Room *"
                 value={room}
                 onChange={(e) => setRoom(e.target.value)}
                 className="w-full text-sm border border-input rounded-md px-3 py-2 bg-background focus:outline-none focus:ring-2 focus:ring-ring"
@@ -294,7 +293,7 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
 
             <div>
               <label className="text-xs font-semibold text-foreground block mb-1">Issue Description *</label>
-              <Textarea
+              <Textarea aria-label="Issue Description *"
                 required
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
@@ -367,11 +366,11 @@ function PortalSnagsContent({ params }: { params: Promise<{ slug: string }> }) {
               </div>
 
               {/* Status Action */}
-              {["fixed", "verified"].includes(selectedSnag.status) && (
+              {selectedSnag.status === "verified" && (
                 <div className="p-3 bg-emerald-50 rounded-lg border border-emerald-200">
-                  <p className="text-xs font-semibold text-emerald-900 mb-1">The designer marked this as fixed!</p>
+                  <p className="text-xs font-semibold text-emerald-900 mb-1">Your designer has verified the fix.</p>
                   <p className="text-xs text-emerald-700 mb-3">
-                    Please inspect this on site or check the photo. If satisfactory, click below to mark verified.
+                    Please inspect this on site or check the photo. If satisfactory, confirm below to close this snag.
                   </p>
                   <Button
                     size="sm"

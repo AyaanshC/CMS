@@ -11,16 +11,17 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { formatRelativeTime, formatDate, formatShortDate, getStatusColor, getPriorityColor, getInitials, cn } from "@/lib/utils";
-import { AlertCircle, Camera, Check, Clock, Plus, ArrowRight, MessageSquare, ShieldCheck, Printer, CheckCircle2 } from "lucide-react";
+import { formatDate, formatShortDate, getStatusColor, getPriorityColor, getInitials, cn } from "@/lib/utils";
+import { AlertCircle, Camera, Check, Clock, Plus, ArrowRight, MessageSquare, ShieldCheck, Printer } from "lucide-react";
 import { useAppStore } from "@/lib/store";
 import { AssigneeSelect } from "@/components/team/AssigneeSelect";
 import { PhotoInput } from "@/components/files/PhotoInput";
 
 export default function SnagTab({ projectId, snags, rooms }: { projectId: string; snags: Snag[]; rooms: ProjectRoom[] }) {
-  const { addSnag, updateSnagStatus, assignSnagVendor, addSnagComment, studioSettings, projects, me, team, vendors } = useAppStore();
-  const leadDesigner = team.find(m => m.id === project?.director_id) ?? team.find(m => m.roles.includes("architect") || m.roles.includes("owner"));
+  const { addSnag, updateSnagStatus, assignSnagVendor, addSnagComment, studioSettings, handoverAcceptances, projects, me, team, vendors } = useAppStore();
   const project = projects.find(p => p.id === projectId);
+  const handover=handoverAcceptances?.find(h=>h.project_id===projectId);
+  const leadDesigner = team.find(m => m.id === project?.director_id) ?? team.find(m => m.roles.includes("architect") || m.roles.includes("owner"));
 
   const [filter, setFilter] = useState<"all" | "open" | "closed">("all");
   const [raiseModalOpen, setRaiseModalOpen] = useState(false);
@@ -44,6 +45,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
 
   // State for adding a comment
   const [commentText, setCommentText] = useState("");
+  const [postingComment,setPostingComment]=useState(false);
 
   const filteredSnags = snags.filter((s) => {
     if (filter === "open") return s.status !== "closed";
@@ -51,7 +53,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
     return true;
   });
 
-  const completionPercent = snags.length ? Math.round((snags.filter(s => s.status === "closed").length / snags.length) * 100) : 0;
+  const completionPercent = snags.length ? Math.round((snags.filter(s => s.status === "closed").length / snags.length) * 100) : 100;
   const isHandoverBlocked = completionPercent < 100;
 
   const handleRaiseSnagSubmit = (e: React.FormEvent) => {
@@ -86,15 +88,17 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
     updateSnagStatus(snag.id, nextStatus, undefined, nextStatus === "fixed" ? afterPhotoPath || undefined : undefined);
   };
 
-  const handleAddComment = (e: React.FormEvent) => {
+  const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!commentText.trim() || !selectedSnag) return;
-    addSnagComment(selectedSnag.id, {
+    if (!commentText.trim() || !selectedSnag || postingComment) return;
+    setPostingComment(true);
+    const result=await addSnagComment(selectedSnag.id, {
       author_id: me.id,
       author_name: me.full_name,
       content: commentText
     });
-    setCommentText("");
+    setPostingComment(false);
+    if(result.ok)setCommentText("");
   };
 
   return (
@@ -130,9 +134,9 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
         </div>
 
         <div className="flex items-center gap-2">
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setHandoverModalOpen(true)}
             className="text-xs gap-1.5"
           >
@@ -160,9 +164,9 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
       {/* Snag Grid Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {filteredSnags.map((snag) => (
-          <Card 
-            key={snag.id} 
-            onClick={() => setSelectedSnagId(snag.id)} 
+          <Card
+            key={snag.id}
+            onClick={() => setSelectedSnagId(snag.id)}
             className="card-hover cursor-pointer border-border hover:border-primary/50 transition-all"
           >
             <CardContent className="p-4 flex gap-4">
@@ -182,7 +186,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
                   </span>
                 )}
               </div>
-              
+
               <div className="flex-1 min-w-0 flex flex-col">
                 <div className="flex items-start justify-between gap-2 mb-1">
                   <h4 className="font-semibold text-sm text-foreground truncate">{snag.title}</h4>
@@ -190,7 +194,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
                     {snag.status.replace('_', ' ')}
                   </Badge>
                 </div>
-                
+
                 <p className="text-xs text-muted-foreground mb-3 flex items-center gap-1.5 truncate">
                   <span className="font-medium text-foreground">{snag.room_name}</span>
                   <span className="text-[10px]">·</span>
@@ -207,7 +211,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
                       {snag.assigned_to_name || 'Unassigned'}
                     </span>
                   </div>
-                  
+
                   <div className="flex items-center gap-2">
                     <span className={cn("text-[10px] px-1.5 py-0.5 rounded font-medium border", getPriorityColor(snag.priority))}>
                       {snag.priority}
@@ -242,9 +246,9 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
           <form onSubmit={handleRaiseSnagSubmit} className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Snag Title</Label>
-              <Input 
-                required 
-                value={newSnagForm.title} 
+              <Input aria-label="Snag Title"
+                required
+                value={newSnagForm.title}
                 onChange={(e) => setNewSnagForm({ ...newSnagForm, title: e.target.value })}
                 placeholder="e.g. Tile grout crack near shower enclosure"
               />
@@ -252,7 +256,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Room / Area</Label>
-                <select
+                <select aria-label="Room / Area"
                   value={newSnagForm.room_id}
                   onChange={(e) => setNewSnagForm({ ...newSnagForm, room_id: e.target.value })}
                   className="w-full h-9 px-2 text-xs rounded border border-input bg-card"
@@ -264,7 +268,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Priority</Label>
-                <select
+                <select aria-label="Priority"
                   value={newSnagForm.priority}
                   onChange={(e) => setNewSnagForm({ ...newSnagForm, priority: e.target.value as SnagPriority })}
                   className="w-full h-9 px-2 text-xs rounded border border-input bg-card"
@@ -277,8 +281,8 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Specific Location Detail</Label>
-              <Input 
-                value={newSnagForm.location_detail} 
+              <Input aria-label="Specific Location Detail"
+                value={newSnagForm.location_detail}
                 onChange={(e) => setNewSnagForm({ ...newSnagForm, location_detail: e.target.value })}
                 placeholder="e.g. Master toilet east wall, 2ft above skirting"
               />
@@ -286,23 +290,23 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label className="text-xs">Assignee</Label>
-                <AssigneeSelect 
-                  value={newSnagForm.assigned_to} 
-                  onChange={(v) => setNewSnagForm({ ...newSnagForm, assigned_to: v })} 
+                <AssigneeSelect aria-label="Assignee"
+                  value={newSnagForm.assigned_to}
+                  onChange={(v) => setNewSnagForm({ ...newSnagForm, assigned_to: v })}
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Rectification Due Date</Label>
-                <Input 
+                <Input aria-label="Rectification Due Date"
                   type="date"
-                  value={newSnagForm.due_date} 
+                  value={newSnagForm.due_date}
                   onChange={(e) => setNewSnagForm({ ...newSnagForm, due_date: e.target.value })}
                 />
               </div>
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Responsible vendor/contractor</Label>
-              <select
+              <select aria-label="Responsible vendor/contractor"
                 value={newSnagForm.vendor_id}
                 onChange={(e) => setNewSnagForm({ ...newSnagForm, vendor_id: e.target.value })}
                 className="w-full h-9 px-2 text-xs rounded border border-input bg-card"
@@ -314,16 +318,16 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
               </select>
             </div>
             <div className="space-y-1">
-              <PhotoInput 
-                projectId={projectId} 
-                label="Before photo" 
-                onUploaded={(p) => setNewSnagForm({ ...newSnagForm, before_photo_url: p })} 
+              <PhotoInput
+                projectId={projectId}
+                label="Before photo"
+                onUploaded={(p) => setNewSnagForm({ ...newSnagForm, before_photo_url: p })}
               />
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Detailed Description</Label>
-              <Textarea 
-                value={newSnagForm.description} 
+              <Textarea aria-label="Detailed Description"
+                value={newSnagForm.description}
                 onChange={(e) => setNewSnagForm({ ...newSnagForm, description: e.target.value })}
                 placeholder="Detailed explanation of the issue to be fixed..."
                 rows={2}
@@ -413,7 +417,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
 
               <div className="space-y-1">
                 <Label className="text-xs">Responsible vendor/contractor</Label>
-                <select
+                <select aria-label="Responsible vendor/contractor"
                   value={selectedSnag.vendor_id || ""}
                   onChange={(e) => assignSnagVendor(selectedSnag.id, e.target.value || null)}
                   className="w-full h-9 px-2 text-xs rounded border border-input bg-card"
@@ -440,19 +444,17 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
                     </Button>
                   )}
                   {selectedSnag.status === 'in_progress' && (
-                    <Button size="sm" onClick={() => handleStatusChange(selectedSnag, 'fixed')} className="text-xs bg-amber-600 hover:bg-amber-700 text-white border-0">
+                    <Button size="sm" disabled={!afterPhotoPath && !selectedSnag.after_photo_url} onClick={() => handleStatusChange(selectedSnag, 'fixed')} className="text-xs bg-amber-600 hover:bg-amber-700 text-white border-0">
                       Mark as Fixed (Attach After Photo)
                     </Button>
                   )}
                   {selectedSnag.status === 'fixed' && (
-                    <Button size="sm" onClick={() => handleStatusChange(selectedSnag, 'verified')} className="text-xs bg-indigo-600 hover:bg-indigo-700 text-white border-0">
+                    <Button size="sm" onClick={() => handleStatusChange(selectedSnag, 'verified')} className="text-xs bg-primary hover:bg-primary/90 text-white border-0">
                       Verify Fix (Designer Sign-off)
                     </Button>
                   )}
                   {selectedSnag.status === 'verified' && (
-                    <Button size="sm" onClick={() => handleStatusChange(selectedSnag, 'closed')} className="text-xs bg-green-600 hover:bg-green-700 text-white border-0">
-                      Client Close & Sign-off
-                    </Button>
+                    <p className="text-xs text-muted-foreground">Awaiting the client’s sign-off in their portal.</p>
                   )}
                 </div>
               </div>
@@ -474,13 +476,13 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
                   ))}
                 </div>
                 <form onSubmit={handleAddComment} className="flex gap-2">
-                  <Input 
+                  <Input disabled={postingComment} aria-label="Snag comment"
                     value={commentText}
                     onChange={(e) => setCommentText(e.target.value)}
-                    placeholder="Add a remark or update note..." 
+                    placeholder="Add a remark or update note..."
                     className="text-xs h-8"
                   />
-                  <Button type="submit" size="sm" className="h-8 text-xs">Post</Button>
+                  <Button disabled={postingComment} type="submit" size="sm" className="h-8 text-xs">{postingComment?"Posting…":"Post"}</Button>
                 </form>
               </div>
             </div>
@@ -502,7 +504,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
             <div className="flex justify-between items-start border-b pb-4">
               <div>
                 <h2 className="text-xl font-bold text-slate-900">{studioSettings.name}</h2>
-                <p className="text-xs text-slate-500">Official Project Handover & Completion Certificate</p>
+                <p className="text-xs text-slate-500">{handover?"Accepted handover record":"Draft handover report · client acceptance pending"}</p>
                 <p className="text-xs text-slate-500">{studioSettings.address}</p>
               </div>
               <div className="text-right">
@@ -583,6 +585,7 @@ export default function SnagTab({ projectId, snags, rooms }: { projectId: string
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setHandoverModalOpen(false)}>Close</Button>
+            {handover&&<a className="text-sm text-primary underline" href={`/handover/${handover.id}`} target="_blank" rel="noreferrer">Open accepted certificate</a>}
             <Button onClick={() => window.print()} className="gap-2 gradient-primary border-0">
               <Printer className="w-4 h-4" /> Print / Save Handover Certificate
             </Button>

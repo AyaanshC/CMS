@@ -2,670 +2,454 @@ import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowRight,
-  Building2,
-  CheckCircle2,
-  Compass,
-  FileText,
-  FolderLock,
-  Layers,
-  MapPin,
-  MessageSquare,
-  Phone,
+  ArrowUpRight,
+  Layers3,
+  Menu,
   Ruler,
-  ShieldCheck,
-  Sparkles,
-  UserCheck,
+  Compass,
+  Hammer,
+  Check,
+  MapPin,
 } from "lucide-react";
+
+const works = [
+  {
+    name: "Sharma Villa",
+    type: "Residential interiors",
+    location: "Indiranagar, Bengaluru",
+    image: "/studio-showcase.jpg",
+    detail: "Natural stone. Warm walnut. Room to breathe.",
+  },
+  {
+    name: "TechCorp Headquarters",
+    type: "Workplace design",
+    location: "Whitefield, Bengaluru",
+    image: "/techcorp-office.jpg",
+    detail: "A considered space for ideas and collaboration.",
+  },
+  {
+    name: "Reddy Penthouse",
+    type: "Private residence",
+    location: "HSR Layout, Bengaluru",
+    image: "/reddy-penthouse.jpg",
+    detail: "Quiet textures and a lighter way of living.",
+  },
+];
+const services = [
+  {
+    icon: Compass,
+    title: "Architecture",
+    text: "Thoughtful planning, natural light, and spaces that respond to the way you live.",
+  },
+  {
+    icon: Ruler,
+    title: "Interior design",
+    text: "Materials, details, and bespoke joinery brought together with a considered point of view.",
+  },
+  {
+    icon: Hammer,
+    title: "Turnkey execution",
+    text: "One studio to coordinate your design, site work, and the details that make it complete.",
+  },
+];
+const process = [
+  [
+    "Discover",
+    "We start with your space, your aspirations, and the practicalities of your brief.",
+  ],
+  [
+    "Design",
+    "Plans, materials, and visual concepts bring a shared direction into focus.",
+  ],
+  [
+    "Detail",
+    "An itemised scope and estimate give every decision a clear foundation.",
+  ],
+  [
+    "Deliver",
+    "Site updates, quality checks, and a considered handover bring the design to life.",
+  ],
+];
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-neutral-900 selection:text-white">
-      {/* Navigation Header */}
-      <header className="sticky top-0 z-50 bg-background/90 backdrop-blur-md border-b border-border/60">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          {/* Logo / Brand */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 flex items-center justify-center font-bold text-base shadow-xs group-hover:scale-105 transition-transform">
-              P
-            </div>
-            <div>
-              <span className="font-heading text-lg font-bold tracking-tight block text-foreground">
+    <div className="bg-background text-foreground">
+      <a
+        href="#main-content"
+        className="sr-only z-[100] bg-primary p-3 text-white focus:not-sr-only focus:fixed"
+      >
+        Skip to content
+      </a>
+      <header className="sticky top-0 z-40 border-b border-border bg-background/95 backdrop-blur-md">
+        <div className="mx-auto flex h-20 max-w-[1440px] items-center justify-between gap-5 px-5 sm:px-10 lg:px-16">
+          <Link href="/" className="flex shrink-0 items-center gap-3">
+            <Layers3 className="size-8 text-primary" strokeWidth={1.25} />
+            <span>
+              <span className="block text-[13px] font-semibold tracking-tight sm:text-sm">
                 Priya Designs Studio
               </span>
-              <span className="text-[11px] uppercase tracking-wider text-muted-foreground block -mt-0.5">
-                Architecture & Interiors &bull; Bengaluru
+              <span className="mt-1 block text-[8px] uppercase tracking-[0.22em] text-muted-foreground sm:text-[9px]">
+                Architecture & interiors
               </span>
-            </div>
+            </span>
           </Link>
-
-          {/* Desktop Nav Links */}
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-muted-foreground">
-            <a href="#projects" className="hover:text-foreground transition-colors">
-              Signature Works
+          <nav
+            aria-label="Main navigation"
+            className="hidden items-center gap-7 text-xs text-muted-foreground xl:flex"
+          >
+            <a
+              href="#projects"
+              className="transition-colors hover:text-primary"
+            >
+              Selected work
             </a>
-            <a href="#services" className="hover:text-foreground transition-colors">
-              Disciplines
+            <a
+              href="#services"
+              className="transition-colors hover:text-primary"
+            >
+              Our practice
             </a>
-            <a href="#process" className="hover:text-foreground transition-colors">
-              Practice Process
-            </a>
-            <a href="#portal" className="hover:text-foreground transition-colors">
-              Client Portal
+            <a href="#process" className="transition-colors hover:text-primary">
+              Our approach
             </a>
           </nav>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-3">
-            <Link
-              href="/portal/sharma-residence-2024"
-              className="text-xs font-semibold px-3.5 py-2 rounded-lg bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-foreground transition-all flex items-center gap-1.5"
-            >
-              <FolderLock className="w-3.5 h-3.5 text-neutral-600 dark:text-neutral-400" />
-              <span>Client Portal</span>
-            </Link>
-
+          <div className="flex items-center gap-5">
             <Link
               href="/login"
-              className="text-xs font-medium px-3.5 py-2 rounded-lg border border-border/80 hover:bg-muted text-foreground transition-colors"
+              className="hidden text-xs text-muted-foreground hover:text-primary sm:block"
             >
-              Studio Login
+              Studio login
             </Link>
-
             <Link
               href="/onboarding"
-              className="hidden sm:inline-flex text-xs font-semibold px-4 py-2 rounded-lg bg-neutral-900 hover:bg-black text-white dark:bg-white dark:text-neutral-900 dark:hover:bg-neutral-100 transition-all shadow-xs"
+              className="hidden h-10 items-center gap-3 rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 sm:inline-flex"
             >
-              Start a Project
+              Start a conversation <ArrowUpRight className="size-3.5" />
             </Link>
+            <details className="relative xl:hidden">
+              <summary
+                aria-label="Open menu"
+                className="flex size-10 cursor-pointer list-none items-center justify-center rounded-md border border-border [&::-webkit-details-marker]:hidden"
+              >
+                <Menu className="size-5" />
+              </summary>
+              <nav
+                aria-label="Mobile navigation"
+                className="absolute right-0 top-12 flex w-56 flex-col rounded-xl border border-border bg-card p-2 text-sm shadow-xl"
+              >
+                <a href="#projects" className="rounded-lg p-3 hover:bg-muted">
+                  Selected work
+                </a>
+                <a href="#services" className="rounded-lg p-3 hover:bg-muted">
+                  Our practice
+                </a>
+                <a href="#process" className="rounded-lg p-3 hover:bg-muted">
+                  Our approach
+                </a>
+                <Link href="/portal" className="rounded-lg p-3 hover:bg-muted">
+                  Client portal
+                </Link>
+                <Link href="/login" className="rounded-lg p-3 hover:bg-muted">
+                  Studio login
+                </Link>
+                <Link
+                  href="/onboarding"
+                  className="rounded-lg p-3 font-medium text-primary hover:bg-accent"
+                >
+                  Start a project
+                </Link>
+              </nav>
+            </details>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden pt-12 pb-24 md:py-28 bg-neutral-950 text-white">
-        {/* Background Visual */}
-        <div className="absolute inset-0 z-0">
-          <Image
-            src="/studio-showcase.jpg"
-            alt="Priya Designs Studio Showcase"
-            fill
-            sizes="100vw"
-            priority
-            className="object-cover object-center opacity-40 scale-105"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-neutral-950/70 to-neutral-950/40" />
-          <div className="absolute inset-0 bg-gradient-to-r from-neutral-950 via-neutral-950/80 to-transparent" />
-        </div>
-
-        <div className="relative z-10 max-w-7xl mx-auto px-6">
-          <div className="max-w-2xl space-y-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/15 text-xs text-neutral-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              <span>Bespoke Architecture & Turnkey Interiors</span>
-            </div>
-
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-light tracking-tight text-white leading-tight">
-              Spaces designed with <span className="font-semibold text-white">distinction</span>, executed with{" "}
-              <span className="font-semibold text-white">discipline</span>.
-            </h1>
-
-            <p className="text-base sm:text-lg text-neutral-300 font-normal leading-relaxed">
-              We create luxury private residences and corporate flagship environments. Transparent
-              itemised BOQs, three-way procurement matching, and a live client portal keep every
-              detail accountable from concept to handover.
+      <main id="main-content">
+        <section className="mx-auto grid max-w-[1440px] gap-10 px-5 pb-12 pt-12 sm:px-10 lg:min-h-[660px] lg:grid-cols-[0.9fr_1.1fr] lg:gap-14 lg:px-16 lg:py-16">
+          <div className="flex flex-col items-start justify-center py-2 lg:py-10">
+            <p className="eyebrow mb-7 flex items-center gap-3">
+              <span className="h-px w-8 bg-primary" />A Bengaluru design
+              practice
             </p>
-
-            <div className="pt-4 flex flex-wrap gap-4 items-center">
-              <Link
-                href="/portal/sharma-residence-2024"
-                className="px-6 py-3.5 rounded-xl bg-white text-neutral-950 font-semibold text-sm hover:bg-neutral-100 transition-all shadow-lg flex items-center gap-2"
-              >
-                <span>Explore Live Client Portal</span>
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-
+            <h1 className="font-editorial max-w-xl text-[clamp(3.3rem,5.3vw,5.4rem)] leading-[1.07]">
+              Considered spaces.
+              <br />
+              <span className="italic text-primary">Beautifully lived.</span>
+            </h1>
+            <p className="mt-7 max-w-sm text-sm leading-[1.9] text-muted-foreground">
+              Architecture and interiors shaped around you. We bring clarity,
+              care, and a quiet attention to detail to every space we create.
+            </p>
+            <div className="mt-9 flex flex-wrap items-center gap-7">
               <Link
                 href="/onboarding"
-                className="px-6 py-3.5 rounded-xl bg-white/10 hover:bg-white/15 backdrop-blur-md border border-white/20 text-white font-medium text-sm transition-all"
+                className="inline-flex h-12 items-center gap-5 rounded-md bg-primary px-6 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               >
-                Begin Project Consultation
+                Tell us about your project <ArrowUpRight className="size-4" />
               </Link>
+              <a
+                href="#projects"
+                className="inline-flex items-center gap-2 border-b border-foreground/30 pb-1 text-xs font-medium"
+              >
+                Explore our work <ArrowRight className="size-3.5" />
+              </a>
+            </div>
+            <div className="mt-12 flex items-center gap-3 text-[10px] tracking-wide text-muted-foreground">
+              <MapPin className="size-3.5" />
+              Bengaluru, India
+              <span className="mx-1 h-3 w-px bg-border" />
+              Residential & commercial
             </div>
           </div>
-
-          {/* Stats Bar */}
-          <div className="mt-16 pt-10 border-t border-white/10 grid grid-cols-2 md:grid-cols-4 gap-6 text-left">
-            <div>
-              <p className="text-3xl font-bold text-white tracking-tight">14+</p>
-              <p className="text-xs text-neutral-400 mt-1 uppercase tracking-wider">Years of Practice</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-white tracking-tight">85+</p>
-              <p className="text-xs text-neutral-400 mt-1 uppercase tracking-wider">Turnkey Projects</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-white tracking-tight">100%</p>
-              <p className="text-xs text-neutral-400 mt-1 uppercase tracking-wider">Transparent BOQs</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-white tracking-tight">Zero</p>
-              <p className="text-xs text-neutral-400 mt-1 uppercase tracking-wider">Surprise Cost Overruns</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured Projects Showcase */}
-      <section id="projects" className="py-24 bg-background">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-14 gap-4">
-            <div>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block mb-1.5">
-                Curated Portfolio
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
-                Signature Works
-              </h2>
-            </div>
-            <p className="text-sm text-muted-foreground max-w-md">
-              Each residence and commercial space is crafted with artisanal materials, custom
-              joinery, and verified site supervision.
-            </p>
-          </div>
-
-          {/* Project Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Project 1: Sharma Villa */}
-            <div className="group rounded-2xl overflow-hidden border border-border bg-card shadow-xs hover:shadow-md transition-all flex flex-col">
-              <div className="relative h-64 overflow-hidden bg-neutral-900">
-                <Image
-                  src="/studio-showcase.jpg"
-                  alt="Sharma Villa Interior"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute top-4 left-4">
-                  <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-medium border border-white/20">
-                    Live Execution &bull; 65% Complete
-                  </span>
-                </div>
-              </div>
-              <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                <div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5" /> Indiranagar, Bengaluru
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Ruler className="w-3.5 h-3.5" /> 3,200 sqft
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground tracking-tight">Sharma Villa</h3>
-                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                    Contemporary minimalist 4BHK with Dyna Italian marble, fluted walnut walls, and
-                    concealed architectural brass profiles.
-                  </p>
-                </div>
-                <div className="pt-4 border-t border-border flex items-center justify-between">
-                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                    Client Portal Active
-                  </span>
-                  <Link
-                    href="/portal/sharma-residence-2024"
-                    className="text-xs font-semibold text-foreground hover:underline inline-flex items-center gap-1"
-                  >
-                    View Project Portal <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Project 2: TechCorp Office */}
-            <div className="group rounded-2xl overflow-hidden border border-border bg-card shadow-xs hover:shadow-md transition-all flex flex-col">
-              <div className="relative h-64 overflow-hidden bg-neutral-900">
-                <Image
-                  src="/techcorp-office.jpg"
-                  alt="TechCorp HQ Office"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute top-4 left-4">
-                  <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-medium border border-white/20">
-                    Commercial &bull; 35% Complete
-                  </span>
-                </div>
-              </div>
-              <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                <div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5" /> Whitefield, Bengaluru
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Ruler className="w-3.5 h-3.5" /> 6,200 sqft
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground tracking-tight">
-                    TechCorp Global Headquarters
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                    Collaborative executive floor with acoustic timber pods, modular workstations,
-                    and biophilic atrium lounges.
-                  </p>
-                </div>
-                <div className="pt-4 border-t border-border flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">In Design Development</span>
-                  <Link
-                    href="/portal/techcorp-office-2024"
-                    className="text-xs font-semibold text-foreground hover:underline inline-flex items-center gap-1"
-                  >
-                    View Project Portal <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-
-            {/* Project 3: Reddy Penthouse */}
-            <div className="group rounded-2xl overflow-hidden border border-border bg-card shadow-xs hover:shadow-md transition-all flex flex-col">
-              <div className="relative h-64 overflow-hidden bg-neutral-900">
-                <Image
-                  src="/reddy-penthouse.jpg"
-                  alt="Reddy Penthouse"
-                  fill
-                  sizes="(max-width: 768px) 100vw, 33vw"
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-                <div className="absolute top-4 left-4">
-                  <span className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[11px] font-medium border border-white/20">
-                    Residential &bull; Concept Locked
-                  </span>
-                </div>
-              </div>
-              <div className="p-6 flex-1 flex flex-col justify-between space-y-4">
-                <div>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5" /> HSR Layout, Bengaluru
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Ruler className="w-3.5 h-3.5" /> 2,400 sqft
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-semibold text-foreground tracking-tight">
-                    Reddy Penthouse Duplex
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
-                    Warm Scandinavian aesthetics featuring bleached oak cabinetry, textured lime
-                    wash finishes, and terrace lounge.
-                  </p>
-                </div>
-                <div className="pt-4 border-t border-border flex items-center justify-between">
-                  <span className="text-xs font-medium text-muted-foreground">BOQ Finalized</span>
-                  <Link
-                    href="/onboarding"
-                    className="text-xs font-semibold text-foreground hover:underline inline-flex items-center gap-1"
-                  >
-                    Similar Project Plan <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Client Portal Highlight Section */}
-      <section id="portal" className="py-20 bg-neutral-900 text-white relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-6 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            <div className="space-y-6">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-xs text-neutral-300 border border-white/10">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                <span>The Client-Facing Experience</span>
-              </div>
-
-              <h2 className="text-3xl sm:text-4xl font-light tracking-tight text-white leading-snug">
-                Total transparency throughout your build.{" "}
-                <span className="font-semibold text-white">Live on your phone.</span>
-              </h2>
-
-              <p className="text-sm text-neutral-300 leading-relaxed">
-                We believe trust is built on real-time data, not guesswork. Our proprietary client
-                portal gives homeowners direct oversight of their project.
-              </p>
-
-              <div className="space-y-3.5 pt-2">
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-white block">
-                      Live Site Stories & Photo Feeds
-                    </span>
-                    <span className="text-xs text-neutral-400">
-                      View progress photos, react, and leave direct feedback as rooms take shape.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-white block">
-                      Itemised Digital BOQ & Approvals
-                    </span>
-                    <span className="text-xs text-neutral-400">
-                      Approve or decline line items, materials, and change orders with full cost
-                      visibility.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-start gap-3">
-                  <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-white block">
-                      Real-Time Snag Resolution
-                    </span>
-                    <span className="text-xs text-neutral-400">
-                      Track touch-ups and punch list fixes with photographic proof before final
-                      milestone sign-off.
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 flex items-center gap-4">
-                <Link
-                  href="/portal/sharma-residence-2024"
-                  className="px-6 py-3 rounded-xl bg-white text-neutral-900 font-semibold text-sm hover:bg-neutral-100 transition-all flex items-center gap-2"
-                >
-                  <span>Open Sharma Villa Client Portal</span>
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </div>
-            </div>
-
-            {/* Portal Card Preview */}
-            <div className="rounded-2xl bg-neutral-950 border border-white/10 p-6 shadow-2xl space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-white/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white font-bold">
-                    <Building2 className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold text-white">Sharma Villa &bull; Client Portal</p>
-                    <p className="text-xs text-neutral-400">Managed by Priya Designs Studio</p>
-                  </div>
-                </div>
-                <span className="text-xs px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 font-medium">
-                  65% Handover Progress
+          <figure className="relative min-h-[360px] overflow-hidden rounded-t-[100px] rounded-b-lg sm:min-h-[460px] lg:min-h-[550px]">
+            <Image
+              src="/studio-showcase.jpg"
+              alt="A warm contemporary living room with stone finishes and walnut joinery"
+              fill
+              priority
+              sizes="(max-width: 1024px) 100vw, 55vw"
+              className="object-cover"
+            />
+            <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/65 to-transparent" />
+            <figcaption className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-5 p-7 text-white">
+              <span>
+                <span className="mb-2 block text-[9px] uppercase tracking-[0.2em] text-white/75">
+                  Featured residence
                 </span>
-              </div>
-
-              {/* Progress Bar */}
-              <div className="space-y-2">
-                <div className="flex justify-between text-xs text-neutral-300">
-                  <span>Execution Milestone 3 of 5</span>
-                  <span>Target: Nov 30, 2026</span>
-                </div>
-                <div className="w-full h-2.5 rounded-full bg-neutral-800 overflow-hidden">
-                  <div className="h-full bg-emerald-400 rounded-full w-[65%]" />
-                </div>
-              </div>
-
-              {/* Site Update Preview */}
-              <div className="p-4 rounded-xl bg-white/5 border border-white/5 space-y-3">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-neutral-200">Latest Site Update</span>
-                  <span className="text-neutral-500">2 days ago</span>
-                </div>
-                <p className="text-xs text-neutral-300 leading-relaxed">
-                  &ldquo;Dyna Italian Marble flooring has been laid and sealed. Recessed architectural
-                  warm profile lighting is now active in the living room.&rdquo;
-                </p>
-                <div className="flex items-center gap-4 text-xs text-neutral-400 pt-1">
-                  <span>👍 5 Likes</span>
-                  <span>❤️ 3 Loved</span>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-neutral-400 pt-2">
-                <span>Verified by Studio Project Manager</span>
-                <Link
-                  href="/portal/sharma-residence-2024"
-                  className="text-white hover:underline font-medium inline-flex items-center gap-1"
-                >
-                  Enter full portal &rarr;
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Disciplines & Services */}
-      <section id="services" className="py-24 bg-background">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block">
-              Core Capabilities
-            </span>
-            <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
-              End-to-End Architectural Disciplines
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              We eliminate the friction between architectural concept and on-site reality by
-              unifying design and contracting under one studio.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="p-6 rounded-2xl border border-border bg-card space-y-3 shadow-xs">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-foreground">
-                <Compass className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-semibold text-foreground">Spatial Architecture</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Civil re-planning, structural enhancements, vastu alignment, and daylight analysis
-                tailored to your family.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl border border-border bg-card space-y-3 shadow-xs">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-foreground">
-                <Layers className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-semibold text-foreground">Turnkey Execution</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Dedicated on-site project managers, weekly quality audits, and guaranteed timeline
-                deliverables.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl border border-border bg-card space-y-3 shadow-xs">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-foreground">
-                <FileText className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-semibold text-foreground">Transparent BOQs</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Granular line-item pricing with manufacturer specifications, unit rates, and zero
-                hidden escalation fees.
-              </p>
-            </div>
-
-            <div className="p-6 rounded-2xl border border-border bg-card space-y-3 shadow-xs">
-              <div className="w-10 h-10 rounded-xl bg-neutral-100 dark:bg-neutral-800 flex items-center justify-center text-foreground">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-semibold text-foreground">Custom Joinery</h3>
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Hand-selected natural veneers, Italian PU finishes, German Blum hardware, and bespoke
-                millwork.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Practice Process */}
-      <section id="process" className="py-20 bg-muted/40 border-y border-border">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-widest block">
-              Methodology
-            </span>
-            <h2 className="text-3xl font-semibold tracking-tight text-foreground">
-              Our 5-Stage Practice Roadmap
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              How your design progresses from initial consultation to finished keys.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-6 text-center">
-            <div className="p-5 rounded-xl bg-background border border-border/80 space-y-2">
-              <span className="text-xs font-bold font-mono text-muted-foreground">01</span>
-              <h4 className="text-sm font-semibold text-foreground">Discovery Call</h4>
-              <p className="text-xs text-muted-foreground">
-                Site survey, budget framing, and architectural lifestyle briefing.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-xl bg-background border border-border/80 space-y-2">
-              <span className="text-xs font-bold font-mono text-muted-foreground">02</span>
-              <h4 className="text-sm font-semibold text-foreground">3D Visual Concept</h4>
-              <p className="text-xs text-muted-foreground">
-                Photorealistic renders, material swatches, and lighting plans.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-xl bg-background border border-border/80 space-y-2">
-              <span className="text-xs font-bold font-mono text-muted-foreground">03</span>
-              <h4 className="text-sm font-semibold text-foreground">BOQ Freeze</h4>
-              <p className="text-xs text-muted-foreground">
-                Detailed itemized specifications approved on the portal.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-xl bg-background border border-border/80 space-y-2">
-              <span className="text-xs font-bold font-mono text-muted-foreground">04</span>
-              <h4 className="text-sm font-semibold text-foreground">Site Execution</h4>
-              <p className="text-xs text-muted-foreground">
-                Civil, electricals, carpentry, and live portal photo updates.
-              </p>
-            </div>
-
-            <div className="p-5 rounded-xl bg-background border border-border/80 space-y-2">
-              <span className="text-xs font-bold font-mono text-muted-foreground">05</span>
-              <h4 className="text-sm font-semibold text-foreground">Snag & Handover</h4>
-              <p className="text-xs text-muted-foreground">
-                Full 48-point quality audit, snag fixes, and warranty handover.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Onboarding Section */}
-      <section className="py-20 bg-background">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="rounded-3xl bg-neutral-950 text-white p-10 md:p-16 text-center space-y-6 relative overflow-hidden shadow-xl">
-            <div className="max-w-xl mx-auto space-y-4">
-              <h2 className="text-3xl sm:text-4xl font-light tracking-tight text-white leading-tight">
-                Ready to plan your <span className="font-semibold text-white">dream space</span>?
-              </h2>
-              <p className="text-sm text-neutral-300 leading-relaxed">
-                Tell us about your property, timeline, and design aesthetic. Our team will review
-                your brief and schedule a personalized studio consultation.
-              </p>
-              <div className="pt-4 flex flex-wrap justify-center gap-4">
-                <Link
-                  href="/onboarding"
-                  className="px-6 py-3 rounded-xl bg-white text-neutral-950 font-semibold text-sm hover:bg-neutral-100 transition-all shadow-md"
-                >
-                  Start Project Brief
-                </Link>
-                <Link
-                  href="/login"
-                  className="px-6 py-3 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium text-sm transition-all"
-                >
-                  Studio Staff Login
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="bg-muted/60 border-t border-border mt-auto py-14">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-start justify-between gap-8 text-xs text-muted-foreground">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 flex items-center justify-center font-bold text-xs">
-                P
-              </div>
-              <span className="font-heading font-bold text-sm text-foreground">
-                Priya Designs Studio
+                <span className="font-editorial text-3xl">Sharma Villa</span>
               </span>
+              <span className="text-[10px] text-white/80">
+                Indiranagar · Bengaluru
+              </span>
+            </figcaption>
+          </figure>
+        </section>
+
+        <section
+          id="services"
+          className="scroll-mt-20 border-y border-border bg-card/50"
+        >
+          <div className="mx-auto grid max-w-[1440px] gap-8 px-5 py-10 sm:px-10 md:grid-cols-3 lg:px-16">
+            {services.map(({ icon: Icon, title, text }, i) => (
+              <div
+                key={title}
+                className="flex gap-4 md:border-r md:border-border md:pr-6 md:last:border-0"
+              >
+                <Icon
+                  className="mt-1 size-5 shrink-0 text-primary"
+                  strokeWidth={1.4}
+                />
+                <div>
+                  <p className="mb-2 text-sm font-semibold">
+                    {title}
+                    <span className="ml-3 text-[9px] font-normal text-muted-foreground">
+                      0{i + 1}
+                    </span>
+                  </p>
+                  <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
+                    {text}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section
+          id="projects"
+          className="mx-auto max-w-[1440px] scroll-mt-20 px-5 py-20 sm:px-10 lg:px-16 lg:py-24"
+        >
+          <div className="mb-10 flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+            <div>
+              <p className="eyebrow mb-3">Selected work</p>
+              <h2 className="font-editorial text-4xl sm:text-5xl">
+                Every space, a point of view.
+              </h2>
             </div>
-            <p className="max-w-xs leading-relaxed">
-              Bespoke architecture, luxury residential interiors, and turnkey project contracting.
-            </p>
-            <p className="font-mono text-[11px]">GSTIN: 29AABCP1234A1Z5 &bull; PAN: AABCP1234A</p>
-          </div>
-
-          <div className="space-y-2">
-            <p className="font-semibold text-foreground uppercase tracking-wider text-[11px]">
-              Studio Location
-            </p>
-            <p>Suite 402, Prestige Meridian, 14 MG Road</p>
-            <p>Bengaluru, Karnataka 560001, India</p>
-            <p className="flex items-center gap-1.5 pt-1">
-              <Phone className="w-3.5 h-3.5" /> +91 98765 43210
+            <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
+              A glimpse into the homes and workplaces that reflect our approach
+              to thoughtful design.
             </p>
           </div>
+          <div className="grid gap-8 md:grid-cols-3">
+            {works.map((work, i) => (
+              <article key={work.name} className="group">
+                <div className="relative aspect-[4/5] overflow-hidden rounded-lg bg-muted">
+                  <Image
+                    src={work.image}
+                    alt={work.name + " interior design"}
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                  />
+                  <span className="absolute left-4 top-4 rounded bg-background/95 px-2.5 py-1.5 text-[9px] uppercase tracking-wider">
+                    {work.type}
+                  </span>
+                </div>
+                <div className="mt-5 flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {work.location}
+                    </p>
+                    <h3 className="mt-1.5 text-lg font-medium">{work.name}</h3>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      {work.detail}
+                    </p>
+                  </div>
+                  <span className="font-editorial text-xl text-muted-foreground/60">
+                    0{i + 1}
+                  </span>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
 
-          <div className="space-y-2">
-            <p className="font-semibold text-foreground uppercase tracking-wider text-[11px]">
-              Navigation
+        <section
+          id="process"
+          className="scroll-mt-20 border-y border-border bg-[#efeee8]"
+        >
+          <div className="mx-auto max-w-[1440px] px-5 py-20 sm:px-10 lg:px-16">
+            <p className="eyebrow mb-3">Our approach</p>
+            <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-end">
+              <h2 className="font-editorial text-4xl sm:text-5xl">
+                Clarity at every step.
+              </h2>
+              <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
+                A collaborative journey, with the right conversations and
+                decisions along the way.
+              </p>
+            </div>
+            <div className="mt-12 grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
+              {process.map(([title, text], i) => (
+                <div key={title} className="border-t border-foreground/20 pt-5">
+                  <span className="text-[11px] text-primary">0{i + 1}</span>
+                  <h3 className="mb-3 mt-6 text-base font-semibold">{title}</h3>
+                  <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
+                    {text}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="portal"
+          className="mx-auto grid max-w-[1440px] items-center gap-12 px-5 py-20 sm:px-10 lg:grid-cols-2 lg:gap-24 lg:px-16 lg:py-24"
+        >
+          <div>
+            <p className="eyebrow mb-4">Designed for peace of mind</p>
+            <h2 className="font-editorial text-4xl leading-tight sm:text-5xl">
+              Closer to your project.
+              <br />
+              <span className="italic text-primary">Wherever you are.</span>
+            </h2>
+            <p className="mt-6 max-w-md text-sm leading-relaxed text-muted-foreground">
+              Your dedicated client portal keeps the important details in one
+              place, so you can follow progress and make decisions with
+              confidence.
             </p>
-            <p>
-              <Link href="/portal/sharma-residence-2024" className="hover:text-foreground">
-                Client Portal Access
-              </Link>
-            </p>
-            <p>
-              <Link href="/onboarding" className="hover:text-foreground">
-                Client Onboarding Wizard
-              </Link>
-            </p>
-            <p>
-              <Link href="/login" className="hover:text-foreground">
-                Studio Management MIS
-              </Link>
-            </p>
+            <ul className="my-7 space-y-3 text-xs">
+              {[
+                "Progress updates and photographs from your site",
+                "Estimates, approvals, and payment records",
+                "A direct conversation with your design team",
+              ].map((item) => (
+                <li key={item} className="flex items-center gap-3">
+                  <Check className="size-4 text-primary" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <Link
+              href="/portal"
+              className="inline-flex items-center gap-4 border-b border-primary/40 pb-1 text-xs font-semibold text-primary"
+            >
+              Go to your client portal <ArrowUpRight className="size-4" />
+            </Link>
+          </div>
+          <div className="rounded-xl border border-border bg-card p-7 shadow-[0_16px_60px_-30px_rgb(35_50_40_/_0.2)] sm:p-9">
+            <div className="flex items-center gap-3 border-b border-border pb-5">
+              <span className="flex size-10 items-center justify-center rounded-lg bg-accent">
+                <Layers3 className="size-5 text-primary" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold">Your project, in focus</p>
+                <p className="text-[10px] text-muted-foreground">
+                  A shared space for you and your studio
+                </p>
+              </div>
+            </div>
+            <div className="relative my-6 aspect-[16/9] overflow-hidden rounded-lg">
+              <Image
+                src="/reddy-penthouse.jpg"
+                alt="Soft natural materials in a residential interior"
+                fill
+                sizes="(max-width: 1024px) 100vw, 40vw"
+                className="object-cover"
+              />
+            </div>
+            <div className="grid grid-cols-3 divide-x divide-border text-center">
+              {["Project updates", "Design approvals", "Conversations"].map(
+                (label, i) => (
+                  <div key={label} className="px-2">
+                    <span className="mb-2 block text-[9px] text-primary">
+                      0{i + 1}
+                    </span>
+                    <span className="text-[10px] font-medium">{label}</span>
+                  </div>
+                ),
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[#283e34] text-[#faf8f3]">
+          <div className="mx-auto flex max-w-[1440px] flex-col items-start justify-between gap-8 px-5 py-16 sm:px-10 md:flex-row md:items-center lg:px-16">
+            <div>
+              <p className="mb-4 text-[9px] uppercase tracking-[0.2em] text-white/60">
+                Let’s make room for something beautiful
+              </p>
+              <h2 className="font-editorial text-4xl sm:text-5xl">
+                Your next chapter starts here.
+              </h2>
+            </div>
+            <Link
+              href="/onboarding"
+              className="inline-flex h-12 shrink-0 items-center gap-6 rounded-md bg-background px-6 text-xs font-semibold text-foreground transition-colors hover:bg-white"
+            >
+              Start your project <ArrowUpRight className="size-4" />
+            </Link>
+          </div>
+        </section>
+      </main>
+      <footer className="mx-auto max-w-[1440px] px-5 py-10 sm:px-10 lg:px-16">
+        <div className="flex flex-col justify-between gap-6 border-b border-border pb-8 sm:flex-row">
+          <div className="flex items-center gap-3">
+            <Layers3 className="size-7 text-primary" strokeWidth={1.3} />
+            <div>
+              <p className="text-sm font-semibold">Priya Designs Studio</p>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                Architecture & interiors · Bengaluru
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-6 text-xs text-muted-foreground">
+            <Link href="/portal" className="hover:text-primary">
+              Client portal
+            </Link>
+            <Link href="/login" className="hover:text-primary">
+              Studio login
+            </Link>
+            <Link href="/onboarding" className="hover:text-primary">
+              Project enquiries <ArrowUpRight className="ml-1 inline size-3" />
+            </Link>
           </div>
         </div>
-
-        <div className="max-w-7xl mx-auto px-6 pt-8 mt-8 border-t border-border/70 flex flex-col sm:flex-row items-center justify-between text-[11px] text-muted-foreground gap-3">
-          <span>&copy; {new Date().getFullYear()} Priya Designs Studio. All rights reserved.</span>
-          <div className="flex gap-4">
-            <a href="#" className="hover:text-foreground">Privacy Policy</a>
-            <span>&bull;</span>
-            <a href="#" className="hover:text-foreground">Terms of Service</a>
-            <span>&bull;</span>
-            <a href="#" className="hover:text-foreground">Security</a>
-          </div>
-        </div>
+        <p className="pt-6 text-[10px] text-muted-foreground">
+          © 2026 Priya Designs Studio. All rights reserved.
+        </p>
       </footer>
     </div>
   );

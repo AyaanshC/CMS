@@ -67,13 +67,13 @@ export default function UpdatesTab({
               </div>
               <p className="text-xs text-muted-foreground leading-relaxed">{upd.content}</p>
               <div className="flex items-center gap-3 pt-3 border-t">
-                <button 
+                <button
                   onClick={() => toggleUpdateReaction(upd.id, 'like')}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
                 >
-                  <ThumbsUp className="w-3.5 h-3.5 text-indigo-500" /> {upd.likes || 0}
+                  <ThumbsUp className="w-3.5 h-3.5 text-primary" /> {upd.likes || 0}
                 </button>
-                <button 
+                <button
                   onClick={() => toggleUpdateReaction(upd.id, 'love')}
                   className="flex items-center gap-1 text-xs text-muted-foreground hover:text-rose-500 transition-colors"
                 >
@@ -94,9 +94,9 @@ export default function UpdatesTab({
           <form onSubmit={handlePostUpdate} className="space-y-3">
             <div className="space-y-1">
               <Label className="text-xs">Update Title</Label>
-              <Input 
-                required 
-                value={updateForm.title} 
+              <Input aria-label="Update Title"
+                required
+                value={updateForm.title}
                 onChange={(e) => setUpdateForm({ ...updateForm, title: e.target.value })}
                 placeholder="e.g. Master Bedroom Woodwork Started!"
               />
@@ -110,9 +110,9 @@ export default function UpdatesTab({
             </div>
             <div className="space-y-1">
               <Label className="text-xs">Description</Label>
-              <Textarea 
-                required 
-                value={updateForm.content} 
+              <Textarea aria-label="Description"
+                required
+                value={updateForm.content}
                 onChange={(e) => setUpdateForm({ ...updateForm, content: e.target.value })}
                 placeholder="Describe progress made today for the client..."
                 rows={3}

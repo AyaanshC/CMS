@@ -63,6 +63,7 @@ export const milestoneInput = z.object({ project_id: id, title: text(150), due_d
 
 // BOQ -----------------------------------------------------------------------------
 export const lineItemInput = z.object({
+  line_key: id.optional(),
   section_id: id,
   description: text(300),
   specifications: optText(1000),
@@ -72,6 +73,8 @@ export const lineItemInput = z.object({
   remarks: optText(500),
   sort_order: z.coerce.number().int().default(0),
 });
+export const lineItemUpdate = lineItemInput.omit({ section_id: true, line_key: true }).partial().extend({ id });
+export const boqSectionInput = z.object({ boq_version_id: id, name: text(120), category: text(60), room_id: optId, sort_order: z.coerce.number().int().default(99) });
 export const boqVersionInput = z.object({
   project_id: id,
   version_label: optText(120),
@@ -88,7 +91,7 @@ export const boqVersionInput = z.object({
 });
 export const boqUpdateInput = z.object({
   id,
-  version_label: optText(120),
+  version_label: optText(120).optional(),
   gst_percent: z.coerce.number().min(0).max(28).optional(),
   discount_amount: money.optional(),
   designer_fee: money.optional(),
@@ -145,9 +148,11 @@ export const invoiceInput = z
     due_date: date,
     notes: optText(500),
     send: z.boolean().default(true),
+    items:z.array(z.object({description:text(300),quantity:z.coerce.number().positive(),unit_rate:money})).min(1).max(200).optional(),
   })
   .refine((i) => i.discount <= i.subtotal, { message: "Discount cannot exceed subtotal", path: ["discount"] });
 export const paymentInput = z.object({
+  request_id:id.optional(),
   invoice_id: id,
   amount: z.coerce.number().finite().positive().max(1e11),
   tds_amount: money.default(0),
@@ -171,7 +176,8 @@ export const expenseInput = z.object({
 // Communication & files ---------------------------------------------------------
 export const messageInput = z
   .object({ project_id: id, content: optText(4000), file_url: path.optional().nullable(), file_name: optText(200) })
-  .refine((m) => m.content || m.file_url, { message: "Message is empty" });
+  .refine((m) => m.content || m.file_url, { message: "Message is empty" })
+  .refine((m) => !m.file_url || m.file_url.startsWith(`${m.project_id}/`), { message: "Upload the attachment to this project before sending", path: ["file_url"] });
 export const updateInput = z.object({ project_id: id, title: optText(150), content: text(4000), photos: z.array(path).max(10).default([]) });
 export const reactionInput = z.object({ id, kind: z.enum(["like", "love"]) });
 export const fileRecordInput = z.object({
@@ -186,6 +192,7 @@ export const fileRecordInput = z.object({
 });
 export const visibilityInput = z.object({ id, is_client_visible: z.boolean() });
 export const materialSelectInput = z.object({ id, is_selected: z.boolean() });
+export const materialInput = z.object({ id: id.optional(), project_id:id, room_name:text(120), category:z.enum(["Flooring","Walls","Ceiling","Furniture","Lighting","Hardware"]),product_name:text(150),brand:z.string().trim().max(120).default(""),approx_cost:money,image_url:path.default(""),description:optText(2000) });
 
 // Settings & team ---------------------------------------------------------------
 export const libraryItemInput = z.object({
@@ -265,6 +272,8 @@ export const feeStageCreate = z.object({
   checklist: checklist.default([]),
 });
 export const applyTemplateInput = z.object({ project_id: id, template_id: id });
+export const boqTemplateInput = z.object({ name: text(120), category: text(60), description: z.string().trim().max(500).default(""),
+  sections: z.array(z.object({ name: text(120), category: text(60), items: z.array(z.object({ description: text(300), unit: text(20), default_qty: z.coerce.number().positive(), default_rate: money })).max(500) })).min(1).max(100) });
 
 export const changeOrderInput = z
   .object({
@@ -338,16 +347,19 @@ export const quoteInput = z.object({
 }).refine((q) => q.boq_line_item_id || q.package_name, { message: "Link a BOQ line or name the package", path: ["package_name"] });
 const poLine = z.object({ boq_line_item_id: optId, description: text(300), unit: text(20), quantity: z.coerce.number().positive(), rate: money, gst_rate: gst });
 export const poInput = z.object({
+  request_id: id.optional(),
   project_id: id, vendor_id: id, order_date: optDate, expected_delivery: optDate, notes: optText(1000), lines: z.array(poLine).min(1).max(200),
 });
 export const cancelPoInput = z.object({ id, reason: text(300) });
 export const receiptInput = z.object({
+  request_id: id.optional(),
   po_id: id, received_on: date, notes: optText(500), photo_url: path.optional().nullable(),
   lines: z.array(z.object({
     po_line_id: id, quantity_received: z.coerce.number().positive(), quantity_rejected: z.coerce.number().min(0).default(0), condition_note: optText(300),
   }).refine((l) => l.quantity_rejected <= l.quantity_received, { message: "Rejected cannot exceed received", path: ["quantity_rejected"] })).min(1),
 });
 export const billInput = z.object({
+  request_id: id.optional(),
   vendor_id: id, project_id: id, po_id: optId, bill_number: text(60), bill_date: date, due_date: optDate, notes: optText(500),
   file_path: path.optional().nullable(),
   lines: z.array(z.object({ po_line_id: optId, description: text(300), quantity: z.coerce.number().positive(), rate: money, gst_rate: gst })).min(1).max(200),
@@ -355,6 +367,7 @@ export const billInput = z.object({
 export const billDecisionInput = z.object({ id, approve: z.boolean(), note: optText(500) })
   .refine((d) => d.approve || !!d.note, { message: "Give a reason for the dispute", path: ["note"] });
 export const vendorPaymentInput = z.object({
+  request_id: id.optional(),
   vendor_id: id, project_id: id, bill_id: optId, amount: z.coerce.number().positive(), tds_amount: money.default(0), paid_on: date,
   mode: z.enum(["bank_transfer", "upi", "cheque", "cash"]), reference: optText(100), is_advance: z.boolean().default(false),
 }).refine((p) => p.is_advance || !!p.bill_id, { message: "Choose the bill, or mark this as an advance", path: ["bill_id"] });
@@ -363,3 +376,5 @@ export const expenseDecisionInput = billDecisionInput;
 
 
 
+
+export const checkedTimesheetInput = timesheetWeekInput.extend({expected_ids:z.array(z.string().max(60)),submit:z.boolean().default(false)});
